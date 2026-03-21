@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>CLO3D — Адмін</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;--acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--red:#f87171;--blue:#60a5fa;--txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.15);--sb:235px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;display:flex;min-height:100vh}
+.sb{width:var(--sb);background:var(--s1);border-right:1px solid var(--brd);display:flex;flex-direction:column;position:fixed;inset-block:0;left:0;z-index:100;padding:1.25rem 0;overflow-y:auto}
+.sb-logo{padding:0 1.25rem 1.25rem;border-bottom:1px solid var(--brd);margin-bottom:.75rem}
+.sb-logo .n{font-family:'Syne',sans-serif;font-size:.92rem;font-weight:800;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sb-logo .v{font-size:.67rem;color:var(--muted);margin-top:.15rem}
+.ni{display:flex;align-items:center;gap:.65rem;padding:.65rem 1.25rem;cursor:pointer;color:var(--muted);font-size:.82rem;font-weight:500;transition:.18s;border-left:3px solid transparent;user-select:none}
+.ni:hover{color:var(--txt);background:rgba(255,255,255,.025)}.ni.on{color:var(--acc2);border-left-color:var(--acc);background:rgba(200,48,42,.08)}
+.ni .ic{font-size:1rem;width:20px;text-align:center;flex-shrink:0}
+.nb{margin-left:auto;background:var(--red);border-radius:20px;padding:.08rem .45rem;font-size:.62rem;color:#fff;display:none}
+.sb-bot{margin-top:auto;padding:1rem 1.25rem;border-top:1px solid var(--brd)}
+.lo{width:100%;padding:.6rem;border:1px solid var(--brd);border-radius:10px;background:transparent;color:var(--muted);font-size:.78rem;cursor:pointer;transition:.18s;font-family:'Inter',sans-serif}
+.lo:hover{border-color:var(--red);color:var(--red)}
+.main{margin-left:var(--sb);flex:1;display:flex;flex-direction:column}
+.topbar{padding:1rem 2rem;background:var(--s1);border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-t{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700}
+.stbadge{display:flex;align-items:center;gap:.45rem;font-size:.73rem;color:var(--grn)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--grn);animation:bl 2s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.cnt{padding:1.75rem;flex:1}
+.tab{display:none}.tab.on{display:block}
+/* STATS */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:.9rem;margin-bottom:1.75rem}
+.sc{background:var(--s1);border:1px solid var(--brd);border-radius:14px;padding:1.1rem 1.35rem;transition:.25s;cursor:default}
+.sc:hover{border-color:rgba(200,48,42,.3);transform:translateY(-2px);box-shadow:0 10px 28px rgba(200,48,42,.09)}
+.sl{font-size:.66rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem}
+.sv{font-family:'Syne',sans-serif;font-size:1.85rem;font-weight:800;line-height:1}
+.sv.a{color:var(--acc2)}.sv.g{color:var(--grn)}.sv.b{color:var(--blue)}.sv.go{color:var(--gold)}
+.ss{font-size:.67rem;color:var(--muted);margin-top:.3rem}
+/* CHARTS */
+.cr{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem}
+@media(max-width:900px){.cr{grid-template-columns:1fr}}
+.cb{background:var(--s1);border:1px solid var(--brd);border-radius:14px;padding:1.35rem}
+.cb h3{font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;margin-bottom:1.1rem}
+/* TABLES */
+.tb-box{background:var(--s1);border:1px solid var(--brd);border-radius:14px;overflow:hidden;margin-bottom:1.35rem}
+.tb-hd{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.35rem;border-bottom:1px solid var(--brd)}
+.tb-hd h3{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th{font-size:.66rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:.65rem 1.35rem;text-align:left;background:var(--s2);font-weight:500}
+td{padding:.78rem 1.35rem;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.035);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.014)}
+code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.15rem .4rem;border-radius:5px}
+/* BUTTONS */
+.btn{padding:.4rem .9rem;border-radius:8px;font-size:.75rem;font-family:'Inter',sans-serif;font-weight:500;cursor:pointer;border:none;transition:.18s;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;text-decoration:none}
+.btn-p{background:var(--acc);color:#fff}.btn-p:hover{background:#4a7cdc}
+.btn-g{background:rgba(52,211,153,.13);color:var(--grn);border:1px solid rgba(52,211,153,.28)}.btn-g:hover{background:rgba(52,211,153,.22)}
+.btn-r{background:rgba(248,113,113,.13);color:var(--red);border:1px solid rgba(248,113,113,.28)}.btn-r:hover{background:rgba(248,113,113,.22)}
+.btn-go{background:rgba(251,191,36,.13);color:var(--gold);border:1px solid rgba(251,191,36,.28)}.btn-go:hover{background:rgba(251,191,36,.22)}
+.btn-gh{background:transparent;color:var(--muted);border:1px solid var(--brd)}.btn-gh:hover{border-color:var(--acc);color:var(--txt)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* FORM */
+.fg{margin-bottom:1.1rem}
+.fg label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:.35rem;letter-spacing:.04em}
+.fg input,.fg textarea,.fg select{width:100%;background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.7rem .95rem;color:var(--txt);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;transition:.18s}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(200,48,42,.1)}
+.fg textarea{resize:vertical;min-height:90px}
+.fg select option{background:var(--s2)}
+.card-form{background:var(--s1);border:1px solid var(--brd);border-radius:14px;padding:1.75rem;max-width:620px}
+.row{display:flex;gap:.75rem}.row .fg{flex:1}
+/* COURSE CARD */
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.cc{background:var(--s1);border:1px solid var(--brd);border-radius:16px;overflow:hidden;transition:.25s;position:relative}
+.cc:hover{border-color:rgba(200,48,42,.3);transform:translateY(-3px)}
+.cc-top{height:5px;background:linear-gradient(90deg,var(--cc-color,#C8302A),var(--acc2))}
+.cc-body{padding:1.25rem 1.5rem}
+.cc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
+.cc-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800}
+.cc-badge{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .6rem;border-radius:100px;background:rgba(200,48,42,.12);color:var(--acc2);border:1px solid rgba(200,48,42,.2)}
+.cc-desc{font-size:.8rem;color:var(--muted);line-height:1.55;margin-bottom:1rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-meta{display:flex;gap:1rem;font-size:.75rem;color:var(--muted);margin-bottom:1rem;flex-wrap:wrap}
+.cc-actions{display:flex;gap:.4rem;flex-wrap:wrap}
+.cc-pub{font-size:.68rem;font-weight:600;padding:.2rem .6rem;border-radius:6px}
+.pub-on{background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)}
+.pub-off{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)}
+/* UPLOAD */
+.fdrop{border:2px dashed var(--brd);border-radius:12px;padding:2rem;text-align:center;cursor:pointer;transition:.25s;position:relative}
+.fdrop:hover,.fdrop.drag{border-color:var(--acc);background:rgba(200,48,42,.05)}
+.fdrop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fdrop.sel{border-color:var(--grn);background:rgba(52,211,153,.05)}
+.uprog{display:none;flex-direction:column;gap:.5rem;margin-top:.85rem;background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.85rem 1rem}
+.uprog.show{display:flex}
+.upbar-w{height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden}
+.upbar{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0%;transition:width .3s}
+.upl{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}
+/* VIDEO LIST */
+.vi{display:flex;align-items:center;gap:1rem;padding:.9rem 1.35rem;border-bottom:1px solid rgba(255,255,255,.035)}
+.vi:last-child{border-bottom:none}
+.vin{font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;color:var(--acc2);background:rgba(200,48,42,.1);border:1px solid rgba(200,48,42,.2);border-radius:8px;padding:.2rem .55rem;flex-shrink:0;min-width:30px;text-align:center}
+.vii{flex:1;min-width:0}
+.vit{font-size:.85rem;font-weight:500;cursor:pointer}
+.vid2{font-size:.73rem;color:var(--muted);margin-top:.1rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+.vim{font-size:.68rem;color:var(--muted);margin-top:.15rem}
+.via{display:flex;gap:.35rem;flex-shrink:0}
+.ei{background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.3rem .65rem;color:var(--txt);font-size:.8rem;font-family:'Inter',sans-serif;outline:none;transition:.15s;width:100%}
+.ei:focus{border-color:var(--acc)}
+/* LOG */
+.litem{display:flex;align-items:flex-start;gap:.85rem;padding:.7rem 1.35rem;border-bottom:1px solid rgba(255,255,255,.03);font-size:.78rem}
+.litem:last-child{border-bottom:none}
+.lt{color:var(--muted);font-size:.67rem;flex-shrink:0;min-width:95px}
+/* EXPORT */
+.eg{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:.9rem;margin-bottom:1.5rem}
+.ec{background:var(--s1);border:1px solid var(--brd);border-radius:14px;padding:1.35rem;transition:.25s}
+.ec:hover{border-color:rgba(200,48,42,.3)}
+.ec .ei2{font-size:1.75rem;margin-bottom:.6rem}
+.ec h4{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;margin-bottom:.35rem}
+.ec p{font-size:.75rem;color:var(--muted);line-height:1.5;margin-bottom:.9rem}
+/* MODAL */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.mbg.show{display:flex}
+.mbox{background:var(--s1);border:1px solid var(--brd);border-radius:20px;padding:2rem;width:100%;max-width:500px;position:relative;max-height:90vh;overflow-y:auto}
+.mbox h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.25rem}
+.mc{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer}
+.mc:hover{color:var(--txt)}
+.sh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.35rem;flex-wrap:wrap;gap:.75rem}
+.sh h2{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700}
+.sh p{font-size:.77rem;color:var(--muted);margin-top:.2rem}
+.toast{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1.35rem;font-size:.82rem;box-shadow:0 8px 32px rgba(0,0,0,.4);transform:translateY(16px);opacity:0;transition:.25s;pointer-events:none}
+.toast.show{transform:none;opacity:1}
+/* COLOR SWATCH */
+.swatches{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+.sw{width:26px;height:26px;border-radius:6px;cursor:pointer;transition:.15s;border:2px solid transparent}
+.sw.on,.sw:hover{border-color:var(--txt);transform:scale(1.1)}
+</style>
+</head>
+<body>
+
+<nav class="sb">
+  <div class="sb-logo">
+    <div class="n">⚙️ Vitalia Fashion Lab</div>
+    <div class="v">Vitalia Fashion Lab</div>
+  </div>
+  <div class="ni on" onclick="go('dash')"><span class="ic">📊</span> Дашборд</div>
+  <div class="ni" onclick="go('courses')"><span class="ic">📚</span> Курси</div>
+  <div class="ni" onclick="go('pending')"><span class="ic">⏳</span> Заявки <span class="nb" id="nb"></span></div>
+  <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
+  <div class="ni" onclick="go('stats')"><span class="ic">📈</span> Статистика</div>
+  <div class="ni" onclick="go('export')"><span class="ic">💾</span> Експорт / Імпорт</div>
+  <div class="sb-bot"><button class="lo" onclick="logout()">🚪 Вийти</button></div>
+</nav>
+
+<div class="main">
+  <div class="topbar"><div class="topbar-t" id="tt">Дашборд</div><div class="stbadge"><div class="dot"></div>@Clo3dua_bot</div></div>
+  <div class="cnt">
+
+    <!-- DASH -->
+    <div class="tab on" id="tab-dash">
+      <div class="sg">
+        <div class="sc"><div class="sl">Курсів</div><div class="sv b" id="s-c">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Заявок</div><div class="sv go" id="s-p">—</div><div class="ss">очікують</div></div>
+        <div class="sc"><div class="sl">Відео</div><div class="sv b" id="s-v">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Запитів купити</div><div class="sv a" id="s-br">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Перегл. відео</div><div class="sv a" id="s-vv">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Візитів сайту</div><div class="sv b" id="s-wv">—</div><div class="ss">7 днів</div></div>
+        <div class="sc"><div class="sl">Видано доступів</div><div class="sv g" id="s-gr">—</div><div class="ss">всього</div></div>
+      </div>
+      <div class="cr">
+        <div class="cb"><h3>📈 Активність 7 днів</h3><canvas id="ca" height="170"></canvas></div>
+        <div class="cb"><h3>🔵 Типи подій</h3><canvas id="ce" height="170"></canvas></div>
+      </div>
+      <div class="cr">
+        <div class="cb"><h3>🕐 Остання активність</h3><div id="rl" style="max-height:240px;overflow-y:auto"></div></div>
+        <div class="cb"><h3>🌐 Сайт</h3><div id="wl" style="max-height:240px;overflow-y:auto"></div></div>
+      </div>
+    </div>
+
+    <!-- COURSES -->
+    <div class="tab" id="tab-courses">
+      <div class="sh">
+        <div><h2>Курси</h2><p>Керуйте курсами, відео та покупцями</p></div>
+        <button class="btn btn-p" onclick="openModal('modal-new-course')">+ Новий курс</button>
+      </div>
+      <div class="cc-grid" id="cc-grid"></div>
+    </div>
+
+    <!-- PENDING -->
+    <div class="tab" id="tab-pending">
+      <div class="sh"><div><h2>Заявки</h2><p>Очікують підтвердження оплати</p></div></div>
+      <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="tab" id="tab-notify">
+      <div class="sh"><div><h2>Сповіщення</h2><p>Нотифікації покупцям та нагадування</p></div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.25rem;margin-bottom:1.5rem">
+
+        <!-- New video notify -->
+        <div class="card-form">
+          <h3 style="font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:.75rem">📹 Нове відео — сповісти покупців</h3>
+          <div class="fg"><label>Курс</label>
+            <select id="nv-cid"><option value="">Оберіть курс...</option></select>
+          </div>
+          <div class="fg"><label>Текст (або залиш порожнім для авто)</label>
+            <textarea id="nv-text" style="min-height:80px" placeholder="🎬 Новий урок вже доступний!..."></textarea>
+          </div>
+          <div style="display:flex;gap:.75rem;align-items:center">
+            <button class="btn btn-p" onclick="notifyNewVideo()" style="padding:.65rem 1.25rem">📤 Надіслати</button>
+            <div id="nv-res" style="font-size:.78rem"></div>
+          </div>
+        </div>
+
+        <!-- Reminders -->
+        <div class="card-form">
+          <h3 style="font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:.75rem">⏰ Нагадування неактивним</h3>
+          <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Надішле мотиваційне повідомлення тим, хто не заходив <strong>більше 7 днів</strong> і ще не завершив курс.</p>
+          <div class="fg"><label>Курс</label>
+            <select id="rm-cid"><option value="">Оберіть курс...</option></select>
+          </div>
+          <div style="display:flex;gap:.75rem;align-items:center">
+            <button class="btn btn-go" onclick="sendRemind()" style="padding:.65rem 1.25rem">⏰ Надіслати нагадування</button>
+            <div id="rm-res" style="font-size:.78rem"></div>
+          </div>
+        </div>
+
+        <!-- Custom broadcast -->
+        <div class="card-form">
+          <h3 style="font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:.75rem">📢 Довільна розсилка</h3>
+          <div class="fg"><label>Курс (або всі)</label>
+            <select id="bc-cid2"><option value="">— Всі покупці —</option></select>
+          </div>
+          <div class="fg"><label>Повідомлення</label>
+            <textarea id="bm2" style="min-height:80px" placeholder="Текст..."></textarea>
+          </div>
+          <div style="display:flex;gap:.75rem;align-items:center">
+            <button class="btn btn-p" id="bc-btn2" onclick="doBroadcast2()" style="padding:.65rem 1.25rem">📢 Розіслати</button>
+            <div id="bc-res2" style="font-size:.78rem"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress table -->
+      <div class="sh" style="margin-top:1rem"><div><h2>Прогрес покупців</h2><p>Хто і скільки переглянув</p></div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <select id="prg-cid" onchange="loadProgress()" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.4rem .7rem;color:var(--txt);font-size:.8rem;outline:none"><option value="">Оберіть курс</option></select>
+        </div>
+      </div>
+      <div class="tb-box" id="prg-table"><div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Оберіть курс щоб побачити прогрес</div></div>
+    </div>
+    <!-- STATS -->
+    <div class="tab" id="tab-stats">
+      <div class="sh"><div><h2>Статистика</h2></div><a href="/api/export/stats" class="btn btn-gh">⬇️ CSV</a></div>
+      <div class="cr">
+        <div class="cb"><h3>🤖 Лог бота</h3><div id="bot-log" style="max-height:450px;overflow-y:auto"></div></div>
+        <div class="cb"><h3>🌐 Лог сайту</h3><div id="web-log" style="max-height:450px;overflow-y:auto"></div></div>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="tab" id="tab-export">
+      <div class="sh"><div><h2>Експорт та Імпорт</h2></div></div>
+      <div class="eg">
+        <div class="ec"><div class="ei2">📦</div><h4>ZIP архів</h4><p>db.json + buyers.csv + videos.csv</p><a href="/api/export/zip" class="btn btn-p" style="text-decoration:none">⬇️ Завантажити</a></div>
+        <div class="ec"><div class="ei2">🗃️</div><h4>JSON база</h4><p>Повна база для імпорту</p><a href="/api/export/json" class="btn btn-p" style="text-decoration:none">⬇️ Завантажити</a></div>
+        <div class="ec"><div class="ei2">📊</div><h4>Статистика CSV</h4><p>Всі події для Excel / Sheets</p><a href="/api/export/stats" class="btn btn-p" style="text-decoration:none">⬇️ Завантажити</a></div>
+      </div>
+      <div class="card-form">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">⬆️ Імпорт</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem">Завантажте JSON. Курси та покупці злиються без дублікатів.</p>
+        <div class="fdrop" onclick="document.getElementById('if').click()" style="padding:1.5rem">
+          <div>📂</div><p id="ifn" style="font-size:.82rem;color:var(--muted);margin-top:.35rem">Клікніть або перетягніть JSON</p>
+          <input type="file" id="if" accept=".json" style="display:none" onchange="onIF()">
+        </div>
+        <button class="btn btn-p" style="margin-top:.8rem;width:100%" onclick="doImport()">⬆️ Імпортувати</button>
+        <div id="ir" style="margin-top:.6rem;font-size:.78rem"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: New/Edit Course -->
+<div class="mbg" id="modal-new-course">
+  <div class="mbox">
+    <button class="mc" onclick="closeModal('modal-new-course')">✕</button>
+    <h3 id="mnc-title">➕ Новий курс</h3>
+    <input type="hidden" id="mnc-id">
+    <div class="fg"><label>Назва курсу *</label><input id="mnc-name" placeholder="CLO3D Базовий курс"></div>
+    <div class="fg"><label>Опис</label><textarea id="mnc-desc" style="min-height:80px" placeholder="Про що цей курс..."></textarea></div>
+    <div class="row">
+      <div class="fg"><label>Ціна</label><input id="mnc-price" placeholder="1500 грн"></div>
+      <div class="fg"><label>Мітка (badge)</label><input id="mnc-badge" placeholder="🔥 Хіт продажів"></div>
+    </div>
+    <div class="fg"><label>Колір акценту</label>
+      <div class="swatches" id="swatches"></div>
+      <input id="mnc-color" placeholder="#C8302A" style="margin-top:.5rem">
+    </div>
+    <div class="fg" style="display:flex;align-items:center;gap:.75rem">
+      <input type="checkbox" id="mnc-pub" style="width:auto">
+      <label for="mnc-pub" style="font-size:.82rem;color:var(--txt);cursor:pointer">Опублікований (видно на сайті)</label>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.5rem">
+      <button class="btn btn-p" onclick="saveCourse()" style="flex:1;padding:.75rem">💾 Зберегти</button>
+      <button class="btn btn-gh" onclick="closeModal('modal-new-course')" style="padding:.75rem 1.25rem">Скасувати</button>
+    </div>
+    <div id="mnc-res" style="margin-top:.6rem;font-size:.78rem"></div>
+  </div>
+</div>
+
+<!-- MODAL: Course detail (videos + buyers) -->
+<div class="mbg" id="modal-course">
+  <div class="mbox" style="max-width:720px">
+    <button class="mc" onclick="closeModal('modal-course')">✕</button>
+    <h3 id="mc-title">Курс</h3>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--brd);padding-bottom:.75rem;flex-wrap:wrap">
+      <button class="btn btn-p" id="mct-vid" onclick="mcTab('vid')">🎬 Відео</button>
+      <button class="btn btn-gh" id="mct-byr" onclick="mcTab('byr')">👥 Покупці</button>
+      <button class="btn btn-gh" id="mct-upl" onclick="mcTab('upl')">⬆️ Завантажити</button>
+    </div>
+    <div id="mc-vid" class="mc-section">
+      <div id="mc-vid-list" style="max-height:380px;overflow-y:auto"></div>
+    </div>
+    <div id="mc-byr" class="mc-section" style="display:none">
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+        <input id="mc-add-uid" type="number" placeholder="Telegram ID" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .75rem;color:var(--txt);font-size:.82rem;outline:none;flex:1;min-width:130px">
+        <button class="btn btn-g" onclick="mcGrantManual()">+ Додати</button>
+      </div>
+      <div id="mc-byr-list" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+    <div id="mc-upl" class="mc-section" style="display:none">
+      <div class="fg"><label>Назва уроку *</label><input id="upl-title" placeholder="Урок 1 — Вступ до CLO3D"></div>
+      <div class="fg"><label>Опис уроку</label><textarea id="upl-desc" style="min-height:70px" placeholder="Що розглядається..."></textarea></div>
+      <div class="fg"><label>Відеофайл *</label>
+        <div class="fdrop" id="ufdrop">
+          <input type="file" id="upl-file" accept="video/*" onchange="onUplFile()">
+          <div>🎬 Клікніть або перетягніть відео</div>
+          <div style="font-size:.73rem;color:var(--muted);margin-top:.25rem">MP4, MOV — до 2 GB</div>
+          <div id="upl-fn" style="font-size:.75rem;color:var(--grn);margin-top:.3rem"></div>
+        </div>
+      </div>
+      <div class="uprog" id="uprog">
+        <div class="upl"><span id="up-txt">Завантаження...</span><span id="up-pct">0%</span></div>
+        <div class="upbar-w"><div class="upbar" id="up-bar"></div></div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:center;margin-top:.5rem">
+        <button class="btn btn-p" id="upl-btn" onclick="doUpload()" style="padding:.7rem 1.4rem">⬆️ Завантажити</button>
+        <div id="upl-res" style="font-size:.78rem"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let D=null, charts={}, curCourseId=null, uplFile=null, impFile=null;
+const TABS=['dash','courses','pending','notify','stats','export'];
+const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт'};
+const EI={start:'🚀',buy_request:'🛒',granted:'✅',video_view:'▶️',visit:'🌐',login_fail:'🔑',broadcast:'📢'};
+const COLORS=['#C8302A','#E8D8D5','#34d399','#fbbf24','#f472b6','#60a5fa','#f87171','#fb923c','#a3e635'];
+
+// Init swatches
+COLORS.forEach(c=>{
+  const sw=document.createElement('div');
+  sw.className='sw'; sw.style.background=c; sw.dataset.c=c;
+  sw.onclick=()=>{ document.getElementById('mnc-color').value=c; document.querySelectorAll('.sw').forEach(s=>s.classList.remove('on')); sw.classList.add('on'); };
+  document.getElementById('swatches').appendChild(sw);
+});
+
+function go(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.add('on');
+  document.getElementById('tt').textContent=TTITLES[name]||name;
+  document.querySelectorAll('.ni')[TABS.indexOf(name)]?.classList.add('on');
+}
+
+async function load(){
+  const r=await fetch('/api/dashboard');
+  if(r.status===401){window.location='/login';return;}
+  D=await r.json();
+  const s=D.summary;
+  document.getElementById('s-c').textContent =s.courses;
+  document.getElementById('s-b').textContent =s.buyers;
+  document.getElementById('s-p').textContent =s.pending;
+  document.getElementById('s-v').textContent =s.videos;
+  document.getElementById('s-br').textContent=s.buyRequests||0;
+  document.getElementById('s-vv').textContent=s.videoViews||0;
+  document.getElementById('s-wv').textContent=s.webVisits7||0;
+  document.getElementById('s-gr').textContent=s.granted||0;
+  if(s.pending>0){const nb=document.getElementById('nb');nb.textContent=s.pending;nb.style.display='inline';}
+  else document.getElementById('nb').style.display='none';
+  buildCharts(); renderCourses(D.courses); renderPending(D.courses); renderLogs(D.recentBot,D.recentWeb);
+  // populate notify selects
+  const populateSelects = () => {
+    const opts = D.courses.map(c=>`<option value="${c.id}">${c.title}</option>`).join('');
+    ['nv-cid','rm-cid','bc-cid2','prg-cid'].forEach(id=>{ const el=document.getElementById(id); if(el){ const prev=el.value; el.innerHTML=(id==='bc-cid2'?'<option value="">— Всі покупці —</option>':'')+opts; if(prev)el.value=prev; } });
+  };
+  populateSelects();
+
+  // broadcast select (old tab)
+  const sel=document.getElementById('bc-cid'); if(sel){ const prev=sel.value; sel.innerHTML='<option value="">— Всі покупці —</option>'+D.courses.map(c=>`<option value="${c.id}">${c.title}</option>`).join(''); if(prev)sel.value=prev; }
+}
+
+Chart.defaults.color='#9A8A8A'; Chart.defaults.borderColor='rgba(200,48,42,.1)';
+function buildCharts(){
+  if(charts.a)charts.a.destroy();
+  charts.a=new Chart(document.getElementById('ca'),{type:'line',data:{labels:D.charts.dayLabels,datasets:[
+    {label:'Бот',data:D.charts.botByDay,borderColor:'#C8302A',backgroundColor:'rgba(200,48,42,.1)',tension:.4,fill:true,pointRadius:3},
+    {label:'Сайт',data:D.charts.webByDay,borderColor:'#E8D8D5',backgroundColor:'rgba(200,48,42,.07)',tension:.4,fill:true,pointRadius:3},
+  ]},options:{responsive:true,plugins:{legend:{labels:{color:'#9990cc',boxWidth:10}}},scales:{x:{grid:{color:'rgba(200,48,42,.07)'}},y:{grid:{color:'rgba(200,48,42,.07)'},ticks:{stepSize:1}}}}});
+  const ek=Object.keys(D.evTypes||{});
+  if(ek.length){
+    if(charts.e)charts.e.destroy();
+    charts.e=new Chart(document.getElementById('ce'),{type:'doughnut',data:{labels:ek,datasets:[{data:ek.map(k=>D.evTypes[k]),backgroundColor:COLORS,borderWidth:0}]},options:{responsive:true,cutout:'65%',plugins:{legend:{position:'right',labels:{color:'#9990cc',boxWidth:11,padding:10}}}}});
+  }
+}
+
+function renderCourses(cs){
+  const el=document.getElementById('cc-grid');
+  el.innerHTML=cs.map(c=>`
+    <div class="cc" style="--cc-color:${c.color||'#C8302A'}">
+      <div class="cc-top"></div>
+      <div class="cc-body">
+        <div class="cc-head">
+          <div class="cc-name">${c.title}</div>
+          <span class="cc-pub ${c.published?'pub-on':'pub-off'}">${c.published?'✅ Публічний':'⛔ Прихований'}</span>
+        </div>
+        ${c.badge?`<span class="cc-badge">${c.badge}</span>`:''}
+        <p class="cc-desc">${c.description||'<em style="color:var(--muted)">Без опису</em>'}</p>
+        <div class="cc-meta">
+          <span>💳 ${c.price||'—'}</span>
+          <span>🎬 ${c.videos?.length||0} відео</span>
+          <span>👥 ${c.buyers?.length||0} покупців</span>
+        </div>
+        <div class="cc-actions">
+          <button class="btn btn-p" onclick="openCourse('${c.id}')">Керувати</button>
+          <button class="btn btn-gh" onclick="editCourse('${c.id}')">✏️ Редагувати</button>
+          <button class="btn btn-r" onclick="delCourse('${c.id}','${c.title.replace(/'/g,"\\'")}}')">🗑</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:.9rem;padding:1rem">Курсів немає. Натисніть «+ Новий курс»</div>';
+}
+
+function renderPending(cs){
+  const rows=[];
+  cs.forEach(c=>(c.pending||[]).forEach(b=>rows.push({c,b})));
+  document.getElementById('pending-tb').innerHTML=rows.map(({c,b})=>`
+    <tr>
+      <td><span style="font-size:.78rem;color:var(--acc2)">${c.title}</span></td>
+      <td>${b.name||'—'}</td>
+      <td>${b.username?'@'+b.username:'—'}</td>
+      <td><code>${b.id}</code></td>
+      <td>${b.requestedAt?new Date(b.requestedAt).toLocaleString('uk'):'—'}</td>
+      <td style="display:flex;gap:.4rem">
+        <button class="btn btn-g" onclick="grant('${c.id}',${b.id})">✅</button>
+        <button class="btn btn-r" onclick="reject('${c.id}',${b.id})">❌</button>
+      </td>
+    </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
+}
+
+function renderLogs(bot,web){
+  const logEl=(id,items)=>{ document.getElementById(id).innerHTML=(items||[]).map(e=>`<div class="litem"><span class="lt">${new Date(e.ts).toLocaleString('uk',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${EI[e.type]||'📌'}</span><span style="flex:1;margin-left:.5rem">${e.type} ${e.userName||e.ip||e.path||''}</span></div>`).join('')||'<div style="padding:1rem;color:var(--muted);font-size:.78rem">Немає подій</div>'; };
+  logEl('rl',  (bot||[]).slice(0,15));
+  logEl('wl',  (web||[]).slice(0,15));
+  logEl('bot-log', bot);
+  logEl('web-log', web);
+}
+
+// ── COURSE MODAL ──────────────────────────────────────────
+function openCourse(cid){
+  curCourseId=cid;
+  const c=D.courses.find(x=>x.id===cid);
+  document.getElementById('mc-title').textContent=c.title;
+  document.getElementById('modal-course').classList.add('show');
+  mcTab('vid');
+}
+function mcTab(t){
+  ['vid','byr','upl'].forEach(x=>{ document.getElementById('mc-'+x).style.display=x===t?'block':'none'; document.getElementById('mct-'+x).className='btn '+(x===t?'btn-p':'btn-gh'); });
+  if(t==='vid') renderMcVids();
+  if(t==='byr') renderMcBuyers();
+}
+function renderMcVids(){
+  const c=D.courses.find(x=>x.id===curCourseId);
+  const vids=c?.videos||[];
+  document.getElementById('mc-vid-list').innerHTML=vids.length?vids.map((v,i)=>`
+    <div class="vi">
+      <span class="vin">${i+1}</span>
+      <div class="vii">
+        <div class="vit" id="vit-${i}" onclick="editVT(${i})">${v.title||'—'}</div>
+        <div class="vid2" id="vid2-${i}" onclick="editVD(${i})">${v.desc||'<em style="color:var(--muted)">без опису</em>'}</div>
+        <div class="vim">${v.size?(v.size/1024/1024).toFixed(1)+' MB · ':''} ${v.addedAt?new Date(v.addedAt).toLocaleDateString('uk'):''}</div>
+      </div>
+      <div class="via">
+        ${i>0?`<button class="btn btn-gh" onclick="mvVid(${i},${i-1})" style="padding:.3rem .5rem">↑</button>`:''}
+        ${i<vids.length-1?`<button class="btn btn-gh" onclick="mvVid(${i},${i+1})" style="padding:.3rem .5rem">↓</button>`:''}
+        <button class="btn btn-r" onclick="delVid(${i})" style="padding:.3rem .6rem">🗑</button>
+      </div>
+    </div>`).join(''):'<div style="padding:1.5rem;color:var(--muted);font-size:.82rem;text-align:center">Відео немає. Перейдіть у «Завантажити»</div>';
+}
+function editVT(i){ const el=document.getElementById('vit-'+i); const cur=D.courses.find(x=>x.id===curCourseId).videos[i].title||''; el.innerHTML=`<input class="ei" value="${cur}" onblur="saveVT(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()" autofocus>`; el.querySelector('input').focus(); }
+function editVD(i){ const el=document.getElementById('vid2-'+i); const cur=D.courses.find(x=>x.id===curCourseId).videos[i].desc||''; el.innerHTML=`<input class="ei" value="${cur}" placeholder="Опис..." onblur="saveVD(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()" autofocus>`; el.querySelector('input').focus(); }
+async function saveVT(i,v){ await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:v})}); D.courses.find(x=>x.id===curCourseId).videos[i].title=v; renderMcVids(); toast('✅ Збережено'); }
+async function saveVD(i,v){ await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({desc:v})}); D.courses.find(x=>x.id===curCourseId).videos[i].desc=v; renderMcVids(); toast('✅ Збережено'); }
+async function mvVid(from,to){ await fetch(`/api/courses/${curCourseId}/videos/reorder`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to})}); await load(); renderMcVids(); toast('↕️ Порядок змінено'); }
+async function delVid(i){ const c=D.courses.find(x=>x.id===curCourseId); if(!confirm(`Видалити "${c.videos[i].title}"?`))return; await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'DELETE'}); await load(); renderMcVids(); toast('🗑 Відео видалено'); }
+
+function renderMcBuyers(){
+  const c=D.courses.find(x=>x.id===curCourseId);
+  const bs=c?.buyers||[];
+  document.getElementById('mc-byr-list').innerHTML=bs.length?`<table style="width:100%"><thead><tr><th>#</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Дата</th><th></th></tr></thead><tbody>`+
+    bs.map((b,i)=>`<tr><td>${i+1}</td><td>${b.name||'—'}</td><td>${b.username?'@'+b.username:'—'}</td><td><code>${b.id}</code></td><td>${b.grantedAt?new Date(b.grantedAt).toLocaleDateString('uk'):'—'}</td><td><button class="btn btn-r" onclick="revoke('${curCourseId}',${b.id})">Відкликати</button></td></tr>`).join('')+'</tbody></table>':
+    '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Покупців немає</div>';
+}
+async function mcGrantManual(){ const uid=parseInt(document.getElementById('mc-add-uid').value); if(!uid)return; await grant(curCourseId,uid); document.getElementById('mc-add-uid').value=''; }
+async function grant(cid,uid){ await fetch(`/api/courses/${cid}/grant/${uid}`,{method:'POST'}); toast('✅ Доступ видано'); await load(); renderMcBuyers(); }
+async function revoke(cid,uid){ if(!confirm('Відкликати?'))return; await fetch(`/api/courses/${cid}/revoke/${uid}`,{method:'POST'}); toast('Відкликано'); await load(); renderMcBuyers(); }
+async function reject(cid,uid){ await fetch(`/api/courses/${cid}/pending/${uid}`,{method:'DELETE'}); toast('❌ Відхилено'); await load(); renderPending(D.courses); }
+
+// ── UPLOAD ────────────────────────────────────────────────
+function onUplFile(){ uplFile=document.getElementById('upl-file').files[0]; if(uplFile){document.getElementById('upl-fn').textContent=`📁 ${uplFile.name} (${fmt(uplFile.size)})`; document.getElementById('ufdrop').classList.add('sel');} }
+const ufd=document.getElementById('ufdrop');
+ufd.addEventListener('dragover',e=>{e.preventDefault();ufd.classList.add('drag');});
+ufd.addEventListener('dragleave',()=>ufd.classList.remove('drag'));
+ufd.addEventListener('drop',e=>{e.preventDefault();ufd.classList.remove('drag');const f=e.dataTransfer.files[0];if(f){uplFile=f;document.getElementById('upl-fn').textContent=`📁 ${f.name} (${fmt(f.size)})`;ufd.classList.add('sel');}});
+
+async function doUpload(){
+  const title=document.getElementById('upl-title').value.trim();
+  if(!title){toast('⚠️ Введіть назву');return;}
+  if(!uplFile){toast('⚠️ Виберіть файл');return;}
+  const btn=document.getElementById('upl-btn'),prog=document.getElementById('uprog'),bar=document.getElementById('up-bar'),pct=document.getElementById('up-pct'),txt=document.getElementById('up-txt'),res=document.getElementById('upl-res');
+  btn.disabled=true; btn.textContent='⏳'; prog.classList.add('show'); bar.style.width='0%'; pct.textContent='0%'; txt.textContent='Підготовка...'; res.textContent='';
+  const fd=new FormData(); fd.append('title',title); fd.append('desc',document.getElementById('upl-desc').value); fd.append('video',uplFile);
+  const xhr=new XMLHttpRequest(); xhr.open('POST',`/api/courses/${curCourseId}/videos`);
+  xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent=`${fmt(e.loaded)} з ${fmt(e.total)}`;}};
+  xhr.onload=async()=>{
+    try{const d=JSON.parse(xhr.responseText);
+      if(d.ok){bar.style.width='100%';pct.textContent='100%';txt.textContent='✅ Готово!';res.innerHTML=`<span style="color:var(--grn)">✅ Відео #${d.total} збережено</span>`;toast('🎬 Відео додано!');document.getElementById('upl-title').value='';document.getElementById('upl-desc').value='';document.getElementById('upl-fn').textContent='';ufd.classList.remove('sel');uplFile=null;await load();renderMcVids();setTimeout(()=>prog.classList.remove('show'),3000);}
+      else{txt.textContent='❌ '+d.error;bar.style.background='var(--red)';setTimeout(()=>{bar.style.background='';prog.classList.remove('show');},5000);}
+    }catch(e){txt.textContent='❌ Помилка';}
+    btn.disabled=false;btn.textContent='⬆️ Завантажити';
+  };
+  xhr.onerror=()=>{txt.textContent='❌ Мережева помилка';btn.disabled=false;btn.textContent='⬆️ Завантажити';};
+  xhr.send(fd);
+}
+
+// ── COURSE CRUD ───────────────────────────────────────────
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function editCourse(cid){
+  const c=D.courses.find(x=>x.id===cid);
+  document.getElementById('mnc-title').textContent='✏️ Редагувати курс';
+  document.getElementById('mnc-id').value=cid;
+  document.getElementById('mnc-name').value=c.title||'';
+  document.getElementById('mnc-desc').value=c.description||'';
+  document.getElementById('mnc-price').value=c.price||'';
+  document.getElementById('mnc-badge').value=c.badge||'';
+  document.getElementById('mnc-color').value=c.color||'#C8302A';
+  document.getElementById('mnc-pub').checked=!!c.published;
+  document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.c===c.color));
+  openModal('modal-new-course');
+}
+
+async function saveCourse(){
+  const id=document.getElementById('mnc-id').value;
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked};
+  if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
+  if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
+  else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
+  closeModal('modal-new-course'); document.getElementById('mnc-id').value=''; document.getElementById('mnc-title').textContent='➕ Новий курс'; await load();
+}
+
+async function delCourse(id,name){ if(!confirm(`Видалити курс "${name}" і всі його відео?`))return; await fetch(`/api/courses/${id}`,{method:'DELETE'}); toast('🗑 Курс видалено'); await load(); }
+
+// ── BROADCAST ─────────────────────────────────────────────
+async function doBroadcast(){
+  const msg=document.getElementById('bm').value.trim(), cid=document.getElementById('bc-cid').value;
+  if(!msg){toast('⚠️ Введіть текст');return;}
+  const btn=document.getElementById('bc-btn'); btn.disabled=true; btn.textContent='⏳';
+  try{ const d=await fetch('/api/broadcast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,cid:cid||null})}).then(r=>r.json());
+    document.getElementById('bc-res').innerHTML=d.ok?`<span style="color:var(--grn)">✅ ${d.sent} надіслано · ❌ ${d.failed}</span>`:`<span style="color:var(--red)">❌ ${d.error}</span>`;
+    if(d.ok)toast('📢 Розсилка завершена!');
+  }catch(e){document.getElementById('bc-res').innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;}
+  btn.disabled=false; btn.textContent='📢 Розіслати';
+}
+
+// ── IMPORT ────────────────────────────────────────────────
+function onIF(){ impFile=document.getElementById('if').files[0]; document.getElementById('ifn').textContent=impFile?.name||'Клікніть або перетягніть JSON'; }
+async function doImport(){
+  if(!impFile){toast('⚠️ Виберіть файл');return;}
+  const fd=new FormData(); fd.append('file',impFile);
+  const d=await fetch('/api/import',{method:'POST',body:fd}).then(r=>r.json());
+  const el=document.getElementById('ir');
+  if(d.ok){el.style.color='var(--grn)';el.textContent=`✅ Імпортовано: ${d.imported.courses} курсів`;await load();}
+  else{el.style.color='var(--red)';el.textContent='❌ '+d.error;}
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────
+async function notifyNewVideo(){
+  const cid=document.getElementById('nv-cid').value;
+  if(!cid){toast('⚠️ Оберіть курс');return;}
+  const text=document.getElementById('nv-text').value.trim();
+  const r=await fetch(`/api/notify/new-video/${cid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text||null})}).then(x=>x.json());
+  const el=document.getElementById('nv-res');
+  if(r.ok){el.style.color='var(--grn)';el.textContent=`✅ Надіслано: ${r.sent} | ❌ ${r.failed}`;toast('📹 Сповіщення надіслано!');}
+  else{el.style.color='var(--red)';el.textContent='❌ '+r.error;}
+}
+async function sendRemind(){
+  const cid=document.getElementById('rm-cid').value;
+  if(!cid){toast('⚠️ Оберіть курс');return;}
+  const r=await fetch(`/api/notify/remind/${cid}`,{method:'POST'}).then(x=>x.json());
+  const el=document.getElementById('rm-res');
+  if(r.ok){el.style.color='var(--grn)';el.textContent='✅ Нагадування надіслано';toast('⏰ Нагадування надіслано!');}
+  else{el.style.color='var(--red)';el.textContent='❌ '+r.error;}
+}
+async function doBroadcast2(){
+  const msg=document.getElementById('bm2').value.trim(), cid=document.getElementById('bc-cid2').value;
+  if(!msg){toast('⚠️ Введіть текст');return;}
+  const btn=document.getElementById('bc-btn2'); btn.disabled=true; btn.textContent='⏳';
+  const d=await fetch('/api/broadcast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,cid:cid||null})}).then(r=>r.json());
+  document.getElementById('bc-res2').innerHTML=d.ok?`<span style="color:var(--grn)">✅ ${d.sent} надіслано</span>`:`<span style="color:var(--red)">❌ ${d.error}</span>`;
+  if(d.ok)toast('📢 Розсилка завершена!');
+  btn.disabled=false; btn.textContent='📢 Розіслати';
+}
+
+// ── PROGRESS TABLE ─────────────────────────────────────────
+async function loadProgress(){
+  const cid=document.getElementById('prg-cid').value;
+  const el=document.getElementById('prg-table');
+  if(!cid){el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Оберіть курс</div>';return;}
+  el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Завантаження...</div>';
+  const rows=await fetch(`/api/progress/all/${cid}`).then(r=>r.json()).catch(()=>[]);
+  if(!rows.length){el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Немає даних — покупці ще не дивились відео</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Ім'я</th><th>Username</th><th>Прогрес</th><th>Переглянуто</th><th>Завершено</th><th>Останній перегляд</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr>
+      <td>${r.name||'—'}</td>
+      <td>${r.username?'@'+r.username:'—'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div style="width:80px;height:5px;background:var(--s3);border-radius:5px;overflow:hidden"><div style="height:100%;width:${r.pct}%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:5px"></div></div>
+          <span style="font-size:.75rem;color:var(--muted)">${r.pct}%</span>
+        </div>
+      </td>
+      <td style="font-size:.82rem">${r.watched}/${r.total}</td>
+      <td>${r.completed?'<span class="btn-g" style="padding:.15rem .5rem;border-radius:6px;font-size:.7rem;background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)">✅ Так</span>':'<span style="color:var(--muted);font-size:.78rem">—</span>'}</td>
+      <td style="font-size:.78rem;color:var(--muted)">${r.lastTs?new Date(r.lastTs).toLocaleDateString('uk'):'Ніколи'}</td>
+    </tr>`).join('')+'</tbody></table>';
+}
+
+async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location='/login'; }
+
+// Modal bg close
+document.querySelectorAll('.mbg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
+// Reset new course modal on open
+document.getElementById('modal-new-course').addEventListener('click',()=>{});
+document.querySelector('[onclick="openModal(\'modal-new-course\')"]')?.addEventListener('click',()=>{
+  document.getElementById('mnc-id').value=''; document.getElementById('mnc-title').textContent='➕ Новий курс';
+  ['mnc-name','mnc-desc','mnc-price','mnc-badge'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mnc-color').value='#C8302A'; document.getElementById('mnc-pub').checked=false;
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('on'));
+});
+
+function fmt(b){if(!b)return'—';if(b<1048576)return(b/1024).toFixed(0)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),3000);}
+
+load(); setInterval(load,30000);
+</script>
+</body>
+</html>
