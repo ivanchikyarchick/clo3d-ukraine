@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Адмін — Vitalia 3D Fashion Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04040a;--s1:#0a0a14;--s2:#101020;--acc:#5b8dee;--acc2:#a78bfa;--txt:#e8e4ff;--muted:#6b65a0;--brd:rgba(91,141,238,.16);--red:#f87171}
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 35%,rgba(91,141,238,.12) 0%,transparent 60%);pointer-events:none}
+.box{background:var(--s1);border:1px solid var(--brd);border-radius:24px;padding:3rem 2.5rem;width:100%;max-width:380px;position:relative;z-index:1;box-shadow:0 0 80px rgba(91,141,238,.1);animation:up .5s ease both}
+@keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.logo{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;text-align:center;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.3rem}
+.sub{text-align:center;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:2rem}
+label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:.4rem;letter-spacing:.05em}
+input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1rem;color:var(--txt);font-size:.95rem;font-family:'Inter',sans-serif;outline:none;transition:.2s;margin-bottom:1.25rem}
+input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(91,141,238,.12)}
+button{width:100%;padding:.9rem;background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s}
+button:hover{opacity:.88;transform:translateY(-1px)}
+.err{color:var(--red);font-size:.78rem;text-align:center;margin-top:.75rem;display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">Vitalia 3D Fashion Lab</div>
+  <div class="sub">Адмін-панель</div>
+  <label>Пароль</label>
+  <input type="password" id="pwd" placeholder="••••••••" autofocus>
+  <button onclick="login()">Увійти →</button>
+  <div class="err" id="err">❌ Невірний пароль</div>
+</div>
+<script>
+async function login(){
+  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pwd').value})});
+  const d=await r.json();
+  if(d.ok) window.location='/admin';
+  else document.getElementById('err').style.display='block';
+}
+document.getElementById('pwd').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+</script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<title id="pt">Курс — Vitalia 3D Fashion Lab</title>
+<meta name="description" id="pd" content="Курс CLO 3D від Vitalia 3D Fashion Lab">
+<link id="pc" rel="canonical" href="">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;
+  --acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;
+  --txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--acc);border-radius:2px}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(8,4,4,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--brd);height:64px;display:flex;align-items:center;padding:0 2.5rem;justify-content:space-between}
+.nav-logo{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800;color:var(--acc);text-decoration:none;letter-spacing:.02em}
+.nav-back{font-size:.72rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:.4rem;transition:.2s}
+.nav-back:hover{color:var(--txt)}
+.nav-cta{padding:.5rem 1.25rem;background:var(--acc);border-radius:100px;font-size:.75rem;font-weight:600;color:#fff;text-decoration:none;transition:.2s;font-family:'Syne',sans-serif}
+.nav-cta:hover{background:#a01e1e}
+
+/* HERO */
+.ch{padding:5rem 2rem 4rem;border-bottom:1px solid var(--brd);position:relative;overflow:hidden}
+.ch::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.ch-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:3rem;align-items:start}
+@media(max-width:800px){.ch-inner{grid-template-columns:1fr}}
+.ch-eyebrow{font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--acc);font-weight:600;margin-bottom:.75rem}
+.ch-badge{display:inline-flex;font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:.22rem .7rem;border-radius:100px;background:rgba(200,48,42,.12);color:var(--acc);border:1px solid rgba(200,48,42,.25);margin-bottom:1rem}
+.ch-title{font-family:'Syne',sans-serif;font-size:clamp(2rem,5vw,3.8rem);font-weight:800;line-height:1;letter-spacing:-.02em;margin-bottom:1rem;color:var(--txt)}
+.ch-desc{color:var(--muted);font-size:.92rem;line-height:1.8;font-weight:300;max-width:540px;margin-bottom:1.5rem}
+.ch-pills{display:flex;gap:.5rem;flex-wrap:wrap}
+.ch-pill{padding:.28rem .8rem;border:1px solid var(--brd);border-radius:100px;font-size:.65rem;font-weight:500;letter-spacing:.08em;color:var(--muted)}
+
+/* INFO BOX */
+.ch-box{background:var(--s1);border:1px solid var(--brd);border-radius:20px;padding:2rem;min-width:260px;flex-shrink:0;border-top:3px solid var(--acc)}
+.ch-price{font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;color:var(--gold);line-height:1;margin-bottom:.25rem}
+.ch-price-note{font-size:.65rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem}
+.ch-includes{list-style:none;display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem}
+.ch-includes li{display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:var(--muted)}
+.ch-includes li::before{content:'';width:5px;height:5px;background:var(--acc);border-radius:50%;flex-shrink:0}
+.btn-g{padding:.75rem 1.75rem;background:var(--acc);color:white;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:100px;width:100%;transition:.2s;border:none;cursor:pointer}
+.btn-g:hover{background:#a01e1e;transform:translateY(-1px)}
+
+/* SECTIONS */
+section{padding:5rem 2rem}
+.sec-inner{max-width:1100px;margin:0 auto}
+.sec-eyebrow{font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--acc);font-weight:600;margin-bottom:.75rem}
+.sec-title{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,3vw,2.6rem);font-weight:800;line-height:1.05;margin-bottom:2rem;color:var(--txt)}
+
+/* VIDEO LIST */
+.vl-sec{background:var(--s1)}
+.vl-list{display:flex;flex-direction:column;gap:1.5px;background:var(--brd)}
+.vl-item{display:flex;align-items:center;gap:1rem;padding:1rem 1.5rem;background:var(--bg);border-left:3px solid transparent;transition:.2s}
+.vl-item:hover{border-left-color:var(--acc);background:var(--s1)}
+.vl-n{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--s3);min-width:28px;transition:.2s}
+.vl-item:hover .vl-n{color:var(--acc)}
+.vl-body{flex:1;min-width:0}
+.vl-t{font-size:.85rem;font-weight:500;color:var(--txt)}
+.vl-d{font-size:.75rem;color:var(--muted);margin-top:.15rem;font-weight:300}
+.vl-lock{font-size:.72rem;color:var(--muted);flex-shrink:0}
+.vl-more{padding:1rem 1.5rem;background:var(--bg);font-size:.78rem;color:var(--muted);font-style:italic;border-left:3px solid transparent}
+
+/* WHAT YOU GET */
+.wg-sec{background:var(--bg)}
+.wg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5px;background:var(--brd)}
+.wg-card{background:var(--s1);padding:1.75rem;transition:.2s}
+.wg-card:hover{background:var(--s2)}
+.wg-n{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--brd);margin-bottom:.65rem;transition:.2s}
+.wg-card:hover .wg-n{color:var(--acc)}
+.wg-t{font-size:.9rem;font-weight:600;color:var(--txt);margin-bottom:.35rem}
+.wg-d{font-size:.8rem;color:var(--muted);line-height:1.6;font-weight:300}
+
+/* BUY */
+.buy-sec{background:var(--s1);border-top:1px solid var(--brd);text-align:center}
+.buy-title{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:800;margin-bottom:.5rem;color:var(--txt)}
+.buy-price{font-family:'Syne',sans-serif;font-size:4rem;font-weight:800;color:var(--gold);line-height:1;margin:1rem 0 .3rem}
+.buy-note{font-size:.68rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:2rem}
+.tg-btn{display:inline-flex;align-items:center;gap:.6rem;padding:.9rem 2.25rem;background:var(--acc);border-radius:100px;font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:#fff;text-decoration:none;transition:.25s}
+.tg-btn:hover{background:#a01e1e;transform:translateY(-2px)}
+.tg-btn svg{width:16px;height:16px;fill:currentColor}
+
+/* FOOTER */
+footer{background:var(--s1);border-top:1px solid var(--brd);padding:2rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.foot-brand{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:800;color:var(--acc)}
+footer p{font-size:.65rem;color:var(--muted);opacity:.5}
+.foot-links{display:flex;gap:1.5rem}
+.foot-links a{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:.2s}
+.foot-links a:hover{color:var(--txt)}
+
+/* LOADER */
+#pl{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;transition:opacity .4s}
+#pl.out{opacity:0;pointer-events:none}
+.pl-spin{width:36px;height:36px;border-radius:50%;border:2px solid rgba(200,48,42,.2);border-top-color:var(--acc);animation:sp .9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.rv{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease}
+.rv.on{opacity:1;transform:none}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
+</style>
+</head>
+<body>
+<div id="pl"><div class="pl-spin"></div></div>
+
+<nav>
+  <a class="nav-logo" href="/">Vitalia 3D Fashion Lab</a>
+  <a class="nav-back" href="/">← Всі курси</a>
+  <a href="https://t.me/Clo3dua_bot" class="nav-cta" target="_blank" rel="noopener">Придбати</a>
+</nav>
+
+<!-- HERO -->
+<section class="ch" id="ch">
+  <div class="ch-inner">
+    <div>
+      <div class="ch-eyebrow">Vitalia 3D Fashion Lab · CLO 3D</div>
+      <div class="ch-badge" id="ch-badge" style="display:none"></div>
+      <div class="ch-title" id="ch-title">Завантаження...</div>
+      <p class="ch-desc" id="ch-desc"></p>
+      <div class="ch-pills">
+        <span class="ch-pill">CLO 3D</span>
+        <span class="ch-pill">🎬 <span id="ch-vc">0</span> уроків</span>
+        <span class="ch-pill">🔒 Захищений контент</span>
+        <span class="ch-pill">Безстроковий доступ</span>
+      </div>
+    </div>
+    <div class="ch-box">
+      <div class="ch-price" id="ch-price"></div>
+      <div class="ch-price-note">Одноразова оплата</div>
+      <ul class="ch-includes">
+        <li>Відеоуроки у захищеному плеєрі</li>
+        <li>Закритий Telegram-канал</li>
+        <li>Підтримка та чат</li>
+        <li>Безстроковий доступ</li>
+      </ul>
+      <a href="https://t.me/Clo3dua_bot" class="btn-g" target="_blank" rel="noopener">Придбати доступ →</a>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO LIST -->
+<section class="vl-sec">
+  <div class="sec-inner">
+    <div class="sec-eyebrow rv">Програма</div>
+    <div class="sec-title rv">Зміст курсу</div>
+    <div class="vl-list rv" id="vl-list">
+      <div style="padding:1.5rem;color:var(--muted)">Завантаження...</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT YOU GET -->
+<section class="wg-sec">
+  <div class="sec-inner">
+    <div class="sec-eyebrow rv">Що отримаєш</div>
+    <div class="sec-title rv">Програма включає</div>
+    <div class="wg-grid">
+      <div class="wg-card rv">
+        <div class="wg-n">01</div>
+        <div class="wg-t">Захищені відеоуроки</div>
+        <div class="wg-d">Перегляд у захищеному плеєрі на сайті. Без можливості завантаження.</div>
+      </div>
+      <div class="wg-card rv d1">
+        <div class="wg-n">02</div>
+        <div class="wg-t">Закритий Telegram-канал</div>
+        <div class="wg-d">Матеріали та зв'язок з викладачем у закритому просторі.</div>
+      </div>
+      <div class="wg-card rv d2">
+        <div class="wg-n">03</div>
+        <div class="wg-t">Підтримка та чат</div>
+        <div class="wg-d">Прямий зв'язок з Віталією, відповіді на запитання та розбір ДЗ.</div>
+      </div>
+      <div class="wg-card rv d3">
+        <div class="wg-n">04</div>
+        <div class="wg-t">Безстроковий доступ</div>
+        <div class="wg-d">Оплати один раз і повертайся до матеріалів коли завгодно.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BUY -->
+<section class="buy-sec">
+  <div class="sec-inner">
+    <div class="buy-title rv">Розпочни навчання</div>
+    <div class="buy-price rv" id="buy-price"></div>
+    <p class="buy-note rv">Одноразова оплата · Захищений контент</p>
+    <a href="https://t.me/Clo3dua_bot" class="tg-btn rv" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg>
+      Придбати в @Clo3dua_bot
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-brand">Vitalia 3D Fashion Lab</div>
+  <p>© 2025 · Всі права захищено</p>
+  <div class="foot-links">
+    <a href="/">Всі курси</a>
+    <a href="/watch">Мої курси</a>
+    <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">Telegram</a>
+  </div>
+</footer>
+
+<script>
+const slug = location.pathname.split('/course/')[1];
+
+async function load() {
+  try {
+    const c = await fetch(`/api/course/${slug}/public`).then(r=>r.json());
+    if (!c || c.ok === false) {
+      document.getElementById('ch-title').textContent = 'Курс не знайдено';
+      document.getElementById('pl').classList.add('out');
+      return;
+    }
+
+    // SEO
+    document.title = `${c.title} — Vitalia 3D Fashion Lab`;
+    document.getElementById('pd').content  = c.description || `Курс CLO 3D: ${c.title}`;
+    document.getElementById('pc').href     = `/course/${c.slug}`;
+    document.getElementById('pt').textContent = `${c.title} — Vitalia 3D Fashion Lab`;
+
+    // Structured data
+    const sd = document.createElement('script');
+    sd.type = 'application/ld+json';
+    sd.textContent = JSON.stringify({
+      "@context":"https://schema.org","@type":"Course",
+      "name": c.title, "description": c.description || '',
+      "provider": {"@type":"Organization","name":"Vitalia 3D Fashion Lab"}
+    });
+    document.head.appendChild(sd);
+
+    // Content
+    if (c.badge) {
+      const b = document.getElementById('ch-badge');
+      b.textContent = c.badge; b.style.display = 'inline-flex';
+    }
+    if (c.color) document.documentElement.style.setProperty('--acc', c.color);
+
+    document.getElementById('ch-title').textContent  = c.title;
+    document.getElementById('ch-desc').textContent   = c.description || '';
+    document.getElementById('ch-price').textContent  = c.price || '';
+    document.getElementById('buy-price').textContent = c.price || '';
+    document.getElementById('ch-vc').textContent     = c.videoCount || 0;
+
+    // Video list
+    const vids = await fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[]);
+    const show = Math.min(vids.length, 12);
+    const listEl = document.getElementById('vl-list');
+    if (!vids.length) {
+      listEl.innerHTML = '<div style="padding:1.5rem;color:var(--muted)">Відео незабаром з\'являться</div>';
+    } else {
+      listEl.innerHTML =
+        vids.slice(0, show).map((v, i) => `
+          <div class="vl-item">
+            <span class="vl-n">${i+1}</span>
+            <div class="vl-body">
+              <div class="vl-t">${v.title || 'Урок '+(i+1)}</div>
+              ${v.desc ? `<div class="vl-d">${v.desc}</div>` : ''}
+            </div>
+            <span class="vl-lock">🔒</span>
+          </div>`).join('') +
+        (vids.length > show
+          ? `<div class="vl-more">+ ще ${vids.length - show} урок${vids.length-show>4?'ів':vids.length-show>1?'и':''}...</div>`
+          : '');
+    }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('ch-title').textContent = 'Помилка завантаження';
+  }
+
+  document.getElementById('pl').classList.add('out');
+  const obs = new IntersectionObserver(
+    e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('on'); }),
+    { threshold: .1 }
+  );
+  document.querySelectorAll('.rv').forEach(el => obs.observe(el));
+}
+
+load();
+</script>
+</body>
+</html>

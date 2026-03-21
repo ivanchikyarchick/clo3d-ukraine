@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Vitalia 3D Fashion Lab — Мої курси</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;--acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--red:#f87171;--txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;
+  /* Prevent text selection on video area */
+  -webkit-user-select:none;-moz-user-select:none;user-select:none}
+/* Allow text select in inputs */
+input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
+
+/* GATE */
+#gate{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.gbox{background:var(--s1);border:1px solid var(--brd);border-radius:24px;padding:3rem 2.5rem;width:100%;max-width:420px;text-align:center}
+.gbox .gt{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:.3rem}
+.gbox .gb{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2);margin-bottom:1.5rem}
+.gbox .gs{color:var(--muted);font-size:.85rem;margin-bottom:1.75rem;line-height:1.55}
+.gbox input{width:100%;background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1rem;color:var(--txt);font-size:1rem;font-family:'Inter',sans-serif;outline:none;text-align:center;transition:.2s;margin-bottom:.85rem;-webkit-user-select:text;user-select:text}
+.gbox input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(200,48,42,.13)}
+.gbtn{width:100%;padding:.88rem;background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s}
+.gbtn:hover{opacity:.88}
+.gerr{color:var(--red);font-size:.8rem;margin-top:.6rem}
+.gnote{font-size:.73rem;color:var(--muted);margin-top:1.1rem;line-height:1.6}
+.gnote a{color:var(--acc2);text-decoration:none}
+
+/* APP */
+#app{display:none;min-height:100vh;flex-direction:column}
+
+/* HEADER */
+header{background:var(--s1);border-bottom:1px solid var(--brd);padding:.85rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.hdr-brand{display:flex;flex-direction:column;gap:.1rem}
+.hdr-logo{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hdr-sub{font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hdr-r{display:flex;align-items:center;gap:.75rem;font-size:.82rem;color:var(--muted)}
+.hdr-r span{color:var(--txt)}
+.hdr-btn{background:none;border:1px solid var(--brd);border-radius:8px;padding:.3rem .75rem;color:var(--muted);font-size:.73rem;cursor:pointer;transition:.2s;font-family:'Inter',sans-serif}
+.hdr-btn:hover{border-color:rgba(200,48,42,.4);color:var(--txt)}
+
+/* GLOBAL PROGRESS BAR */
+.global-prog{height:3px;background:var(--s3);position:relative}
+.global-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:.5s}
+
+/* COURSE TABS */
+.ctabs{padding:.85rem 2rem;background:var(--s2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.ctabs-label{font-size:.72rem;color:var(--muted);letter-spacing:.06em;flex-shrink:0}
+.ctab{padding:.4rem 1rem;border-radius:100px;border:1px solid var(--brd);background:transparent;color:var(--muted);font-size:.78rem;font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;transition:.2s}
+.ctab:hover{color:var(--txt);border-color:rgba(200,48,42,.3)}
+.ctab.on{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border-color:transparent}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;min-height:0;overflow:hidden}
+.sidebar{width:300px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:900px){.sidebar{width:260px}}
+@media(max-width:720px){.sidebar{display:none}}
+.sb-head{padding:1rem 1.25rem;border-bottom:1px solid var(--brd);flex-shrink:0}
+.sb-title{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem}
+.sb-prog-wrap{height:5px;background:var(--s3);border-radius:5px;overflow:hidden;margin-bottom:.4rem}
+.sb-prog-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:5px;transition:.4s}
+.sb-prog-label{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted)}
+.sb-list{overflow-y:auto;flex:1}
+.li{display:flex;align-items:center;gap:.7rem;padding:.7rem 1.25rem;cursor:pointer;transition:.18s;border-left:3px solid transparent;position:relative}
+.li:hover{background:rgba(255,255,255,.03)}
+.li.on{background:rgba(200,48,42,.07);border-left-color:var(--acc)}
+.li.on .lin{background:var(--acc);color:#fff}
+.li.watched .lin{background:rgba(52,211,153,.13);color:var(--grn);border:1px solid rgba(52,211,153,.2)}
+.li.watched:not(.on)::after{content:'✓';position:absolute;right:.75rem;font-size:.7rem;color:var(--grn);opacity:.7}
+.lin{width:26px;height:26px;border-radius:8px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-family:'Syne',sans-serif;font-weight:700;color:var(--muted);flex-shrink:0;transition:.2s}
+.lit{font-size:.82rem;font-weight:500;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lid{font-size:.7rem;color:var(--muted);margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* VIDEO AREA */
+.va{flex:1;padding:2rem;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto;min-width:0}
+
+/* VIDEO WRAPPER — ANTI-DOWNLOAD */
+.vwrap{border-radius:16px;overflow:hidden;position:relative;border:1px solid var(--brd);background:#000;
+  /* Prevent drag */
+  -webkit-user-drag:none;user-drag:none}
+
+/* Invisible overlay to block right-click save / drag */
+.voverlay{position:absolute;inset:0;z-index:5;
+  background:transparent;
+  /* Blocks right-click context menu */
+  pointer-events:none}
+
+/* LOADER */
+.vloader{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;background:linear-gradient(135deg,#0a0a18,#10101e);transition:opacity .5s;border-radius:16px}
+.vloader.h{opacity:0;pointer-events:none}
+.vspin{width:50px;height:50px;border-radius:50%;border:3px solid rgba(200,48,42,.15);border-top-color:var(--acc);border-right-color:var(--acc2);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vl-ico{font-size:2.2rem;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.vl-t{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
+.vl-s{font-size:.78rem;color:var(--muted);text-align:center;max-width:220px}
+.vdots span{animation:dot 1.4s infinite;opacity:0;display:inline-block}
+.vdots span:nth-child(2){animation-delay:.2s}.vdots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:0}40%{opacity:1}}
+.vlbar{width:170px;height:3px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.vlbar-f{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px;animation:lbar 2.5s ease-in-out infinite}
+@keyframes lbar{0%{width:0%;margin-left:0}50%{width:80%}70%{width:90%}100%{width:0%;margin-left:100%}}
+
+video{width:100%;display:block;object-fit:contain;background:#000;min-height:280px;max-height:66vh;
+  opacity:0;transition:opacity .4s;
+  /* Remove all download/save controls */
+  -webkit-user-drag:none;
+  pointer-events:auto}
+/* Hide all native download buttons */
+video::-webkit-media-controls-download-button{display:none!important;width:0!important;height:0!important}
+video::-webkit-media-controls-enclosure{overflow:hidden!important}
+video::-internal-media-controls-download-button{display:none!important}
+video::-webkit-media-controls-panel{overflow:hidden!important}
+
+/* META */
+.vmeta{background:var(--s1);border:1px solid var(--brd);border-radius:16px;padding:1.4rem 1.75rem}
+.vm-top{display:flex;align-items:flex-start;gap:1rem;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap}
+.vmt{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800}
+.vm-badge{font-size:.7rem;padding:.22rem .65rem;border-radius:100px;font-weight:600;white-space:nowrap}
+.vm-watched{background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)}
+.vm-new{background:rgba(200,48,42,.1);color:var(--acc2);border:1px solid rgba(200,48,42,.2)}
+.vmd{color:var(--muted);font-size:.88rem;line-height:1.6;margin-bottom:.85rem}
+
+/* PROGRESS STATS */
+.vprog-stats{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding:.85rem 1rem;background:var(--s2);border-radius:12px;border:1px solid var(--brd)}
+.vps{text-align:center;flex:1;min-width:80px}
+.vps .vpsv{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;line-height:1}
+.vps .vpsv.g{color:var(--grn)}.vps .vpsv.b{color:var(--blue,#60a5fa)}.vps .vpsv.go{color:var(--gold)}.vps .vpsv.a{color:var(--acc2)}
+.vps .vpsl{font-size:.67rem;color:var(--muted);margin-top:.25rem;text-transform:uppercase;letter-spacing:.06em}
+.vbar-wrap{height:6px;background:var(--s3);border-radius:6px;overflow:hidden;margin-bottom:1rem}
+.vbar-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:6px;transition:.4s}
+
+/* BUTTONS */
+.vnav{display:flex;gap:.7rem;flex-wrap:wrap;align-items:center}
+.vbtn{display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.2rem;border-radius:10px;font-size:.8rem;font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;border:none;transition:.2s}
+.vb-prev{background:var(--s2);color:var(--muted);border:1px solid var(--brd)}.vb-prev:hover:not(:disabled){color:var(--txt);border-color:rgba(200,48,42,.3)}
+.vb-prev:disabled,.vb-next:disabled{opacity:.35;cursor:not-allowed}
+.vb-next{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}.vb-next:hover:not(:disabled){opacity:.85}
+.vb-done{background:rgba(52,211,153,.14);color:var(--grn);border:1px solid rgba(52,211,153,.28)}.vb-done:hover{background:rgba(52,211,153,.24)}
+.vcnt{font-size:.74rem;color:var(--muted);margin-left:auto}
+
+/* cert styles removed */
+
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:350px;text-align:center;gap:1rem;color:var(--muted)}
+.empty strong{font-family:'Syne',sans-serif;font-size:1.1rem;color:var(--txt)}
+
+/* TOAST */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1.25rem;font-size:.82rem;box-shadow:0 8px 28px rgba(0,0,0,.4);transform:translateY(14px);opacity:0;transition:.25s;pointer-events:none;max-width:280px}
+#toast.show{transform:none;opacity:1}
+</style>
+</head>
+<body>
+
+<!-- Anti-devtools hint (cosmetic) -->
+<div style="display:none" aria-hidden="true">Vitalia Fashion Lab © Protected Content</div>
+
+<div id="gate">
+  <div class="gbox">
+    <div class="gt">Vitalia 3D Fashion Lab</div>
+    <div class="gb">Навчальна платформа</div>
+    <p class="gs">Введіть ваш <strong>Telegram ID</strong> для доступу до куплених курсів</p>
+    <input type="number" id="tid" placeholder="Ваш Telegram ID" autocomplete="off">
+    <button class="gbtn" onclick="login()">Увійти →</button>
+    <div class="gerr" id="gerr"></div>
+    <div class="gnote">
+      Ваш ID: напишіть <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> в Telegram<br>
+      Немає доступу? <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">@Clo3dua_bot</a>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="hdr-brand">
+      <div class="hdr-logo">Vitalia 3D Fashion Lab</div>
+      <div class="hdr-sub">Навчальна платформа</div>
+    </div>
+    <div class="hdr-r">
+      <span id="uname">—</span>
+      <button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button>
+<button class="hdr-btn" onclick="logout()">Вийти</button>
+    </div>
+  </header>
+  <div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div>
+  <div class="ctabs" id="ctabs" style="display:none"></div>
+  <div class="layout" id="layout">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <div class="sb-title">Уроки курсу</div>
+        <div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div>
+        <div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div>
+      </div>
+      <div class="sb-list" id="llist"></div>
+    </aside>
+    <main class="va" id="va">
+      <div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div>
+    </main>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let myCourses=[], curCourse=null, vids=[], curIdx=-1, progress={watched:[],lastIdx:0,completed:false};
+const LS = 'vfl_last';
+
+// ── Anti-devtools: disable F12 / right-click globally ──────
+document.addEventListener('contextmenu', e => {
+  // Allow on inputs
+  if(['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+  e.preventDefault();
+});
+document.addEventListener('keydown', e => {
+  // Block F12, Ctrl+U, Ctrl+S, Ctrl+Shift+I/J/C
+  if(e.key==='F12') { e.preventDefault(); return false; }
+  if(e.ctrlKey && ['u','s','p'].includes(e.key.toLowerCase())) { e.preventDefault(); return false; }
+  if(e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase())) { e.preventDefault(); return false; }
+});
+
+// ── AUTH ──────────────────────────────────────────────────
+async function checkMe(){
+  const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
+  if(d.ok) showApp(d.name,d.courses);
+}
+async function login(){
+  const id=document.getElementById('tid').value.trim(); if(!id)return;
+  const d=await fetch('/api/buyer/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegramId:id})}).then(r=>r.json());
+  if(d.ok) showApp(d.name,d.courses);
+  else document.getElementById('gerr').textContent='❌ '+d.error;
+}
+async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
+document.getElementById('tid').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
+
+function showApp(name,courses){
+  document.getElementById('gate').style.display='none';
+  const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
+  document.getElementById('uname').textContent=name;
+  myCourses=courses||[];
+  if(myCourses.length>1){
+    const ct=document.getElementById('ctabs'); ct.style.display='flex';
+    ct.innerHTML='<span class="ctabs-label">Курс:</span>'+
+      myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title}</button>`).join('');
+    // Load pcts async
+    myCourses.forEach(async c=>{
+      const[p,vs]=await Promise.all([
+        fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),
+        fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])
+      ]);
+      const pct=vs.length?Math.round(p.watched.length/vs.length*100):0;
+      const btn=document.querySelector(`.ctab[data-cid="${c.id}"]`);
+      if(btn) btn.textContent=c.title+(p.completed?' ✅':` ${pct}%`);
+    });
+  }
+  const last=tryLoadLast();
+  const first=(last?.cid&&myCourses.find(c=>c.id===last.cid))||myCourses[0];
+  if(first) selectCourse(first.id, last?.cid===first.id ? (last.idx??null) : null);
+}
+
+function tryLoadLast(){ try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch{return{}} }
+function saveLast(cid,idx){ try{localStorage.setItem(LS,JSON.stringify({cid,idx}))}catch{} }
+
+async function selectCourse(cid, startIdx=null){
+  curCourse=myCourses.find(c=>c.id===cid);
+  document.querySelectorAll('.ctab').forEach(t=>t.classList.toggle('on',t.dataset.cid===cid));
+  [vids, progress]=await Promise.all([
+    fetch(`/api/course/${cid}/videos/public`).then(r=>r.json()),
+    fetch(`/api/progress/${cid}`).then(r=>r.json()).catch(()=>({watched:[],lastIdx:0,completed:false}))
+  ]);
+  updateSidebarProg();
+  renderList();
+  const idx=startIdx??progress.lastIdx??0;
+  if(vids.length) play(Math.min(idx, vids.length-1));
+}
+
+// ── Sidebar ────────────────────────────────────────────────
+function updateSidebarProg(){
+  const total=vids.length, done=(progress.watched||[]).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('sb-fill').style.width=pct+'%';
+  document.getElementById('sb-done').textContent=`${done}/${total} уроків`;
+  document.getElementById('sb-pct').textContent=pct+'%';
+  document.getElementById('global-fill').style.width=pct+'%';
+}
+
+function renderList(){
+  document.getElementById('llist').innerHTML=vids.map((v,i)=>{
+    const w=(progress.watched||[]).includes(i);
+    return `<div class="li ${i===curIdx?'on':''} ${w?'watched':''}" onclick="play(${i})">
+      <div class="lin">${w&&i!==curIdx?'✓':(i+1)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="lit">${v.title||'Урок '+(i+1)}</div>
+        ${v.desc?`<div class="lid">${v.desc}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Play ──────────────────────────────────────────────────
+function play(idx){
+  if(idx<0||idx>=vids.length)return;
+  curIdx=idx; renderList();
+  const v=vids[idx], cid=curCourse?.id;
+  const total=vids.length, done=(progress.watched||[]).length;
+  const overallPct=total?Math.round(done/total*100):0;
+  const isWatched=(progress.watched||[]).includes(idx);
+  saveLast(cid,idx);
+
+  document.getElementById('va').innerHTML=`
+    <div class="vwrap" id="vwrap">
+      <div class="vloader" id="vl">
+        <div class="vl-ico">🎬</div>
+        <div class="vspin" style="position:absolute;opacity:.4;width:80px;height:80px;border-width:2px"></div>
+        <div class="vl-t">Завантаження<span class="vdots"><span>.</span><span>.</span><span>.</span></span></div>
+        <div class="vl-s">${v.title||'Урок '+(idx+1)}</div>
+        <div class="vlbar"><div class="vlbar-f"></div></div>
+      </div>
+      <video id="vid" controls playsinline preload="metadata"
+        style="opacity:0"
+        controlsList="nodownload noremoteplayback nofullscreen"
+        disablePictureInPicture
+        crossorigin="use-credentials">
+        <source src="/api/video/stream/${cid}/${idx}" type="video/mp4">
+      </video>
+      <div class="voverlay" id="vovl"></div>
+    </div>
+    <div class="vmeta">
+      <div class="vm-top">
+        <div class="vmt">${v.title||'Урок '+(idx+1)}</div>
+        <span class="vm-badge ${isWatched?'vm-watched':'vm-new'}">${isWatched?'✅ Переглянуто':'🔵 Новий урок'}</span>
+      </div>
+      ${v.desc?`<p class="vmd">${v.desc}</p>`:''}
+      <div class="vprog-stats">
+        <div class="vps"><div class="vpsv go">${done}/${total}</div><div class="vpsl">Пройдено</div></div>
+        <div class="vps"><div class="vpsv a">${overallPct}%</div><div class="vpsl">Прогрес</div></div>
+        <div class="vps"><div class="vpsv b">${total-done}</div><div class="vpsl">Залишилось</div></div>
+        <div class="vps"><div class="vpsv g">${progress.completed?'✓':'—'}</div><div class="vpsl">Завершено</div></div>
+      </div>
+      <div class="vbar-wrap"><div class="vbar-fill" id="vbar" style="width:${overallPct}%"></div></div>
+      <div class="vnav">
+        <button class="vbtn vb-prev" onclick="play(${idx-1})" ${idx===0?'disabled':''}>← Попереднє</button>
+        ${!isWatched?`<button class="vbtn vb-done" id="done-btn" onclick="markDone(${idx})">✓ Позначити пройденим</button>`:''}
+        <button class="vbtn vb-next" onclick="play(${idx+1})" ${idx===total-1?'disabled':''}>Наступне →</button>
+        <span class="vcnt">Урок ${idx+1} з ${total}</span>
+      </div>
+    </div>`;
+
+  const vid=document.getElementById('vid');
+  const vl=document.getElementById('vl');
+  const vovl=document.getElementById('vovl');
+
+  // Show video, hide loader
+  const showVid=()=>{ vl.classList.add('h'); vid.style.opacity='1'; };
+  vid.addEventListener('canplay',showVid,{once:true});
+  vid.addEventListener('loadeddata',showVid,{once:true});
+  setTimeout(showVid,12000);
+  vid.addEventListener('waiting',()=>{
+    vl.classList.remove('h'); vid.style.opacity='.3';
+    vl.querySelector('.vl-t').innerHTML='Буферизація<span class="vdots"><span>.</span><span>.</span><span>.</span></span>';
+  });
+  vid.addEventListener('playing',showVid);
+
+  // ── MAX VIDEO PROTECTION ────────────────────────────────
+  // Block context menu on video
+  vid.addEventListener('contextmenu', e=>e.preventDefault());
+  // Block drag
+  vid.addEventListener('dragstart', e=>e.preventDefault());
+  // Transparent overlay re-enables after video starts (allows controls)
+  vid.addEventListener('play',()=>{ vovl.style.pointerEvents='none'; });
+  vid.addEventListener('pause',()=>{ vovl.style.pointerEvents='none'; });
+
+  // Prevent keyboard shortcuts on video element
+  vid.addEventListener('keydown', e=>{
+    if(['s','u'].includes(e.key.toLowerCase())&&(e.ctrlKey||e.metaKey)) e.preventDefault();
+  });
+
+  // Auto-mark when 80% watched
+  let autoMarked=false;
+  vid.addEventListener('timeupdate', function(){
+    if(!autoMarked && vid.duration && vid.currentTime/vid.duration>=0.8){
+      autoMarked=true;
+      markDone(idx,true);
+    }
+  });
+}
+
+// ── Mark Watched ──────────────────────────────────────────
+async function markDone(idx, silent=false){
+  const cid=curCourse?.id;
+  const p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null);
+  if(!p) return;
+  progress=p;
+  updateSidebarProg();
+  renderList();
+  // Update badge in DOM
+  const badge=document.querySelector('.vm-badge');
+  if(badge){badge.className='vm-badge vm-watched';badge.textContent='✅ Переглянуто';}
+  document.getElementById('done-btn')?.remove();
+  // Update stats
+  const total=vids.length, done=p.watched.length;
+  const pct=total?Math.round(done/total*100):0;
+  const el=document.getElementById('vbar'); if(el) el.style.width=pct+'%';
+  document.querySelectorAll('.vpsv').forEach((el,i)=>{
+    if(i===0) el.textContent=`${done}/${total}`;
+    if(i===1) el.textContent=`${pct}%`;
+    if(i===2) el.textContent=`${total-done}`;
+    if(i===3) el.textContent=p.completed?'✓':'—';
+  });
+  // Update ctab
+  const btn=document.querySelector(`.ctab[data-cid="${cid}"]`);
+  if(btn) btn.textContent=curCourse?.title+(p.completed?' ✅':`  ${pct}%`);
+
+  if(!silent) showToast('✅ Урок позначено пройденим!');
+
+  // course completed
+}
+
+// ── Progress Modal (inline) ────────────────────────────────
+async function showProgress(){
+  const lines=[];
+  for(const c of myCourses){
+    const[p,vs]=await Promise.all([
+      fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),
+      fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])
+    ]);
+    const done=p.watched.length, total=vs.length;
+    const pct=total?Math.round(done/total*100):0;
+    lines.push(`<b>${c.title}</b><br><small>${done}/${total} уроків · ${pct}% ${p.completed?'· ✅ Завершено':''}</small>`);
+  }
+  showToast('📊 '+lines.join(' | '));
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.innerHTML=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+checkMe();
+</script>
+</body>
+</html>
