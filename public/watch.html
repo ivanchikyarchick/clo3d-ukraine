@@ -204,8 +204,9 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 <div id="toast"></div>
 
 <script>
-// ── State ──────────────────────────────────────────────────
+// ── STATE ──────────────────────────────────────────────────
 let myCourses=[], curCourse=null, vids=[], curIdx=-1, progress={watched:[],lastIdx:0,completed:false};
+let isFreeMode = false; // режим без авторизації
 const LS = 'vfl_last';
 
 // ── Anti-devtools: disable F12 / right-click globally ──────
@@ -223,8 +224,38 @@ document.addEventListener('keydown', e => {
 
 // ── AUTH ──────────────────────────────────────────────────
 async function checkMe(){
+  // Перевіряємо ?course= параметр — вільний доступ
+  const params = new URLSearchParams(location.search);
+  const courseSlug = params.get('course');
+  if (courseSlug) {
+    // Перевіряємо чи курс є вільним
+    const c = await fetch(`/api/course/${courseSlug}/public`).then(r=>r.json()).catch(()=>null);
+    if (c && c.freeAccess) {
+      await openFreeCourse(c);
+      return;
+    }
+  }
+  // Звичайний логін
   const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
   if(d.ok) showApp(d.name,d.courses);
+}
+
+async function openFreeCourse(c) {
+  isFreeMode = true;
+  curCourse = c;
+  myCourses = [c];
+  document.getElementById('gate').style.display='none';
+  const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
+  document.getElementById('uname').textContent = c.title;
+  // Ховаємо прогрес та сертифікати для free режиму
+  document.querySelector('.hdr-btn[onclick="showProgress()"]')?.remove();
+  document.querySelector('.hdr-btn[onclick="showAllCerts()"]')?.remove();
+  // Завантажуємо відео через free endpoint
+  vids = await fetch(`/api/course/${c.id}/videos/free`).then(r=>r.json()).catch(()=>[]);
+  progress = {watched:[],lastIdx:0,completed:false};
+  updateSidebarProg();
+  renderList();
+  if(vids.length) play(0);
 }
 async function login(){
   const id=document.getElementById('tid').value.trim(); if(!id)return;
@@ -323,7 +354,7 @@ function play(idx){
         controlsList="nodownload noremoteplayback nofullscreen"
         disablePictureInPicture
         crossorigin="use-credentials">
-        <source src="/api/video/stream/${cid}/${idx}" type="video/mp4">
+        <source src="${isFreeMode ? `/api/video/free/${cid}/${idx}` : `/api/video/stream/${cid}/${idx}`}" type="video/mp4">
       </video>
       <div class="voverlay" id="vovl"></div>
     </div>
