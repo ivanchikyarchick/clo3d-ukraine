@@ -123,7 +123,15 @@ app.get('/api/courses/public',(req,res)=>{
 app.get('/api/course/:slug/public',(req,res)=>{
   const c=(db.get().courses||[]).find(x=>x.slug===req.params.slug&&x.published);
   if(!c){res.status(404).json({ok:false});return;}
-  res.json({id:c.id,slug:c.slug,title:c.title,description:c.description,price:c.price,badge:c.badge,color:c.color,videoCount:c.videos?.length||0});
+  res.json({
+    id:c.id, slug:c.slug, title:c.title, description:c.description,
+    price:c.price, badge:c.badge, color:c.color,
+    videoCount:c.videos?.length||0,
+    // Що включає (бокс з ціною) — масив рядків
+    includes: c.includes || [],
+    // Карточки "Програма включає" — масив {title, desc}
+    features: c.features || [],
+  });
 });
 
 // ── PUBLIC: video list for player ─────────────────────────
@@ -195,10 +203,10 @@ function proxyStream(url,res,h={}){const mod=url.startsWith('https')?https:http;
 app.get('/api/courses', adm, (req,res)=>res.json(db.get().courses||[]));
 
 app.post('/api/courses', adm, (req,res)=>{
-  const {title,description,price,badge,color,published}=req.body;
+  const {title,description,price,badge,color,published,includes,features}=req.body;
   if(!title){res.status(400).json({ok:false,error:'Потрібна назва'});return;}
   const id=db.newId(), slug=db.slugify(title);
-  db.set(d=>{ d.courses.push({id,slug,title,description:description||'',price:price||'',badge:badge||'',color:color||'#5b8dee',published:!!published,createdAt:Date.now(),videos:[],buyers:[],pending:[]}); });
+  db.set(d=>{ d.courses.push({id,slug,title,description:description||'',price:price||'',badge:badge||'',color:color||'#C8302A',published:!!published,createdAt:Date.now(),videos:[],buyers:[],pending:[],includes:includes||[],features:features||[]}); });
   res.json({ok:true,id,slug});
 });
 
@@ -206,13 +214,15 @@ app.patch('/api/courses/:id', adm, (req,res)=>{
   db.set(d=>{
     const c=d.courses.find(x=>x.id===req.params.id);
     if(!c){return;}
-    const {title,description,price,badge,color,published}=req.body;
+    const {title,description,price,badge,color,published,includes,features}=req.body;
     if(title!==undefined){c.title=title; c.slug=db.slugify(title);}
     if(description!==undefined) c.description=description;
     if(price!==undefined)       c.price=price;
     if(badge!==undefined)       c.badge=badge;
     if(color!==undefined)       c.color=color;
     if(published!==undefined)   c.published=!!published;
+    if(includes!==undefined)    c.includes=includes;
+    if(features!==undefined)    c.features=features;
   });
   res.json({ok:true});
 });
