@@ -10,9 +10,9 @@ const db       = require('./db');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
-const BOT_TOKEN = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
-const ADMIN_ID  = parseInt(process.env.ADMIN_ID || '6590778330');
-const SITE_URL  = process.env.SITE_URL || 'https://clo3d-ukraine.onrender.com';
+const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
+const ADMIN_TG_ID    = parseInt(process.env.ADMIN_ID || '6590778330');
+const SITE_URL       = process.env.SITE_URL || `https://clo3d-ukraine.onrender.com`;
 
 const app = express();
 // On Render tmp dirs may not persist — only use for processing, never for storage
@@ -251,7 +251,8 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async(req,res)
   try{
     const FormData=require('form-data');
     const form=new FormData();
-    form.append('chat_id',ADMIN_TG_ID);
+    const adminTgId = parseInt(process.env.ADMIN_ID || '6590778330');
+    form.append('chat_id', adminTgId);
     form.append('caption',`📹 ${title}\n\n${desc}`);
     form.append('protect_content','true');
     form.append('video',fs.createReadStream(req.file.path),{filename:req.file.originalname||'video.mp4',contentType:req.file.mimetype||'video/mp4'});
