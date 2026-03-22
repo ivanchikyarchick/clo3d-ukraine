@@ -19,15 +19,15 @@ function siteUrl(p) {
   return `${SITE_URL}${p}`;
 }
 
-// Виправлено: додаємо uid як другий аргумент
-function accessGrantedMsg(courseTitle, uid) { 
-  const watchUrl = siteUrl('/watch');
+function accessGrantedMsg(courseTitle) {
   return (
     `🎉 *Доступ до курсу «${courseTitle}» активовано!*\n\n` +
     `📺 *Як дивитись відео:*\n` +
     `1. Перейди на сайт: ${SITE_URL}/watch\n` +
     `2. Введи свій *Telegram ID* — це твій особистий пароль\n\n` +
-    `❓ *Ваш телеграм ID: \`${uid}\`*\n`
+    `❓ *Як дізнатись свій Telegram ID?*\n` +
+    `Напиши боту @userinfobot — він покаже твій ID\n\n` +
+    `Після входу одразу побачиш свої курси 🎬`
   );
 }
 
