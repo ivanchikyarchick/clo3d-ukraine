@@ -133,14 +133,9 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
     </div>
     <div class="ch-box">
       <div class="ch-price" id="ch-price"></div>
-      <div class="ch-price-note">Одноразова оплата</div>
-      <ul class="ch-includes">
-        <li>Відеоуроки у захищеному плеєрі</li>
-        <li>Закритий Telegram-канал</li>
-        <li>Підтримка та чат з викладачем</li>
-        <li>Доступ - 1 місяць</li>
-      </ul>
-      <a href="https://t.me/Clo3dua_bot" class="btn-g" target="_blank" rel="noopener">Придбати інтенсив →</a>
+      <div class="ch-price-note" id="ch-price-note">Одноразова оплата</div>
+      <ul class="ch-includes" id="ch-includes"></ul>
+      <a href="https://t.me/Clo3dua_bot" class="btn-g" target="_blank" rel="noopener">Придбати доступ →</a>
       <a href="/watch" class="btn-watch" style="display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.75rem 1.75rem;margin-top:.75rem;border:1.5px solid var(--brd);border-radius:100px;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;color:var(--muted);text-decoration:none;transition:.2s;letter-spacing:.08em">
         ▶️ Продовжити перегляд
       </a>
@@ -164,28 +159,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
   <div class="sec-inner">
     <div class="sec-eyebrow rv">Що отримаєш</div>
     <div class="sec-title rv">Програма включає</div>
-    <div class="wg-grid">
-      <div class="wg-card rv">
-        <div class="wg-n">01</div>
-        <div class="wg-t">Захищені відеоуроки</div>
-        <div class="wg-d">Перегляд у захищеному плеєрі на сайті. Без можливості завантаження.</div>
-      </div>
-      <div class="wg-card rv d1">
-        <div class="wg-n">02</div>
-        <div class="wg-t">Закритий Telegram-канал</div>
-        <div class="wg-d">Матеріали та зв'язок з викладачем у закритому просторі.</div>
-      </div>
-      <div class="wg-card rv d2">
-        <div class="wg-n">03</div>
-        <div class="wg-t">Підтримка та чат</div>
-        <div class="wg-d">Прямий зв'язок з Віталією, відповіді на запитання та розбір ДЗ.</div>
-      </div>
-      <div class="wg-card rv d3">
-        <div class="wg-n">04</div>
-        <div class="wg-t">Доступ</div>
-        <div class="wg-d">Доступ - 1 місяць.</div>
-      </div>
-    </div>
+    <div class="wg-grid" id="wg-grid"></div>
   </div>
 </section>
 
@@ -252,6 +226,37 @@ async function load() {
     document.getElementById('ch-price').textContent  = c.price || '';
     document.getElementById('buy-price').textContent = c.price || '';
     document.getElementById('ch-vc').textContent     = c.videoCount || 0;
+
+    // Дефолтні значення якщо адмін ще не заповнив
+    const DEFAULT_INCLUDES = [
+      'Відеоуроки у захищеному плеєрі',
+      'Закритий Telegram-канал',
+      'Підтримка та чат',
+      'Безстроковий доступ',
+    ];
+    const DEFAULT_FEATURES = [
+      { title: 'Захищені відеоуроки', desc: 'Перегляд у захищеному плеєрі. Без можливості завантаження.' },
+      { title: 'Закритий Telegram-канал', desc: 'Матеріали та зв\'язок з викладачем у закритому просторі.' },
+      { title: 'Підтримка та чат', desc: 'Прямий зв\'язок з Віталією, відповіді на запитання та розбір ДЗ.' },
+      { title: 'Безстроковий доступ', desc: 'Оплати один раз і повертайся до матеріалів коли завгодно.' },
+    ];
+
+    const includes = (c.includes && c.includes.length) ? c.includes : DEFAULT_INCLUDES;
+    const features = (c.features && c.features.length) ? c.features : DEFAULT_FEATURES;
+    const delays   = ['rv','rv d1','rv d2','rv d3','rv d4'];
+
+    // Бокс з ціною — список включень
+    document.getElementById('ch-includes').innerHTML =
+      includes.map(item => `<li>${item}</li>`).join('');
+
+    // Картки "Програма включає"
+    document.getElementById('wg-grid').innerHTML =
+      features.map((f, i) => `
+        <div class="wg-card ${delays[i] || 'rv'}">
+          <div class="wg-n">${String(i+1).padStart(2,'0')}</div>
+          <div class="wg-t">${f.title}</div>
+          <div class="wg-d">${f.desc || ''}</div>
+        </div>`).join('');
 
     // Video list
     const vids = await fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[]);
