@@ -303,6 +303,16 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <input type="checkbox" id="mnc-pub" style="width:auto">
       <label for="mnc-pub" style="font-size:.82rem;color:var(--txt);cursor:pointer">Опублікований (видно на сайті)</label>
     </div>
+
+    <div class="fg">
+      <label>Що включає (бокс з ціною) — кожен пункт з нового рядка</label>
+      <textarea id="mnc-includes" style="min-height:90px;font-size:.8rem" placeholder="Відеоуроки у захищеному плеєрі&#10;Закритий Telegram-канал&#10;Підтримка та чат&#10;Безстроковий доступ"></textarea>
+    </div>
+
+    <div class="fg">
+      <label>Картки «Програма включає» — формат: <em>Назва | Опис</em> (по одній на рядок)</label>
+      <textarea id="mnc-features" style="min-height:110px;font-size:.8rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією&#10;Безстроковий доступ | Повертайся коли завгодно"></textarea>
+    </div>
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button class="btn btn-p" onclick="saveCourse()" style="flex:1;padding:.75rem">💾 Зберегти</button>
       <button class="btn btn-gh" onclick="closeModal('modal-new-course')" style="padding:.75rem 1.25rem">Скасувати</button>
@@ -572,13 +582,23 @@ function editCourse(cid){
   document.getElementById('mnc-badge').value=c.badge||'';
   document.getElementById('mnc-color').value=c.color||'#C8302A';
   document.getElementById('mnc-pub').checked=!!c.published;
+  // includes & features
+  document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
+  document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
   document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.c===c.color));
   openModal('modal-new-course');
 }
 
 async function saveCourse(){
   const id=document.getElementById('mnc-id').value;
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked};
+  const includesRaw = document.getElementById('mnc-includes').value;
+  const featuresRaw = document.getElementById('mnc-features').value;
+  const includes = includesRaw.split('\n').map(s=>s.trim()).filter(Boolean);
+  const features = featuresRaw.split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{
+    const sep = line.indexOf('|');
+    return sep>-1 ? {title:line.slice(0,sep).trim(), desc:line.slice(sep+1).trim()} : {title:line,desc:''};
+  });
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,includes,features};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
