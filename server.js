@@ -61,7 +61,14 @@ app.use((req,res,next)=>{
   next();
 });
 
-const adm = (req,res,next) => req.session.isAdmin ? next() : res.status(401).json({ok:false,error:'Unauthorized'});
+const adm = (req,res,next) => {
+  // Перевіряємо сесію або Basic-auth header (для upload при втраченій сесії)
+  if (req.session.isAdmin) { req.session.touch(); return next(); }
+  // Fallback: перевіряємо пароль у header X-Admin-Password
+  const hdr = req.headers['x-admin-password'];
+  if (hdr && hdr === ADMIN_PASSWORD) { req.session.isAdmin = true; return next(); }
+  res.status(401).json({ok:false,error:'Unauthorized'});
+};
 
 // ── AUTH ─────────────────────────────────────────────────
 app.post('/api/login',(req,res)=>{
@@ -216,7 +223,17 @@ app.delete('/api/courses/:id', adm, (req,res)=>{
 });
 
 // ── ADMIN: VIDEO UPLOAD ───────────────────────────────────
-app.post('/api/courses/:cid/videos', adm, uploadVideo.single('video'), async(req,res)=>{
+// multer ПЕРШИЙ — парсить файл до перевірки сесії (велике відео)
+app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async(req,res)=>{
+  // Перевіряємо авторизацію вже після того як multer прочитав файл
+  if (!req.session.isAdmin) {
+    const hdr = req.headers['x-admin-password'];
+    if (!hdr || hdr !== ADMIN_PASSWORD) {
+      if(req.file) try{fs.unlinkSync(req.file.path);}catch{}
+      res.status(401).json({ok:false,error:'Unauthorized'}); return;
+    }
+    req.session.isAdmin = true;
+  }
   const cid=req.params.cid;
   if(!req.file){res.status(400).json({ok:false,error:'Немає файлу'});return;}
   const title=req.body.title||`Урок ${(db.getCourse(cid)?.videos?.length||0)+1}`;
