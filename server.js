@@ -117,6 +117,7 @@ app.get('/api/courses/public',(req,res)=>{
     id:c.id, slug:c.slug, title:c.title, description:c.description,
     price:c.price, badge:c.badge, color:c.color||'#5b8dee',
     videoCount:c.videos?.length||0,
+    freeAccess:!!c.freeAccess,
   }));
   res.json(cs);
 });
@@ -131,6 +132,7 @@ app.get('/api/course/:slug/public',(req,res)=>{
     includes: c.includes || [],
     // Карточки "Програма включає" — масив {title, desc}
     features: c.features || [],
+    freeAccess: !!c.freeAccess,
   });
 });
 
@@ -139,6 +141,18 @@ app.get('/api/course/:cid/videos/public',(req,res)=>{
   const c=(db.get().courses||[]).find(x=>x.id===req.params.cid);
   if(!c){res.status(404).json({ok:false});return;}
   res.json((c.videos||[]).map((v,i)=>({i,title:v.title,desc:v.desc})));
+});
+
+// ── ADMIN PREVIEW — вхід без TG ID ───────────────────────
+app.post('/api/admin/preview', adm, (req,res)=>{
+  const d = db.get();
+  const courses = (d.courses||[]).filter(c=>c.videos?.length);
+  if (!courses.length) { res.status(404).json({ok:false,error:'Немає курсів з відео'}); return; }
+  // Встановлюємо сесію як "адмін-перегляд"
+  req.session.buyerId    = 0;       // спеціальний ID = 0 означає адмін-перегляд
+  req.session.buyerName  = '👑 Адмін';
+  req.session.isAdminPreview = true;
+  res.json({ ok:true, name:'👑 Адмін', courses: courses.map(c=>({id:c.id,slug:c.slug,title:c.title,color:c.color})) });
 });
 
 // ── BUYER LOGIN ──────────────────────────────────────────
@@ -155,22 +169,47 @@ app.post('/api/buyer/login',(req,res)=>{
 });
 app.post('/api/buyer/logout',(req,res)=>{ req.session.buyerId=null; res.json({ok:true}); });
 app.get('/api/buyer/me',(req,res)=>{
+  // Адмін-перегляд
+  if (req.session.isAdminPreview) {
+    const courses = (db.get().courses||[]).filter(c=>c.videos?.length)
+      .map(c=>({id:c.id,slug:c.slug,title:c.title,color:c.color}));
+    res.json({ok:true, name:'👑 Адмін', courses});
+    return;
+  }
   const uid=req.session.buyerId;
   if(!uid){res.json({ok:false});return;}
   const d=db.get();
-  const myCourses=d.courses.filter(c=>c.buyers?.some(b=>b.id===uid));
+  const myCourses=(d.courses||[]).filter(c=>c.buyers?.some(b=>b.id===uid));
   res.json({ok:!!myCourses.length,name:req.session.buyerName,courses:myCourses.map(c=>({id:c.id,slug:c.slug,title:c.title,color:c.color}))});
 });
 
 // cert endpoint removed
 
+// ── FREE COURSE: відео без авторизації ───────────────────
+app.get('/api/video/free/:cid/:idx',(req,res)=>{
+  const c=(db.get().courses||[]).find(x=>x.id===req.params.cid);
+  if(!c){res.status(404).send('Не знайдено');return;}
+  if(!c.freeAccess){res.status(403).send('Доступ заборонено');return;}
+  const idx=parseInt(req.params.idx);
+  if(!c?.videos?.[idx]){res.status(404).send('Відео не знайдено');return;}
+  streamTg(c.videos[idx].telegramFileId,req,res);
+});
+
+// ── FREE COURSE: список відео без авторизації ─────────────
+app.get('/api/course/:cid/videos/free',(req,res)=>{
+  const c=(db.get().courses||[]).find(x=>x.id===req.params.cid&&x.freeAccess);
+  if(!c){res.status(403).json({ok:false});return;}
+  res.json((c.videos||[]).map((v,i)=>({i,title:v.title,desc:v.desc})));
+});
+
 // ── STREAM VIDEO — MAX SECURITY ───────────────────────────
 app.get('/api/video/stream/:cid/:idx',(req,res)=>{
-  const uid=req.session.buyerId;
-  if(!req.session.isAdmin){
-    if(!uid){res.status(403).send('Доступ заборонено');return;}
-    const c=db.get().courses.find(x=>x.id===req.params.cid);
-    if(!c?.buyers?.some(b=>b.id===uid)){res.status(403).send('Доступ заборонено');return;}
+  const uid = req.session.buyerId;
+  const isAdminOrPreview = req.session.isAdmin || req.session.isAdminPreview;
+  if (!isAdminOrPreview) {
+    if (uid === undefined || uid === null) { res.status(403).send('Доступ заборонено'); return; }
+    const c = db.get().courses.find(x=>x.id===req.params.cid);
+    if (!c?.buyers?.some(b=>b.id===uid)) { res.status(403).send('Доступ заборонено'); return; }
   }
   const c=db.get().courses.find(x=>x.id===req.params.cid);
   const idx=parseInt(req.params.idx);
@@ -203,10 +242,10 @@ function proxyStream(url,res,h={}){const mod=url.startsWith('https')?https:http;
 app.get('/api/courses', adm, (req,res)=>res.json(db.get().courses||[]));
 
 app.post('/api/courses', adm, (req,res)=>{
-  const {title,description,price,badge,color,published,includes,features}=req.body;
+  const {title,description,price,badge,color,published,includes,features,freeAccess}=req.body;
   if(!title){res.status(400).json({ok:false,error:'Потрібна назва'});return;}
   const id=db.newId(), slug=db.slugify(title);
-  db.set(d=>{ d.courses.push({id,slug,title,description:description||'',price:price||'',badge:badge||'',color:color||'#C8302A',published:!!published,createdAt:Date.now(),videos:[],buyers:[],pending:[],includes:includes||[],features:features||[]}); });
+  db.set(d=>{ d.courses.push({id,slug,title,description:description||'',price:price||'',badge:badge||'',color:color||'#C8302A',published:!!published,freeAccess:!!freeAccess,createdAt:Date.now(),videos:[],buyers:[],pending:[],includes:includes||[],features:features||[]}); });
   res.json({ok:true,id,slug});
 });
 
@@ -214,7 +253,7 @@ app.patch('/api/courses/:id', adm, (req,res)=>{
   db.set(d=>{
     const c=d.courses.find(x=>x.id===req.params.id);
     if(!c){return;}
-    const {title,description,price,badge,color,published,includes,features}=req.body;
+    const {title,description,price,badge,color,published,includes,features,freeAccess}=req.body;
     if(title!==undefined){c.title=title; c.slug=db.slugify(title);}
     if(description!==undefined) c.description=description;
     if(price!==undefined)       c.price=price;
@@ -223,6 +262,7 @@ app.patch('/api/courses/:id', adm, (req,res)=>{
     if(published!==undefined)   c.published=!!published;
     if(includes!==undefined)    c.includes=includes;
     if(features!==undefined)    c.features=features;
+    if(freeAccess!==undefined)  c.freeAccess=!!freeAccess;
   });
   res.json({ok:true});
 });
@@ -290,14 +330,15 @@ app.post('/api/courses/:cid/videos/reorder', adm, (req,res)=>{
 // ── PROGRESS API ─────────────────────────────────────────
 // Get progress for current buyer
 app.get('/api/progress/:cid', (req,res)=>{
+  if (req.session.isAdminPreview) { res.json({ok:true,watched:[],lastIdx:0,completed:false}); return; }
   const uid = req.session.buyerId || (req.session.isAdmin ? -1 : null);
   if (!uid) { res.status(403).json({ok:false}); return; }
   const p = db.getProgress(uid, req.params.cid);
   res.json({ ok:true, ...p });
 });
 
-// Mark video as watched (from web player)
 app.post('/api/progress/:cid/:idx', (req,res)=>{
+  if (req.session.isAdminPreview) { res.json({ok:true,watched:[],lastIdx:0,completed:false}); return; }
   const uid = req.session.buyerId;
   if (!uid) { res.status(403).json({ok:false}); return; }
   const cid = req.params.cid;
