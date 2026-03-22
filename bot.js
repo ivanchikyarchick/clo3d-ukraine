@@ -5,9 +5,9 @@
 const TelegramBot = require('node-telegram-bot-api');
 const db = require('./db');
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '8606783327:AAFusJi5VBAqnHzdT8xP28rmzs49nT15HoM';
-const ADMIN_ID  = parseInt(process.env.ADMIN_ID || '6590778330');
-const SITE_URL  = process.env.SITE_URL || 'https://clo3d-ukraine.onrender.com';
+const BOT_TOKEN = '8606783327:AAFusJi5VBAqnHzdT8xP28rmzs49nT15HoM';
+const ADMIN_ID  = 6590778330; 
+const SITE_URL  = 'https://clo3d-ukraine.onrender.com';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
