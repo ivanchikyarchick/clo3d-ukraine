@@ -119,7 +119,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 /* MODAL */
 .mbg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .mbg.show{display:flex}
-.mbox{background:var(--s1);border:1px solid var(--brd);border-radius:20px;padding:2rem;width:100%;max-width:500px;position:relative;max-height:90vh;overflow-y:auto}
+.mbox{background:var(--s1);border:1px solid var(--brd);border-radius:20px;padding:2rem;width:100%;max-width:660px;position:relative;max-height:92vh;overflow-y:auto}
 .mbox h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.25rem}
 .mc{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer}
 .mc:hover{color:var(--txt)}
@@ -151,7 +151,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 </nav>
 
 <div class="main">
-  <div class="topbar"><div class="topbar-t" id="tt">Дашборд</div><div class="stbadge"><div class="dot"></div>@Clo3dua_bot</div></div>
+  <div class="topbar"><div class="topbar-t" id="tt">Дашборд</div><div style="display:flex;align-items:center;gap:.75rem"><a href="#" onclick="openPreview(event)" style="padding:.35rem .9rem;border:1px solid var(--brd);border-radius:8px;font-size:.72rem;color:var(--muted);text-decoration:none;transition:.2s" onmouseover="this.style.color='var(--txt)';this.style.borderColor='var(--acc)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--brd)'">▶️ Дивитись уроки</a><div class="stbadge"><div class="dot"></div>@Clo3dua_bot</div></div></div>
   <div class="cnt">
 
     <!-- DASH -->
@@ -303,15 +303,23 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <input type="checkbox" id="mnc-pub" style="width:auto">
       <label for="mnc-pub" style="font-size:.82rem;color:var(--txt);cursor:pointer">Опублікований (видно на сайті)</label>
     </div>
-
-    <div class="fg">
-      <label>Що включає (бокс з ціною) — кожен пункт з нового рядка</label>
-      <textarea id="mnc-includes" style="min-height:90px;font-size:.8rem" placeholder="Відеоуроки у захищеному плеєрі&#10;Закритий Telegram-канал&#10;Підтримка та чат&#10;Безстроковий доступ"></textarea>
+    <div class="fg" style="display:flex;align-items:center;gap:.75rem;margin-top:-.5rem">
+      <input type="checkbox" id="mnc-free" style="width:auto">
+      <label for="mnc-free" style="font-size:.82rem;color:var(--txt);cursor:pointer">🆓 Вільний доступ — дивитись без входу (для безкоштовних/YouTube курсів)</label>
     </div>
 
-    <div class="fg">
-      <label>Картки «Програма включає» — формат: <em>Назва | Опис</em> (по одній на рядок)</label>
-      <textarea id="mnc-features" style="min-height:110px;font-size:.8rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією&#10;Безстроковий доступ | Повертайся коли завгодно"></textarea>
+    <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
+      <div style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--acc);margin-bottom:1rem;font-weight:600">📋 Контент сторінки курсу</div>
+
+      <div class="fg">
+        <label>Що включає <span style="color:var(--muted);font-weight:400">(бокс з ціною) — кожен пункт з нового рядка</span></label>
+        <textarea id="mnc-includes" style="min-height:100px;font-size:.82rem" placeholder="Відеоуроки у захищеному плеєрі&#10;Закритий Telegram-канал&#10;Підтримка та чат&#10;1 місяць доступу"></textarea>
+      </div>
+
+      <div class="fg">
+        <label>Картки «Програма включає» <span style="color:var(--muted);font-weight:400">— формат: Назва | Опис (по одній на рядок)</span></label>
+        <textarea id="mnc-features" style="min-height:120px;font-size:.82rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією&#10;1 місяць доступу | Доступ діє 30 днів з дня покупки"></textarea>
+      </div>
     </div>
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button class="btn btn-p" onclick="saveCourse()" style="flex:1;padding:.75rem">💾 Зберегти</button>
@@ -582,6 +590,7 @@ function editCourse(cid){
   document.getElementById('mnc-badge').value=c.badge||'';
   document.getElementById('mnc-color').value=c.color||'#C8302A';
   document.getElementById('mnc-pub').checked=!!c.published;
+  document.getElementById('mnc-free').checked=!!c.freeAccess;
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
@@ -598,7 +607,7 @@ async function saveCourse(){
     const sep = line.indexOf('|');
     return sep>-1 ? {title:line.slice(0,sep).trim(), desc:line.slice(sep+1).trim()} : {title:line,desc:''};
   });
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,includes,features};
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
@@ -680,6 +689,17 @@ async function loadProgress(){
       <td>${r.completed?'<span class="btn-g" style="padding:.15rem .5rem;border-radius:6px;font-size:.7rem;background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)">✅ Так</span>':'<span style="color:var(--muted);font-size:.78rem">—</span>'}</td>
       <td style="font-size:.78rem;color:var(--muted)">${r.lastTs?new Date(r.lastTs).toLocaleDateString('uk'):'Ніколи'}</td>
     </tr>`).join('')+'</tbody></table>';
+}
+
+// ── ADMIN PREVIEW ─────────────────────────────────────────
+async function openPreview(e) {
+  e.preventDefault();
+  const r = await fetch('/api/admin/preview', {method:'POST'}).then(x=>x.json());
+  if (r.ok) {
+    window.open('/watch', '_blank');
+  } else {
+    toast('❌ ' + (r.error || 'Помилка'));
+  }
 }
 
 async function logout(){ sessionStorage.removeItem('adm_pwd'); await fetch('/api/logout',{method:'POST'}); window.location='/login'; }
