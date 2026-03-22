@@ -535,8 +535,19 @@ async function doUpload(){
   btn.disabled=true; btn.textContent='⏳'; prog.classList.add('show'); bar.style.width='0%'; pct.textContent='0%'; txt.textContent='Підготовка...'; res.textContent='';
   const fd=new FormData(); fd.append('title',title); fd.append('desc',document.getElementById('upl-desc').value); fd.append('video',uplFile);
   const xhr=new XMLHttpRequest(); xhr.open('POST',`/api/courses/${curCourseId}/videos`);
+  // Додаємо пароль у header щоб upload не падав при протухлій сесії
+  const savedPwd = sessionStorage.getItem('adm_pwd') || '';
+  if(savedPwd) xhr.setRequestHeader('X-Admin-Password', savedPwd);
   xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent=`${fmt(e.loaded)} з ${fmt(e.total)}`;}};
   xhr.onload=async()=>{
+    if(xhr.status===401){
+      // Сесія протухла — перенаправляємо на логін
+      txt.textContent='❌ Сесія протухла — оновіть сторінку та перелогіньтесь';
+      bar.style.background='var(--red)';
+      setTimeout(()=>{window.location='/login';},2000);
+      btn.disabled=false;btn.textContent='⬆️ Завантажити';
+      return;
+    }
     try{const d=JSON.parse(xhr.responseText);
       if(d.ok){bar.style.width='100%';pct.textContent='100%';txt.textContent='✅ Готово!';res.innerHTML=`<span style="color:var(--grn)">✅ Відео #${d.total} збережено</span>`;toast('🎬 Відео додано!');document.getElementById('upl-title').value='';document.getElementById('upl-desc').value='';document.getElementById('upl-fn').textContent='';ufd.classList.remove('sel');uplFile=null;await load();renderMcVids();setTimeout(()=>prog.classList.remove('show'),3000);}
       else{txt.textContent='❌ '+d.error;bar.style.background='var(--red)';setTimeout(()=>{bar.style.background='';prog.classList.remove('show');},5000);}
@@ -651,7 +662,7 @@ async function loadProgress(){
     </tr>`).join('')+'</tbody></table>';
 }
 
-async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location='/login'; }
+async function logout(){ sessionStorage.removeItem('adm_pwd'); await fetch('/api/logout',{method:'POST'}); window.location='/login'; }
 
 // Modal bg close
 document.querySelectorAll('.mbg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
