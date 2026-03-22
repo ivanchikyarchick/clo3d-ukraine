@@ -7,7 +7,7 @@ const db = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '8606783327:AAFusJi5VBAqnHzdT8xP28rmzs49nT15HoM';
 const ADMIN_ID  = parseInt(process.env.ADMIN_ID || '6590778330');
-const SITE_URL  = process.env.SITE_URL || 'http://localhost:3000';
+const SITE_URL  = process.env.SITE_URL || 'https://clo3d-ukraine.onrender.com';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
@@ -29,9 +29,7 @@ function accessGrantedMsg(courseTitle) {
     `📺 *Як дивитись відео:*\n` +
     `1. Перейди на сайт: ${SITE_URL}/watch\n` +
     `2. Введи свій *Telegram ID* — це твій особистий пароль\n\n` +
-    `❓ *Як дізнатись свій Telegram ID?*\n` +
-    `Напиши боту @userinfobot — він покаже твій ID\n\n` +
-    `Після входу одразу побачиш свої курси 🎬`
+    `❓ *Ваш телеграм ID: \`${uid}\`*\n` +
   );
 }
 
