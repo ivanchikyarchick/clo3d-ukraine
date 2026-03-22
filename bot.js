@@ -22,14 +22,15 @@ function siteUrl(path) {
 }
 
 // Повідомлення покупцю після отримання доступу
-function accessGrantedMsg(courseTitle) {
+// Виправлено: додаємо uid як другий аргумент
+function accessGrantedMsg(courseTitle, uid) { 
   const watchUrl = siteUrl('/watch');
   return (
     `🎉 *Доступ до курсу «${courseTitle}» активовано!*\n\n` +
     `📺 *Як дивитись відео:*\n` +
     `1. Перейди на сайт: ${SITE_URL}/watch\n` +
     `2. Введи свій *Telegram ID* — це твій особистий пароль\n\n` +
-    `❓ *Ваш телеграм ID: \`${uid}\`*\n` +
+    `❓ *Ваш телеграм ID: \`${uid}\`*\n`
   );
 }
 
