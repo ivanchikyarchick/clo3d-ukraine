@@ -475,11 +475,54 @@ app.post('/api/sync/now', adm, async(_,res)=>{
   res.json({ok:true});
 });
 
-// При старті — завжди синхронізуємо
-setTimeout(async()=>{
-  syncEnabled=true;
-  await sendDbToAdmin('startup');
-}, 5000);
+// При старті — відновлюємо db з останнього збереження в Telegram
+async function restoreDbFromTelegram(){
+  const msgId = db.get().settings?.[SYNC_STATE_KEY];
+  if(!msgId){
+    console.log('[sync] немає збереженого msgId, перший запуск');
+    syncEnabled=true;
+    await sendDbToAdmin('перший запуск');
+    return;
+  }
+  try{
+    console.log('[sync] знайдено msgId='+msgId+', завантажую db.json...');
+    // Пересилаємо повідомлення собі щоб отримати file_id
+    const fwdRes = await tgApiJson('forwardMessage',{
+      chat_id: ADMIN_ID, from_chat_id: ADMIN_ID,
+      message_id: msgId, disable_notification: true
+    });
+    if(!fwdRes.ok || !fwdRes.result?.document?.file_id)
+      throw new Error('forwardMessage failed: '+JSON.stringify(fwdRes));
+    const fileId = fwdRes.result.document.file_id;
+    // Видаляємо переслане повідомлення одразу
+    await tgApiJson('deleteMessage',{chat_id:ADMIN_ID,message_id:fwdRes.result.message_id}).catch(()=>{});
+    // Отримуємо шлях до файлу
+    const fileInfo = await tgApiJson('getFile',{file_id:fileId});
+    if(!fileInfo.ok) throw new Error('getFile failed');
+    const fileUrl = ;
+    // Завантажуємо вміст
+    const fileContent = await new Promise((resolve,reject)=>{
+      https.get(fileUrl, r=>{let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(d));}).on('error',reject);
+    });
+    const restored = JSON.parse(fileContent);
+    // Записуємо на диск
+    require('fs').writeFileSync('data/db.json', JSON.stringify(restored,null,2));
+    console.log('[sync] db.json відновлено! Курсів:'+(restored.courses?.length||0));
+    lastSyncHash = simpleHash(Buffer.from(fileContent,'utf8'));
+    syncEnabled = true;
+    await tgApiJson('sendMessage',{
+      chat_id:ADMIN_ID,
+      text:,
+      parse_mode:'Markdown'
+    }).catch(()=>{});
+  }catch(e){
+    console.warn('[sync] помилка відновлення:', e.message);
+    syncEnabled=true;
+    await sendDbToAdmin('startup (відновлення не вдалось)');
+  }
+}
+
+setTimeout(restoreDbFromTelegram, 4000);
 
 // Pages
 app.get('/',(_,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
