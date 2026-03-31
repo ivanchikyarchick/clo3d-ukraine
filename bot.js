@@ -6,13 +6,18 @@ const db = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const ADMIN_ID  = parseInt(process.env.ADMIN_ID || '6590778330');
-const SITE_URL  = process.env.SITE_URL || 'https://clo3d-ukraine.onrender.com';
+const SITE_URL  = process.env.SITE_URL || 'https://fashionlab.com.ua';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 const getBuyerCourses = uid => (db.get().courses||[]).filter(c => c.buyers?.some(b => b.id === uid));
 const isBuyerOf = (uid, cid) => db.getCourse(cid)?.buyers?.some(b => b.id === uid);
 const delay = ms => new Promise(r => setTimeout(r, ms));
+
+function getFop() { return db.get().settings?.fop || ''; }
+
+// Зберігаємо стан очікування номеру телефону для оплати: { [uid]: { cid, courseName } }
+const waitingPhone = {};
 
 function siteUrl(p) {
   if (!SITE_URL || SITE_URL.includes('localhost')) return null;
@@ -23,7 +28,7 @@ function accessGrantedMsg(courseTitle) {
   return (
     `🎉 *Доступ до курсу «${courseTitle}» активовано!*\n\n` +
     `📺 *Як дивитись відео:*\n` +
-    `1. Перейди на сайт: ${SITE_URL}/watch\n` +
+    `1. Перейди на сайт: https://fashionlab.com.ua/watch\n` +
     `2. Введи свій *Telegram ID* — це твій особистий пароль\n\n` +
     `❓ *Як дізнатись свій Telegram ID?*\n` +
     `Напиши боту @userinfobot — він покаже твій ID\n\n` +
@@ -254,23 +259,20 @@ bot.on('callback_query', async q => {
       bot.sendMessage(uid,'⏳ Ваш запит вже надіслано. Очікуйте підтвердження.');
       return;
     }
-    const u=q.from;
-    db.set(d=>{
-      const cx=(d.courses||[]).find(x=>x.id===cid);
-      if(!cx)return;
-      if(!cx.pending)cx.pending=[];
-      cx.pending.push({id:uid,name:u.first_name,username:u.username||'',requestedAt:Date.now()});
+    // Просимо номер телефону перед оформленням заявки
+    waitingPhone[uid] = { cid, courseName: c.title };
+    const fop = getFop();
+    let payMsg = `🛒 *${c.title}*\n💳 Ціна: ${c.price || '—'}\n\n`;
+    if (fop) payMsg += `💰 *Реквізити для оплати (ФОП):*\n\`${fop}\`\n\n`;
+    payMsg += `📱 *Для підтвердження оплати надішліть ваш номер телефону:*\n\n_(натисніть кнопку нижче або введіть вручну)_`;
+    bot.sendMessage(uid, payMsg, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        keyboard: [[{ text: '📱 Надіслати номер телефону', request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      }
     });
-    db.trackBot('buy_request',uid,u.username||u.first_name,{cid});
-    bot.sendMessage(uid,'⏳ Запит надіслано! Очікуйте підтвердження оплати.');
-    const total=(db.get().courses||[]).reduce((s,c)=>s+(c.pending?.length||0),0);
-    bot.sendMessage(ADMIN_ID,
-      `🛒 *Нова заявка — ${c.title}*\n\n👤 ${u.first_name}\n📱 @${u.username||'—'}\n🆔 \`${uid}\`\n⏳ Заявок: ${total}`,
-      {parse_mode:'Markdown',reply_markup:{inline_keyboard:[[
-        {text:'✅ Видати доступ',callback_data:`grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username||''}`},
-        {text:'❌ Відхилити',   callback_data:`reject:${cid}:${uid}`},
-      ]]}}
-    );
     return;
   }
 
@@ -292,6 +294,58 @@ bot.on('callback_query', async q => {
     try{bot.sendMessage(tid,'😔 Ваш запит відхилено.');}catch{}
     return;
   }
+});
+
+// ── Обробка номеру телефону (для підтвердження оплати) ────
+bot.on('contact', async msg => {
+  const uid = msg.from.id;
+  const phone = msg.contact?.phone_number || '';
+  if (!waitingPhone[uid]) {
+    // Не очікуємо телефон — ігноруємо
+    return;
+  }
+  const { cid, courseName } = waitingPhone[uid];
+  delete waitingPhone[uid];
+  const c = db.getCourse(cid);
+  if (!c) return;
+  const u = msg.from;
+  // Зберігаємо заявку з номером телефону
+  db.set(d=>{
+    const cx=(d.courses||[]).find(x=>x.id===cid);
+    if(!cx)return;
+    if(!cx.pending)cx.pending=[];
+    if(!cx.pending.some(b=>b.id===uid))
+      cx.pending.push({id:uid,name:u.first_name,username:u.username||'',phone,requestedAt:Date.now()});
+  });
+  db.trackBot('buy_request',uid,u.username||u.first_name,{cid,phone});
+  // Видаляємо клавіатуру
+  bot.sendMessage(uid,'⏳ Заявку відправлено! Очікуйте підтвердження оплати. Ми зв\'яжемось із вами.', {
+    reply_markup: { remove_keyboard: true }
+  });
+  const total=(db.get().courses||[]).reduce((s,c)=>s+(c.pending?.length||0),0);
+  const fop = getFop();
+  let adminMsg = `🛒 *Нова заявка — ${c.title}*\n\n👤 ${u.first_name}\n📱 @${u.username||'—'}\n🆔 \`${uid}\`\n📞 ${phone}`;
+  if(fop) adminMsg += `\n\n💰 ФОП: \`${fop}\``;
+  adminMsg += `\n\n⏳ Заявок: ${total}`;
+  bot.sendMessage(ADMIN_ID, adminMsg, {
+    parse_mode:'Markdown',
+    reply_markup:{inline_keyboard:[[
+      {text:'✅ Видати доступ',callback_data:`grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username||''}`},
+      {text:'❌ Відхилити',   callback_data:`reject:${cid}:${uid}`},
+    ]]}
+  });
+});
+
+// Також обробляємо текстовий ввід телефону (якщо користувач ввів вручну)
+bot.on('message', msg => {
+  const uid = msg.from.id;
+  if (!waitingPhone[uid]) return;
+  // Обробляємо тільки якщо це схоже на номер телефону
+  const text = (msg.text||'').trim();
+  if (!/^\+?[\d\s\-()]{7,15}$/.test(text)) return;
+  // Емулюємо contact
+  msg.contact = { phone_number: text };
+  bot.emit('contact', msg);
 });
 
 // grantAccess
