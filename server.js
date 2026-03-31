@@ -12,6 +12,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
 const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
+const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 
 const app = express();
 fs.mkdirSync('/tmp/vfl_tmp', { recursive:true });
@@ -400,10 +401,10 @@ app.post('/api/import', adm, uploadImport.single('file'), (req,res)=>{
 });
 
 // ── AUTO-SYNC (db.json → Telegram) ───────────────────────────────────────────
-const SYNC_STATE_KEY = '__syncMsgId';          // зберігається у db.settings
-let   syncEnabled   = false;                   // runtime toggle
-let   syncDebounce  = null;
-let   lastSyncHash  = '';
+const SYNC_STATE_KEY = '__syncMsgId';
+let syncEnabled  = false;
+let syncDebounce = null;
+let lastSyncHash = '';
 
 function dbJsonBuffer(){
   return Buffer.from(JSON.stringify(db.get(), null, 2), 'utf8');
@@ -411,90 +412,73 @@ function dbJsonBuffer(){
 function simpleHash(buf){
   let h=5381; for(const b of buf) h=((h<<5)+h)^b; return (h>>>0).toString(36);
 }
-
-async function tgApiJson(method, body){
+function tgApiJson(method, body){
   return new Promise((resolve,reject)=>{
     const payload=JSON.stringify(body);
     const req=https.request({hostname:'api.telegram.org',path:`/bot${BOT_TOKEN}/${method}`,method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},r=>{
-      let d=''; r.on('data',c=>d+=c); r.on('end',()=>{ try{resolve(JSON.parse(d))}catch(e){reject(e)} });
+      let d=''; r.on('data',c=>d+=c); r.on('end',()=>{try{resolve(JSON.parse(d))}catch(e){reject(e)}});
     });
     req.on('error',reject); req.write(payload); req.end();
   });
 }
-
 async function deleteSyncMessage(msgId){
   if(!msgId)return;
   try{ await tgApiJson('deleteMessage',{chat_id:ADMIN_ID,message_id:msgId}); }catch{}
 }
-
 async function sendDbToAdmin(reason){
   const buf = dbJsonBuffer();
   const hash = simpleHash(buf);
-  if(hash===lastSyncHash && reason!=='startup') return; // нічого не змінилось
+  if(hash===lastSyncHash && reason!=='startup' && reason!=='manual') return;
   lastSyncHash = hash;
-
-  // видаляємо старе повідомлення якщо є
   const oldMsgId = db.get().settings?.[SYNC_STATE_KEY];
   if(oldMsgId) await deleteSyncMessage(oldMsgId);
-
-  // відправляємо новий файл
   try{
-    const FormData = require('form-data');
-    const form = new FormData();
+    const FormData=require('form-data');
+    const form=new FormData();
     form.append('chat_id', ADMIN_ID);
-    const ts = new Date().toLocaleString('uk',{timeZone:'Europe/Kyiv'});
-    form.append('caption', `🗄 *db.json* — резервна копія\n📅 ${ts}\n📝 Причина: ${reason}`);
+    const ts=new Date().toLocaleString('uk',{timeZone:'Europe/Kyiv'});
+    form.append('caption',`🗄 *db.json* — резервна копія\n📅 ${ts}\n📝 ${reason}`);
     form.append('parse_mode','Markdown');
     form.append('document', buf, {filename:'db.json', contentType:'application/json'});
-    const res = await postForm('/sendDocument', form);
-    if(res.ok){
-      const newMsgId = res.result.message_id;
-      db.set(d=>{ if(!d.settings)d.settings={}; d.settings[SYNC_STATE_KEY]=newMsgId; });
-      console.log(`[sync] db.json sent to admin, msgId=${newMsgId}, reason=${reason}`);
+    const tgRes=await postForm('/sendDocument',form);
+    if(tgRes.ok){
+      const newMsgId=tgRes.result.message_id;
+      // зберігаємо msgId напряму без виклику db.set щоб не тригерити debounce
+      const d=db.get(); if(!d.settings)d.settings={}; d.settings[SYNC_STATE_KEY]=newMsgId;
+      const fs2=require('fs');
+      try{ fs2.writeFileSync('data/db.json', JSON.stringify(d, null, 2)); }catch{}
+      console.log(`[sync] надіслано, msgId=${newMsgId}, reason=${reason}`);
     }else{
-      console.warn('[sync] Telegram error:', res.description);
+      console.warn('[sync] Telegram помилка:', tgRes.description);
     }
-  }catch(e){ console.warn('[sync] send error:', e.message); }
+  }catch(e){ console.warn('[sync] помилка відправки:', e.message); }
 }
-
-function scheduleSyncDebounced(reason='change'){
+function scheduleSyncDebounced(){
   if(!syncEnabled)return;
   clearTimeout(syncDebounce);
-  syncDebounce = setTimeout(()=>sendDbToAdmin(reason), 3000); // чекаємо 3с після останньої зміни
+  syncDebounce=setTimeout(()=>sendDbToAdmin('зміна даних'), 3000);
 }
 
 // Патчимо db.set щоб відстежувати зміни
-const _origDbSet = db.set.bind(db);
-db.set = function(fn){
-  _origDbSet(fn);
-  scheduleSyncDebounced('зміна даних');
-};
+const _origDbSet=db.set.bind(db);
+db.set=function(fn){ _origDbSet(fn); scheduleSyncDebounced(); };
 
-// API: отримати статус
 app.get('/api/sync/status', adm, (_,res)=>res.json({enabled:syncEnabled}));
-
-// API: увімк/вимк
 app.post('/api/sync/toggle', adm, async(req,res)=>{
-  syncEnabled = !!req.body.enabled;
-  console.log(`[sync] autoSync=${syncEnabled}`);
-  if(syncEnabled){
-    await sendDbToAdmin('увімкнено синхронізацію');
-  }
+  syncEnabled=!!req.body.enabled;
+  if(syncEnabled){ lastSyncHash=''; await sendDbToAdmin('увімкнено синхронізацію'); }
   res.json({ok:true,enabled:syncEnabled});
 });
-
-// API: примусова синхронізація
-app.post('/api/sync/now', adm, async(req,res)=>{
-  lastSyncHash=''; // форсуємо навіть якщо не було змін
-  await sendDbToAdmin('ручна синхронізація');
+app.post('/api/sync/now', adm, async(_,res)=>{
+  lastSyncHash='';
+  await sendDbToAdmin('manual');
   res.json({ok:true});
 });
 
-// При старті — автосинхронізація (якщо є попереднє збереження — теж оновимо)
+// При старті — завжди синхронізуємо
 setTimeout(async()=>{
-  syncEnabled = true; // при старті завжди вмикаємо
+  syncEnabled=true;
   await sendDbToAdmin('startup');
-  console.log('[sync] startup sync done');
 }, 5000);
 
 // Pages
