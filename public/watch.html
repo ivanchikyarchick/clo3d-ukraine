@@ -139,7 +139,12 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 .vb-prev:disabled,.vb-next:disabled{opacity:.35;cursor:not-allowed}
 .vb-next{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}.vb-next:hover:not(:disabled){opacity:.85}
 .vb-done{background:rgba(52,211,153,.14);color:var(--grn);border:1px solid rgba(52,211,153,.28)}.vb-done:hover{background:rgba(52,211,153,.24)}
+.vb-dl{background:rgba(96,165,250,.12);color:#60a5fa;border:1px solid rgba(96,165,250,.25);text-decoration:none}.vb-dl:hover{background:rgba(96,165,250,.22)}
+.vb-fb{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2);text-decoration:none;font-size:.74rem;padding:.45rem .9rem}.vb-fb:hover{background:rgba(251,191,36,.2)}
 .vcnt{font-size:.74rem;color:var(--muted);margin-left:auto}
+/* VIDEO-LEVEL feedback button in sidebar */
+.li-fb{display:inline-flex;align-items:center;font-size:.62rem;color:var(--muted);padding:.2rem .5rem;border-radius:6px;border:1px solid transparent;text-decoration:none;transition:.15s;flex-shrink:0}
+.li-fb:hover{border-color:rgba(251,191,36,.3);color:var(--gold)}
 
 /* cert styles removed */
 
@@ -252,10 +257,12 @@ async function openFreeCourse(c) {
   document.querySelector('.hdr-btn[onclick="showAllCerts()"]')?.remove();
   // Завантажуємо відео через free endpoint
   vids = await fetch(`/api/course/${c.id}/videos/free`).then(r=>r.json()).catch(()=>[]);
-  progress = {watched:[],lastIdx:0,completed:false};
+  // Відновлюємо прогрес з localStorage для безкоштовних курсів
+  progress = loadFreeProgress(c.id);
   updateSidebarProg();
   renderList();
-  if(vids.length) play(0);
+  const startIdx = progress.lastIdx ?? 0;
+  if(vids.length) play(Math.min(startIdx, vids.length-1));
 }
 async function login(){
   const id=document.getElementById('tid').value.trim(); if(!id)return;
@@ -326,6 +333,7 @@ function renderList(){
         <div class="lit">${v.title||'Урок '+(i+1)}</div>
         ${v.desc?`<div class="lid">${v.desc}</div>`:''}
       </div>
+      <a class="li-fb" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener" title="Зворотній зв'язок" onclick="event.stopPropagation()">💬</a>
     </div>`;
   }).join('');
 }
@@ -377,6 +385,10 @@ function play(idx){
         <button class="vbtn vb-next" onclick="play(${idx+1})" ${idx===total-1?'disabled':''}>Наступне →</button>
         <span class="vcnt">Урок ${idx+1} з ${total}</span>
       </div>
+      <div class="vnav" style="margin-top:.6rem" id="extra-nav">
+        ${v.hasMaterials?`<button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button>`:''}
+        <a class="vbtn vb-fb" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
+      </div>
     </div>`;
 
   const vid=document.getElementById('vid');
@@ -415,14 +427,59 @@ function play(idx){
       autoMarked=true;
       markDone(idx,true);
     }
+    // Save last position for free courses
+    if(isFreeMode && vid.duration && curCourse?.id){
+      const p=loadFreeProgress(curCourse.id);
+      p.lastIdx=idx;
+      saveFreeProgress(curCourse.id, p);
+    }
   });
+}
+
+// ── localStorage progress for free courses ────────────────
+const LS_FREE_PREFIX = 'vfl_free_prog_';
+function loadFreeProgress(cid){
+  try{return JSON.parse(localStorage.getItem(LS_FREE_PREFIX+cid)||'{"watched":[],"lastIdx":0,"completed":false}');}
+  catch{return {watched:[],lastIdx:0,completed:false};}
+}
+function saveFreeProgress(cid, p){
+  try{localStorage.setItem(LS_FREE_PREFIX+cid, JSON.stringify(p));}catch{}
+}
+
+// ── Download materials ────────────────────────────────────
+async function downloadMaterials(idx){
+  const cid=curCourse?.id;
+  const mats=await fetch(`/api/course/${cid}/videos/${idx}/materials`).then(r=>r.json()).catch(()=>[]);
+  if(!mats.length){showToast('📎 Матеріали не знайдено');return;}
+  // Download each file
+  for(const m of mats){
+    const a=document.createElement('a');
+    a.href=`/api/course/${cid}/videos/${idx}/materials/${m.id}/download`;
+    a.download=m.name||'material';
+    a.target='_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    await new Promise(r=>setTimeout(r,400));
+  }
 }
 
 // ── Mark Watched ──────────────────────────────────────────
 async function markDone(idx, silent=false){
   const cid=curCourse?.id;
-  const p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null);
-  if(!p) return;
+  let p;
+  if(isFreeMode){
+    // Free course — save to localStorage
+    p = loadFreeProgress(cid);
+    if(!p.watched.includes(idx)) p.watched.push(idx);
+    p.lastIdx=idx;
+    const total=vids.length;
+    if(p.watched.length>=total) p.completed=true;
+    saveFreeProgress(cid, p);
+  } else {
+    p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null);
+    if(!p) return;
+  }
   progress=p;
   updateSidebarProg();
   renderList();
