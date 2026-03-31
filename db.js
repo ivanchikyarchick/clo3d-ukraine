@@ -5,6 +5,7 @@ const DB   = path.join(__dirname, 'data', 'db.json');
 const DEF = () => ({
   courses:  [],
   progress: {},
+  settings: { fop: '' },
   stats: { botEvents:[], webEvents:[], totals:{messages:0,buyRequests:0,granted:0,videoViews:0} }
 });
 
