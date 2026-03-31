@@ -14,11 +14,11 @@ const getFop = () => db.get().settings?.fop||'';
 
 const waitingPhone = {};
 
-function accessGrantedMsg(title){
+function accessGrantedMsg(uid, title){
   return `*Доступ до курсу «${title}» активовано!*\n\n` +
     `Як дивитись:\n1. Перейди на: https://fashionlab.com.ua/watch\n` +
     `2. Введи свій *Telegram ID* — це твій пароль\n\n` +
-    `Як дізнатись ID: напиши @userinfobot`;
+    `Твій ID: \`${uid}\``;
 }
 
 bot.onText(/\/start/, msg=>{
@@ -168,7 +168,7 @@ bot.on('contact', async msg=>{
   bot.sendMessage(uid,'Заявку відправлено! Очікуйте підтвердження оплати.',{reply_markup:{remove_keyboard:true}});
   const total=(db.get().courses||[]).reduce((s,c)=>s+(c.pending?.length||0),0);
   const fop=getFop();
-  let adminMsg=`*Нова заявка — ${c.title}*\n\n${u.first_name}\n@${u.username||'—'}\nID: \`${uid}\`\nТел: ${phone}`;
+  let adminMsg=`*Нова заявка — ${c.title}*\n\n👤 ${u.first_name} @${u.username||'—'}\nID: \`${uid}\`\n📞 Тел: ${phone||'(не вказано)'}`;
   if(fop)adminMsg+=`\n\nФОП: \`${fop}\``;
   adminMsg+=`\n\nЗаявок: ${total}`;
   bot.sendMessage(ADMIN_ID,adminMsg,{parse_mode:'Markdown',reply_markup:{inline_keyboard:[[{text:'Видати доступ',callback_data:`grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username||''}`},{text:'Відхилити',callback_data:`reject:${cid}:${uid}`}]]}});
@@ -187,7 +187,7 @@ function grantAccess(uid,name,username,cid){
   db.set(d=>{const c=(d.courses||[]).find(x=>x.id===cid);if(!c)return;if(!c.buyers)c.buyers=[];if(!c.buyers.some(b=>b.id===uid))c.buyers.push({id:uid,name,username,grantedAt:Date.now()});c.pending=(c.pending||[]).filter(b=>b.id!==uid);});
   db.trackBot('granted',uid,username,{cid});
   const c=db.getCourse(cid);
-  try{bot.sendMessage(uid,accessGrantedMsg(c?.title||'курсу'),{parse_mode:'Markdown'});}catch(e){console.warn('grantAccess:',e.message);}
+  try{bot.sendMessage(uid,accessGrantedMsg(uid, c?.title||'курсу'),{parse_mode:'Markdown'});}catch(e){console.warn('grantAccess:',e.message);}
 }
 
 async function notifyNewContent(cid,customText){
