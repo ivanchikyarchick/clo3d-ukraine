@@ -399,6 +399,104 @@ app.post('/api/import', adm, uploadImport.single('file'), (req,res)=>{
   }catch(e){try{fs.unlinkSync(req.file.path);}catch{}res.status(400).json({ok:false,error:e.message});}
 });
 
+// ── AUTO-SYNC (db.json → Telegram) ───────────────────────────────────────────
+const SYNC_STATE_KEY = '__syncMsgId';          // зберігається у db.settings
+let   syncEnabled   = false;                   // runtime toggle
+let   syncDebounce  = null;
+let   lastSyncHash  = '';
+
+function dbJsonBuffer(){
+  return Buffer.from(JSON.stringify(db.get(), null, 2), 'utf8');
+}
+function simpleHash(buf){
+  let h=5381; for(const b of buf) h=((h<<5)+h)^b; return (h>>>0).toString(36);
+}
+
+async function tgApiJson(method, body){
+  return new Promise((resolve,reject)=>{
+    const payload=JSON.stringify(body);
+    const req=https.request({hostname:'api.telegram.org',path:`/bot${BOT_TOKEN}/${method}`,method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}},r=>{
+      let d=''; r.on('data',c=>d+=c); r.on('end',()=>{ try{resolve(JSON.parse(d))}catch(e){reject(e)} });
+    });
+    req.on('error',reject); req.write(payload); req.end();
+  });
+}
+
+async function deleteSyncMessage(msgId){
+  if(!msgId)return;
+  try{ await tgApiJson('deleteMessage',{chat_id:ADMIN_ID,message_id:msgId}); }catch{}
+}
+
+async function sendDbToAdmin(reason){
+  const buf = dbJsonBuffer();
+  const hash = simpleHash(buf);
+  if(hash===lastSyncHash && reason!=='startup') return; // нічого не змінилось
+  lastSyncHash = hash;
+
+  // видаляємо старе повідомлення якщо є
+  const oldMsgId = db.get().settings?.[SYNC_STATE_KEY];
+  if(oldMsgId) await deleteSyncMessage(oldMsgId);
+
+  // відправляємо новий файл
+  try{
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('chat_id', ADMIN_ID);
+    const ts = new Date().toLocaleString('uk',{timeZone:'Europe/Kyiv'});
+    form.append('caption', `🗄 *db.json* — резервна копія\n📅 ${ts}\n📝 Причина: ${reason}`);
+    form.append('parse_mode','Markdown');
+    form.append('document', buf, {filename:'db.json', contentType:'application/json'});
+    const res = await postForm('/sendDocument', form);
+    if(res.ok){
+      const newMsgId = res.result.message_id;
+      db.set(d=>{ if(!d.settings)d.settings={}; d.settings[SYNC_STATE_KEY]=newMsgId; });
+      console.log(`[sync] db.json sent to admin, msgId=${newMsgId}, reason=${reason}`);
+    }else{
+      console.warn('[sync] Telegram error:', res.description);
+    }
+  }catch(e){ console.warn('[sync] send error:', e.message); }
+}
+
+function scheduleSyncDebounced(reason='change'){
+  if(!syncEnabled)return;
+  clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(()=>sendDbToAdmin(reason), 3000); // чекаємо 3с після останньої зміни
+}
+
+// Патчимо db.set щоб відстежувати зміни
+const _origDbSet = db.set.bind(db);
+db.set = function(fn){
+  _origDbSet(fn);
+  scheduleSyncDebounced('зміна даних');
+};
+
+// API: отримати статус
+app.get('/api/sync/status', adm, (_,res)=>res.json({enabled:syncEnabled}));
+
+// API: увімк/вимк
+app.post('/api/sync/toggle', adm, async(req,res)=>{
+  syncEnabled = !!req.body.enabled;
+  console.log(`[sync] autoSync=${syncEnabled}`);
+  if(syncEnabled){
+    await sendDbToAdmin('увімкнено синхронізацію');
+  }
+  res.json({ok:true,enabled:syncEnabled});
+});
+
+// API: примусова синхронізація
+app.post('/api/sync/now', adm, async(req,res)=>{
+  lastSyncHash=''; // форсуємо навіть якщо не було змін
+  await sendDbToAdmin('ручна синхронізація');
+  res.json({ok:true});
+});
+
+// При старті — автосинхронізація (якщо є попереднє збереження — теж оновимо)
+setTimeout(async()=>{
+  syncEnabled = true; // при старті завжди вмикаємо
+  await sendDbToAdmin('startup');
+  console.log('[sync] startup sync done');
+}, 5000);
+
 // Pages
 app.get('/',(_,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 app.get('/course/:slug',(_,res)=>res.sendFile(path.join(__dirname,'public','course.html')));
