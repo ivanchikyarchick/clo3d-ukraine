@@ -16,9 +16,11 @@ const waitingPhone = {};
 
 function accessGrantedMsg(uid, title){
   return `*Доступ до курсу «${title}» активовано!*\n\n` +
-    `Як дивитись:\n1. Перейди на: https://fashionlab.com.ua/watch\n` +
-    `2. Введи свій *Telegram ID* — це твій пароль\n\n` +
-    `Твій ID: \`${uid}\``;
+    `Як дивитись:\n` +
+    `1. Перейди на: https://fashionlab.com.ua/watch\n` +
+    `2. Введи свій *Telegram ID* як пароль\n\n` +
+    `Твiй Telegram ID: \`${uid}\`\n\n` +
+    `_Скопiюй цей номер i встав у поле "Telegram ID" на сайтi._`;
 }
 
 bot.onText(/\/start/, msg=>{
@@ -27,7 +29,7 @@ bot.onText(/\/start/, msg=>{
   const mine=getBuyerCourses(uid),kb=[];
   if(mine.length){kb.push([{text:'Мої курси',callback_data:'my_courses'}],[{text:'Мій прогрес',callback_data:'my_progress'}]);}
   kb.push([{text:'Придбати курс',callback_data:'catalogue'}]);
-  bot.sendMessage(uid,`*Vitalia 3D Fashion Lab*\n\nCLO 3D українською\n\nОберіть дію:`,{parse_mode:'Markdown',reply_markup:{inline_keyboard:kb}});
+  bot.sendMessage(uid,`*Vitaliia 3D Fashion Lab*\n\nCLO 3D українською\n\nОберіть дію:`,{parse_mode:'Markdown',reply_markup:{inline_keyboard:kb}});
 });
 
 bot.onText(/\/help/, msg=>{
@@ -213,7 +215,7 @@ async function doBroadcast(text,cid){
   const seen=new Set(),all=[];
   for(const c of (db.get().courses||[])){if(cid&&c.id!==cid)continue;for(const b of (c.buyers||[])){if(!seen.has(b.id)){seen.add(b.id);all.push(b);}}}
   let ok=0,fail=0;
-  for(const b of all){try{await bot.sendMessage(b.id,`*Vitalia 3D Fashion Lab:*\n\n${text}`,{parse_mode:'Markdown'});ok++;await delay(60);}catch{fail++;}}
+  for(const b of all){try{await bot.sendMessage(b.id,`*Vitaliia 3D Fashion Lab:*\n\n${text}`,{parse_mode:'Markdown'});ok++;await delay(60);}catch{fail++;}}
   try{bot.sendMessage(ADMIN_ID,`Розсилка: ${ok} ок / ${fail} помилок`);}catch{}
   return{sent:ok,failed:fail};
 }
