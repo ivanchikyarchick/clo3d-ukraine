@@ -262,23 +262,21 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="tab" id="tab-settings">
       <div class="sh"><div><h2>Налаштування</h2><p>ФОП та параметри оплати</p></div></div>
 
-      <!-- AUTO-SYNC CARD -->
       <div class="card-form" style="max-width:500px;margin-bottom:1.25rem">
         <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">☁️ Авто-синхронізація db</h3>
         <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">
-          Коли увімкнено — бот надсилає <code style="background:var(--s3);padding:.1rem .35rem;border-radius:4px">db.json</code> вам у Telegram після кожної зміни.
-          Старий файл видаляється автоматично. При запуску сервера — синхронізація відбувається завжди.
+          Надсилає <code style="background:var(--s3);padding:.1rem .35rem;border-radius:4px">db.json</code> у Telegram після кожної зміни. Старий файл видаляється. При запуску сервера — завжди синхронізується автоматично.
         </p>
-        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
-            <div id="sync-toggle-wrap" onclick="toggleSync()" style="width:46px;height:26px;border-radius:13px;background:var(--s3);border:1px solid var(--brd);position:relative;cursor:pointer;transition:.25s;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
+          <label style="display:flex;align-items:center;gap:.65rem;cursor:pointer;user-select:none" onclick="toggleSync()">
+            <div id="sync-track" style="width:46px;height:26px;border-radius:13px;background:var(--s3);border:1px solid var(--brd);position:relative;transition:.25s;flex-shrink:0">
               <div id="sync-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.25s"></div>
             </div>
             <span id="sync-label" style="font-size:.84rem;color:var(--muted)">Вимкнено</span>
           </label>
-          <button class="btn btn-gh" onclick="syncNow()" id="sync-now-btn" style="font-size:.78rem;padding:.4rem .9rem">📤 Синхронізувати зараз</button>
-          <div id="sync-res" style="font-size:.76rem;color:var(--muted)"></div>
+          <button class="btn btn-gh" id="sync-now-btn" onclick="syncNow()" style="font-size:.78rem;padding:.4rem .9rem">📤 Надіслати зараз</button>
         </div>
+        <div id="sync-res" style="font-size:.76rem;min-height:1rem"></div>
       </div>
 
       <div class="card-form" style="max-width:500px">
@@ -291,7 +289,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
           <button class="btn btn-p" onclick="saveSettings()" style="padding:.65rem 1.25rem">💾 Зберегти</button>
           <div id="s-res" style="font-size:.78rem"></div>
         </div>
-      </div><!-- /fop card -->
+      </div>
     </div>
 
     <!-- EXPORT -->
@@ -870,43 +868,40 @@ function toast(msg){const el=document.getElementById('toast');el.textContent=msg
 async function loadSyncStatus(){
   try{
     const r=await fetch('/api/sync/status').then(x=>x.json());
-    setSyncUI(r.enabled);
+    applySyncUI(r.enabled);
   }catch{}
 }
-function setSyncUI(enabled){
-  const wrap=document.getElementById('sync-toggle-wrap');
-  const knob=document.getElementById('sync-knob');
-  const label=document.getElementById('sync-label');
-  if(enabled){
-    wrap.style.background='var(--acc)';wrap.style.borderColor='var(--acc)';
-    knob.style.left='25px';knob.style.background='#fff';
-    label.style.color='var(--grn)';label.textContent='Увімкнено';
-  }else{
-    wrap.style.background='var(--s3)';wrap.style.borderColor='var(--brd)';
-    knob.style.left='3px';knob.style.background='var(--muted)';
-    label.style.color='var(--muted)';label.textContent='Вимкнено';
-  }
+function applySyncUI(on){
+  document.getElementById('sync-track').style.background=on?'var(--acc)':'var(--s3)';
+  document.getElementById('sync-track').style.borderColor=on?'var(--acc)':'var(--brd)';
+  document.getElementById('sync-knob').style.left=on?'25px':'3px';
+  document.getElementById('sync-knob').style.background=on?'#fff':'var(--muted)';
+  document.getElementById('sync-label').style.color=on?'var(--grn)':'var(--muted)';
+  document.getElementById('sync-label').textContent=on?'Увімкнено':'Вимкнено';
 }
 async function toggleSync(){
   const isOn=document.getElementById('sync-label').textContent==='Увімкнено';
   const r=await fetch('/api/sync/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!isOn})}).then(x=>x.json());
-  setSyncUI(r.enabled);
+  applySyncUI(r.enabled);
   const el=document.getElementById('sync-res');
   el.style.color=r.enabled?'var(--grn)':'var(--muted)';
-  el.textContent=r.enabled?'✅ Синхронізовано':'⏸ Зупинено';
-  setTimeout(()=>el.textContent='',3000);
+  el.textContent=r.enabled?'✅ Синхронізовано і увімкнено':'⏸ Синхронізацію вимкнено';
+  setTimeout(()=>el.textContent='',4000);
 }
 async function syncNow(){
   const btn=document.getElementById('sync-now-btn');
-  btn.disabled=true;btn.textContent='⏳';
-  const el=document.getElementById('sync-res');
+  btn.disabled=true; btn.textContent='⏳';
   try{
     await fetch('/api/sync/now',{method:'POST'});
-    el.style.color='var(--grn)';el.textContent='✅ Надіслано в Telegram';
-    toast('📤 db.json надіслано в Telegram!');
-  }catch(e){el.style.color='var(--red)';el.textContent='❌ Помилка';}
-  btn.disabled=false;btn.textContent='📤 Синхронізувати зараз';
-  setTimeout(()=>el.textContent='',4000);
+    const el=document.getElementById('sync-res');
+    el.style.color='var(--grn)'; el.textContent='✅ db.json надіслано в Telegram';
+    toast('📤 db.json надіслано!');
+    setTimeout(()=>el.textContent='',4000);
+  }catch(e){
+    document.getElementById('sync-res').style.color='var(--red)';
+    document.getElementById('sync-res').textContent='❌ Помилка';
+  }
+  btn.disabled=false; btn.textContent='📤 Надіслати зараз';
 }
 
 load(); loadSettings(); loadSyncStatus(); setInterval(load,30000);
