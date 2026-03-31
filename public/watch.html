@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Vitalia 3D Fashion Lab — Мої курси</title>
+<title>Vitaliia 3D Fashion Lab — Мої курси</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;--acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--red:#f87171;--txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18)}
@@ -140,11 +140,10 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 .vb-next{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}.vb-next:hover:not(:disabled){opacity:.85}
 .vb-done{background:rgba(52,211,153,.14);color:var(--grn);border:1px solid rgba(52,211,153,.28)}.vb-done:hover{background:rgba(52,211,153,.24)}
 .vb-dl{background:rgba(96,165,250,.12);color:#60a5fa;border:1px solid rgba(96,165,250,.25);text-decoration:none}.vb-dl:hover{background:rgba(96,165,250,.22)}
-.vb-fb{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2);text-decoration:none;font-size:.74rem;padding:.45rem .9rem}.vb-fb:hover{background:rgba(251,191,36,.2)}
 .vcnt{font-size:.74rem;color:var(--muted);margin-left:auto}
-/* VIDEO-LEVEL feedback button in sidebar */
-.li-fb{display:inline-flex;align-items:center;font-size:.62rem;color:var(--muted);padding:.2rem .5rem;border-radius:6px;border:1px solid transparent;text-decoration:none;transition:.15s;flex-shrink:0}
-.li-fb:hover{border-color:rgba(251,191,36,.3);color:var(--gold)}
+/* Floating feedback button */
+.fb-float{position:fixed;bottom:1.5rem;left:1.5rem;z-index:1000;display:inline-flex;align-items:center;gap:.45rem;padding:.55rem 1rem;border-radius:100px;background:rgba(17,8,8,.85);border:1px solid rgba(251,191,36,.25);color:var(--gold);font-size:.75rem;font-family:'Syne',sans-serif;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:.2s;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.fb-float:hover{background:rgba(251,191,36,.15);border-color:rgba(251,191,36,.5)}
 
 /* cert styles removed */
 
@@ -164,8 +163,8 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 
 <div id="gate">
   <div class="gbox">
-    <div class="gt">Vitalia 3D Fashion Lab</div>
-    <div class="gb">Навчальна платформа</div>
+    <div class="gt">Vitaliia 3D Fashion Lab</div>
+    <div class="gb">Навчальна пл��тформа</div>
     <p class="gs">Введіть ваш <strong>Telegram ID</strong> для доступу до куплених курсів</p>
     <input type="number" id="tid" placeholder="Ваш Telegram ID" autocomplete="off">
     <button class="gbtn" onclick="login()">Увійти →</button>
@@ -180,7 +179,7 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 <div id="app">
   <header>
     <div class="hdr-brand">
-      <div class="hdr-logo">Vitalia 3D Fashion Lab</div>
+      <div class="hdr-logo">Vitaliia 3D Fashion Lab</div>
       <div class="hdr-sub">Навчальна платформа</div>
     </div>
     <div class="hdr-r">
@@ -206,6 +205,7 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
   </div>
 </div>
 
+<a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
 <div id="toast"></div>
 
 <script>
@@ -333,7 +333,6 @@ function renderList(){
         <div class="lit">${v.title||'Урок '+(i+1)}</div>
         ${v.desc?`<div class="lid">${v.desc}</div>`:''}
       </div>
-      <a class="li-fb" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener" title="Зворотній зв'язок" onclick="event.stopPropagation()">💬</a>
     </div>`;
   }).join('');
 }
@@ -385,10 +384,7 @@ function play(idx){
         <button class="vbtn vb-next" onclick="play(${idx+1})" ${idx===total-1?'disabled':''}>Наступне →</button>
         <span class="vcnt">Урок ${idx+1} з ${total}</span>
       </div>
-      <div class="vnav" style="margin-top:.6rem" id="extra-nav">
-        ${v.hasMaterials?`<button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button>`:''}
-        <a class="vbtn vb-fb" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
-      </div>
+      ${v.hasMaterials?`<div class="vnav" style="margin-top:.6rem"><button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button></div>`:''}
     </div>`;
 
   const vid=document.getElementById('vid');
