@@ -12,15 +12,34 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
 const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const ADMIN_TG_ID    = parseInt(process.env.ADMIN_ID || '6590778330');
-const SITE_URL       = process.env.SITE_URL || `https://clo3d-ukraine.onrender.com`;
+const SITE_URL       = process.env.SITE_URL || `https://fashionlab.com.ua`;
 
 const app = express();
 // On Render tmp dirs may not persist — only use for processing, never for storage
 fs.mkdirSync('/tmp/vfl_tmp',   { recursive:true });
 fs.mkdirSync('/tmp/vfl_certs', { recursive:true });
 
-const uploadImport = multer({ dest:'/tmp/vfl_tmp/' });
-const uploadVideo  = multer({ dest:'/tmp/vfl_tmp/', limits:{fileSize:2*1024*1024*1024} });
+const uploadImport   = multer({ dest:'/tmp/vfl_tmp/' });
+const uploadVideo    = multer({ dest:'/tmp/vfl_tmp/', limits:{fileSize:2*1024*1024*1024} });
+const uploadMaterial = multer({ dest:'/tmp/vfl_tmp/', limits:{fileSize:200*1024*1024} });
+
+// ── ADMIN SETTINGS (FOP, etc.) ────────────────────────────
+// Get settings
+app.get('/api/settings', adm, (req,res)=>{
+  const d = db.get();
+  res.json({ fop: d.settings?.fop || '' });
+});
+// Save settings
+app.post('/api/settings', adm, (req,res)=>{
+  const { fop } = req.body;
+  db.set(d=>{ if(!d.settings) d.settings={}; if(fop!==undefined) d.settings.fop=fop; });
+  res.json({ok:true});
+});
+// Public settings (FOP for bot payment message)
+app.get('/api/settings/public',(req,res)=>{
+  const d = db.get();
+  res.json({ fop: d.settings?.fop || '' });
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended:true }));
@@ -140,7 +159,14 @@ app.get('/api/course/:slug/public',(req,res)=>{
 app.get('/api/course/:cid/videos/public',(req,res)=>{
   const c=(db.get().courses||[]).find(x=>x.id===req.params.cid);
   if(!c){res.status(404).json({ok:false});return;}
-  res.json((c.videos||[]).map((v,i)=>({i,title:v.title,desc:v.desc})));
+  res.json((c.videos||[]).map((v,i)=>({i,title:v.title,desc:v.desc,hasMaterials:!!(v.materials?.length)})));
+});
+
+// ── FREE COURSE: список відео без авторизації ─────────────
+app.get('/api/course/:cid/videos/free',(req,res)=>{
+  const c=(db.get().courses||[]).find(x=>x.id===req.params.cid&&x.freeAccess);
+  if(!c){res.status(403).json({ok:false});return;}
+  res.json((c.videos||[]).map((v,i)=>({i,title:v.title,desc:v.desc,hasMaterials:!!(v.materials?.length)})));
 });
 
 // ── ADMIN PREVIEW — вхід без TG ID ───────────────────────
@@ -325,6 +351,89 @@ app.post('/api/courses/:cid/videos/reorder', adm, (req,res)=>{
   const {from,to}=req.body;
   db.set(d=>{ const c=d.courses.find(x=>x.id===req.params.cid); if(c){const[item]=c.videos.splice(from,1);c.videos.splice(to,0,item);} });
   res.json({ok:true});
+});
+
+// ── ADMIN: VIDEO MATERIAL FILES ───────────────────────────
+// Upload material file for a specific video
+app.post('/api/courses/:cid/videos/:idx/materials', uploadMaterial.single('file'), async(req,res)=>{
+  if (!req.session.isAdmin) {
+    const hdr = req.headers['x-admin-password'];
+    if (!hdr || hdr !== ADMIN_PASSWORD) {
+      if(req.file) try{fs.unlinkSync(req.file.path);}catch{}
+      res.status(401).json({ok:false,error:'Unauthorized'}); return;
+    }
+    req.session.isAdmin = true;
+  }
+  const cid = req.params.cid, idx = parseInt(req.params.idx);
+  if(!req.file){ res.status(400).json({ok:false,error:'Немає файлу'}); return; }
+  try{
+    const FormData=require('form-data');
+    const form=new FormData();
+    const adminTgId = parseInt(process.env.ADMIN_ID || '6590778330');
+    form.append('chat_id', adminTgId);
+    const origName = req.file.originalname || 'material';
+    form.append('caption', `📎 Матеріали до уроку: ${origName}`);
+    form.append('document', fs.createReadStream(req.file.path), {filename: origName, contentType: req.file.mimetype||'application/octet-stream'});
+    const tgRes = await postForm('/sendDocument', form);
+    fs.unlinkSync(req.file.path);
+    if(!tgRes.ok){ res.status(500).json({ok:false,error:tgRes.description||'Telegram error'}); return; }
+    const fileId = tgRes.result.document.file_id;
+    const fileName = origName;
+    db.set(d=>{
+      const c=d.courses.find(x=>x.id===cid);
+      const v=c?.videos?.[idx];
+      if(v){ if(!v.materials) v.materials=[]; v.materials.push({id:db.newId(),name:fileName,telegramFileId:fileId,size:tgRes.result.document.file_size||req.file.size||0,addedAt:Date.now()}); }
+    });
+    res.json({ok:true});
+  } catch(e){ try{fs.unlinkSync(req.file.path);}catch{} res.status(500).json({ok:false,error:e.message}); }
+});
+
+// Delete material file from a video
+app.delete('/api/courses/:cid/videos/:idx/materials/:mid', adm, (req,res)=>{
+  db.set(d=>{
+    const c=d.courses.find(x=>x.id===req.params.cid);
+    const v=c?.videos?.[parseInt(req.params.idx)];
+    if(v) v.materials=(v.materials||[]).filter(m=>m.id!==req.params.mid);
+  });
+  res.json({ok:true});
+});
+
+// Public: get materials list for a video (auth check for paid, free for freeAccess)
+app.get('/api/course/:cid/videos/:idx/materials',(req,res)=>{
+  const cid=req.params.cid, idx=parseInt(req.params.idx);
+  const c=(db.get().courses||[]).find(x=>x.id===cid);
+  if(!c){ res.status(404).json({ok:false}); return; }
+  // Allow: admin, admin preview, or buyer of this course, or free course
+  const uid=req.session.buyerId;
+  const isAdmin=req.session.isAdmin||req.session.isAdminPreview;
+  const isBuyer=c.buyers?.some(b=>b.id===uid);
+  if(!isAdmin && !isBuyer && !c.freeAccess){ res.status(403).json({ok:false}); return; }
+  const v=c.videos?.[idx];
+  res.json((v?.materials||[]).map(m=>({id:m.id,name:m.name,size:m.size})));
+});
+
+// Download material file
+app.get('/api/course/:cid/videos/:idx/materials/:mid/download',(req,res)=>{
+  const cid=req.params.cid, idx=parseInt(req.params.idx), mid=req.params.mid;
+  const c=(db.get().courses||[]).find(x=>x.id===cid);
+  if(!c){ res.status(404).send('Не знайдено'); return; }
+  const uid=req.session.buyerId;
+  const isAdmin=req.session.isAdmin||req.session.isAdminPreview;
+  const isBuyer=c.buyers?.some(b=>b.id===uid);
+  if(!isAdmin && !isBuyer && !c.freeAccess){ res.status(403).send('Доступ заборонено'); return; }
+  const v=c.videos?.[idx];
+  const mat=(v?.materials||[]).find(m=>m.id===mid);
+  if(!mat){ res.status(404).send('Файл не знайдено'); return; }
+  // Proxy download from Telegram
+  fetchJson(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${mat.telegramFileId}`)
+    .then(info=>{
+      if(!info.ok){ res.status(500).send('Telegram error'); return; }
+      const url=`https://api.telegram.org/file/bot${BOT_TOKEN}/${info.result.file_path}`;
+      res.setHeader('Content-Disposition',`attachment; filename="${encodeURIComponent(mat.name)}"`);
+      res.setHeader('Content-Type','application/octet-stream');
+      proxyStream(url,res);
+    })
+    .catch(e=>res.status(500).send(e.message));
 });
 
 // ── PROGRESS API ─────────────────────────────────────────
