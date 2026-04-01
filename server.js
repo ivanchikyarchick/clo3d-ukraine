@@ -346,11 +346,15 @@ function fetchJson(url) {
 function proxyStream(url, res, h = {}) {
   const mod = url.startsWith('https') ? https : http;
   const req = mod.get(url, { headers: h }, up => {
+    if (!res.headersSent) {
+      res.writeHead(up.statusCode || 200, up.headers);
+    }
     up.pipe(res);
-    up.on('error', () => { if (!res.headersSent) res.end(); });
+    up.on('error', () => { if (!res.writableEnded) res.end(); });
   });
-  req.on('error', () => { if (!res.headersSent) res.status(502).end(); });
-  req.setTimeout(60000, () => { req.destroy(); });
+  req.on('error', () => { if (!res.headersSent) res.status(502).end(); else if (!res.writableEnded) res.end(); });
+  req.setTimeout(60000, () => { req.destroy(); if (!res.headersSent) res.status(504).end(); else if (!res.writableEnded) res.end(); });
+  res.on('close', () => { req.destroy(); });
 }
 
 // Admin courses CRUD
@@ -391,9 +395,18 @@ function checkAdm(req, res) {
 
 function postForm(ep, form) {
   return new Promise((res, rej) => {
+    let settled = false;
+    const done = (err, val) => { if (settled) return; settled = true; err ? rej(err) : res(val); };
     const h = form.getHeaders();
-    const r = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}${ep}`, method: 'POST', headers: h }, r => { let d = ''; r.on('data', c => d += c); r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } }); });
-    r.on('error', rej); form.pipe(r);
+    const r = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}${ep}`, method: 'POST', headers: h }, r => {
+      let d = '';
+      r.on('data', c => d += c);
+      r.on('end', () => { try { done(null, JSON.parse(d)); } catch (e) { done(e); } });
+    });
+    r.on('error', (e) => done(e));
+    r.setTimeout(120000, () => { r.destroy(); done(new Error('Telegram timeout')); });
+    form.on('error', (e) => { r.destroy(); done(e); });
+    form.pipe(r);
   });
 }
 
