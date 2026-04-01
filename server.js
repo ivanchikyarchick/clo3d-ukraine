@@ -243,7 +243,7 @@ async function getTgFileUrl(fileId) {
   const cached = _tgFileCache.get(fileId);
   if (cached && Date.now() - cached.ts < TG_FILE_CACHE_TTL) return cached;
   const info = await fetchJson(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-  if (!info.ok) throw new Error('Telegram getFile error');
+  if (!info.ok) { console.error('[getFile] fail:', info.description || 'unknown'); throw new Error('Telegram getFile: ' + (info.description || 'error')); }
   const result = {
     url: `https://api.telegram.org/file/bot${BOT_TOKEN}/${info.result.file_path}`,
     size: info.result.file_size || 0,
@@ -336,10 +336,12 @@ async function streamTg(fileId, req, res) {
 
 function fetchJson(url) {
   return new Promise((res, rej) => {
-    https.get(url, r => {
+    const req = https.get(url, r => {
       let d = ''; r.on('data', c => d += c);
       r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } });
-    }).on('error', rej);
+    });
+    req.on('error', rej);
+    req.setTimeout(15000, () => { req.destroy(); rej(new Error('fetchJson timeout')); });
   });
 }
 
