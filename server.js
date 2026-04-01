@@ -495,16 +495,37 @@ app.post('/api/courses/:cid/videos/reorder', adm, (req, res) => {
 app.post('/api/courses/:cid/videos/:idx/materials', uploadMaterial.single('file'), async (req, res) => {
   if (!checkAdm(req, res)) return;
   if (!req.file) { res.status(400).json({ ok: false, error: 'Немає файлу' }); return; }
+  const size = req.file.size || 0;
+  const TG_FILE_MAX = 20 * 1024 * 1024; // getFile працює лише до 20 МБ
+
   try {
-    const FormData = require('form-data'), form = new FormData();
-    form.append('chat_id', ADMIN_ID);
-    form.append('caption', `Матеріали: ${req.file.originalname || 'material'}`);
-    form.append('document', fs.createReadStream(req.file.path), { filename: req.file.originalname || 'material', contentType: req.file.mimetype || 'application/octet-stream' });
-    const tgRes = await postForm('/sendDocument', form);
-    fs.unlinkSync(req.file.path);
-    if (!tgRes.ok) { res.status(500).json({ ok: false, error: tgRes.description || 'Telegram error' }); return; }
+    let matEntry;
+
+    if (size <= TG_FILE_MAX) {
+      // ≤20 МБ → Telegram
+      const FormData = require('form-data'), form = new FormData();
+      form.append('chat_id', ADMIN_ID);
+      form.append('caption', `Матеріали: ${req.file.originalname || 'material'}`);
+      form.append('document', fs.createReadStream(req.file.path), { filename: req.file.originalname || 'material', contentType: req.file.mimetype || 'application/octet-stream' });
+      const tgRes = await postForm('/sendDocument', form);
+      try { fs.unlinkSync(req.file.path); } catch { }
+      if (!tgRes.ok) { res.status(500).json({ ok: false, error: tgRes.description || 'Telegram error' }); return; }
+      matEntry = { id: db.newId(), name: req.file.originalname, telegramFileId: tgRes.result.document.file_id, size: tgRes.result.document.file_size || size, addedAt: Date.now() };
+    } else {
+      // >20 МБ → R2
+      if (!r2.configured) {
+        try { fs.unlinkSync(req.file.path); } catch { }
+        res.status(400).json({ ok: false, error: 'Файл >20 МБ потребує R2 (не налаштований)' });
+        return;
+      }
+      const r2key = r2.makeKey(req.params.cid, req.file.originalname);
+      await r2.uploadFile(r2key, req.file.path, req.file.mimetype || 'application/octet-stream', size);
+      try { fs.unlinkSync(req.file.path); } catch { }
+      matEntry = { id: db.newId(), name: req.file.originalname, r2Key: r2key, size, addedAt: Date.now() };
+    }
+
     const cid = req.params.cid, idx = parseInt(req.params.idx);
-    db.set(d => { const c = d.courses.find(x => x.id === cid); const v = c?.videos?.[idx]; if (v) { if (!v.materials) v.materials = []; v.materials.push({ id: db.newId(), name: req.file.originalname, telegramFileId: tgRes.result.document.file_id, size: tgRes.result.document.file_size || req.file.size || 0, addedAt: Date.now() }); } });
+    db.set(d => { const c = d.courses.find(x => x.id === cid); const v = c?.videos?.[idx]; if (v) { if (!v.materials) v.materials = []; v.materials.push(matEntry); } });
     res.json({ ok: true });
   } catch (e) { try { fs.unlinkSync(req.file.path); } catch { } res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -522,22 +543,36 @@ app.get('/api/course/:cid/videos/:idx/materials', (req, res) => {
   res.json((c.videos?.[parseInt(req.params.idx)]?.materials || []).map(m => ({ id: m.id, name: m.name, size: m.size })));
 });
 
-app.get('/api/course/:cid/videos/:idx/materials/:mid/download', (req, res) => {
+app.get('/api/course/:cid/videos/:idx/materials/:mid/download', async (req, res) => {
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).end(); return; }
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
   if (!isAdm && !c.buyers?.some(b => b.id === uid) && !c.freeAccess) { res.status(403).end(); return; }
   const mat = (c.videos?.[parseInt(req.params.idx)]?.materials || []).find(m => m.id === req.params.mid);
   if (!mat) { res.status(404).end(); return; }
-  console.log(`[mat-dl] start: ${mat.name} (${mat.telegramFileId})`);
+
+  // R2 сховище
+  if (mat.r2Key) {
+    try {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(mat.name)}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      await r2.streamFile(mat.r2Key, mat.size || 0, req, res);
+    } catch (e) {
+      console.error('[mat-dl] R2 error:', e.message);
+      if (!res.headersSent) res.status(500).end(e.message);
+    }
+    return;
+  }
+
+  // Telegram
+  console.log(`[mat-dl] TG: ${mat.name}`);
   getTgFileUrl(mat.telegramFileId)
     .then(file => {
-      console.log(`[mat-dl] proxy: ${mat.name} size=${file.size}`);
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(mat.name)}"`);
       res.setHeader('Content-Type', 'application/octet-stream');
       proxyStream(file.url, res);
     }).catch(e => {
-      console.error(`[mat-dl] error: ${e.message}`);
+      console.error('[mat-dl] TG error:', e.message);
       if (!res.headersSent) res.status(500).end(e.message);
     });
 });
