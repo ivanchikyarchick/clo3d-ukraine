@@ -23,19 +23,26 @@ const uploadMaterial = multer({ dest:'/tmp/vfl_tmp/', limits:{fileSize:200*1024*
 
 app.use(express.json());
 app.use(express.urlencoded({ extended:true }));
-app.use(express.static(path.join(__dirname,'public')));
-const FileStore = require('session-file-store')(session);
+app.use(express.static(path.join(__dirname,'public'), {
+  // ═══ ОПТИМІЗАЦІЯ: кешування статики ═══
+  maxAge: '1d',          // кешувати статику на 1 день
+  etag: true,
+  lastModified: true
+}));
 
+// ═══════════════════════════════════════════════════════════
+// ОПТИМІЗАЦІЯ 1: MemoryStore замість FileStore
+// FileStore робив read/write файлів на КОЖЕН запит
+// MemoryStore тримає сесії в RAM (ідеально для 512MB з малою кількістю юзерів)
+// ═══════════════════════════════════════════════════════════
 app.use(session({ 
-  store: new FileStore({ 
-    path: './data/sessions', // Зберігаємо сесії у файлах в папці data 
-    retries: 0 
-  }),
+  // Без store = MemoryStore за замовчуванням (в RAM, без I/O)
   secret: process.env.SESSION_SECRET || 'vfl_secret_2025', 
   resave: false, 
   saveUninitialized: false, 
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } 
 }));
+
 app.use((req,res,next)=>{
   res.setHeader('X-Frame-Options','SAMEORIGIN');
   res.setHeader('X-Content-Type-Options','nosniff');
@@ -47,9 +54,18 @@ app.use((req,res,next)=>{
   next();
 });
 
+// ═══════════════════════════════════════════════════════════
+// ОПТИМІЗАЦІЯ 2: trackWeb тільки для не-статичних шляхів
+// + сэмплінг (1 з 5 запитів) щоб не забивати пам'ять
+// ═══════════════════════════════════════════════════════════
+let _webTrackCounter = 0;
 app.use((req,res,next)=>{
-  if(!req.path.startsWith('/api/')&&req.method==='GET')
-    db.trackWeb('visit',req.ip,req.path,{ua:(req.headers['user-agent']||'').slice(0,80)});
+  if(!req.path.startsWith('/api/')&&req.method==='GET'){
+    _webTrackCounter++;
+    if(_webTrackCounter % 5 === 0) { // записуємо кожен 5-й візит
+      db.trackWeb('visit',req.ip,req.path,{ua:(req.headers['user-agent']||'').slice(0,80)});
+    }
+  }
   next();
 });
 
@@ -60,11 +76,34 @@ const adm = (req,res,next)=>{
   res.status(401).json({ok:false,error:'Unauthorized'});
 };
 
+// ═══════════════════════════════════════════════════════════
+// ОПТИМІЗАЦІЯ 3: Простий кеш для публічних ендпоінтів
+// Замість парсити JSON з диску — віддаємо кешовану відповідь
+// ═══════════════════════════════════════════════════════════
+const _responseCache = new Map();
+const CACHE_TTL = 15000; // 15 секунд
+
+function cachedResponse(key, builder) {
+  const cached = _responseCache.get(key);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  const data = builder();
+  _responseCache.set(key, { data, ts: Date.now() });
+  // Чистимо старий кеш
+  if (_responseCache.size > 50) {
+    const now = Date.now();
+    for (const [k, v] of _responseCache) {
+      if (now - v.ts > CACHE_TTL * 2) _responseCache.delete(k);
+    }
+  }
+  return data;
+}
+
 // Settings
 app.get('/api/settings', adm, (_,res)=>res.json({fop:db.get().settings?.fop||''}));
 app.post('/api/settings', adm, (req,res)=>{
   const{fop}=req.body;
   db.set(d=>{if(!d.settings)d.settings={};if(fop!==undefined)d.settings.fop=fop;});
+  _responseCache.clear(); // інвалідуємо кеш
   res.json({ok:true});
 });
 app.get('/api/settings/public',(_,res)=>res.json({fop:db.get().settings?.fop||''}));
@@ -97,12 +136,25 @@ app.get('/api/dashboard', adm, (req,res)=>{
   });
 });
 
-// Public courses
-app.get('/api/courses/public',(req,res)=>res.json((db.get().courses||[]).filter(c=>c.published).map(c=>({id:c.id,slug:c.slug,title:c.title,description:c.description,price:c.price,badge:c.badge,color:c.color||'#5b8dee',videoCount:c.videos?.length||0,freeAccess:!!c.freeAccess}))));
+// ═══ Public courses (CACHED) ═══
+app.get('/api/courses/public',(req,res)=>{
+  const data = cachedResponse('courses_public', () =>
+    (db.get().courses||[]).filter(c=>c.published).map(c=>({
+      id:c.id,slug:c.slug,title:c.title,description:c.description,
+      price:c.price,badge:c.badge,color:c.color||'#5b8dee',
+      videoCount:c.videos?.length||0,freeAccess:!!c.freeAccess
+    }))
+  );
+  res.json(data);
+});
 app.get('/api/course/:slug/public',(req,res)=>{
-  const c=(db.get().courses||[]).find(x=>x.slug===req.params.slug&&x.published);
-  if(!c){res.status(404).json({ok:false});return;}
-  res.json({id:c.id,slug:c.slug,title:c.title,description:c.description,price:c.price,badge:c.badge,color:c.color,videoCount:c.videos?.length||0,includes:c.includes||[],features:c.features||[],freeAccess:!!c.freeAccess});
+  const data = cachedResponse('course_'+req.params.slug, () => {
+    const c=(db.get().courses||[]).find(x=>x.slug===req.params.slug&&x.published);
+    if(!c) return null;
+    return {id:c.id,slug:c.slug,title:c.title,description:c.description,price:c.price,badge:c.badge,color:c.color,videoCount:c.videos?.length||0,includes:c.includes||[],features:c.features||[],freeAccess:!!c.freeAccess};
+  });
+  if(!data){res.status(404).json({ok:false});return;}
+  res.json(data);
 });
 
 // Video lists
@@ -149,6 +201,38 @@ app.get('/api/buyer/me',(req,res)=>{
   res.json({ok:!!myCourses.length,name:req.session.buyerName,courses:myCourses.map(c=>({id:c.id,slug:c.slug,title:c.title,color:c.color}))});
 });
 
+// ═══════════════════════════════════════════════════════════
+// ОПТИМІЗАЦІЯ 4: Кешування getFile від Telegram
+// Замість запитувати URL файлу кожен раз — кешуємо на 50 хв
+// (Telegram URLs живуть 1 годину)
+// ═══════════════════════════════════════════════════════════
+const _tgFileCache = new Map();
+const TG_FILE_CACHE_TTL = 50 * 60 * 1000; // 50 хвилин
+
+async function getTgFileUrl(fileId) {
+  const cached = _tgFileCache.get(fileId);
+  if (cached && Date.now() - cached.ts < TG_FILE_CACHE_TTL) return cached;
+  
+  const info = await fetchJson(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+  if (!info.ok) throw new Error('Telegram getFile error');
+  
+  const result = {
+    url: `https://api.telegram.org/file/bot${BOT_TOKEN}/${info.result.file_path}`,
+    size: info.result.file_size || 0,
+    ts: Date.now()
+  };
+  _tgFileCache.set(fileId, result);
+  
+  // Чистимо старий кеш
+  if (_tgFileCache.size > 200) {
+    const now = Date.now();
+    for (const [k, v] of _tgFileCache) {
+      if (now - v.ts > TG_FILE_CACHE_TTL) _tgFileCache.delete(k);
+    }
+  }
+  return result;
+}
+
 // Video streaming
 app.get('/api/video/free/:cid/:idx',(req,res)=>{
   const c=(db.get().courses||[]).find(x=>x.id===req.params.cid);
@@ -171,12 +255,12 @@ app.get('/api/video/stream/:cid/:idx',(req,res)=>{
   streamTg(v.telegramFileId,req,res);
 });
 
+// ═══ Оптимізований streamTg з кешем URL ═══
 async function streamTg(fileId,req,res){
   try{
-    const info=await fetchJson(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-    if(!info.ok){res.status(500).send('Telegram error');return;}
-    const fSize=info.result.file_size||0;
-    const url=`https://api.telegram.org/file/bot${BOT_TOKEN}/${info.result.file_path}`;
+    const file = await getTgFileUrl(fileId);
+    const fSize = file.size;
+    const url = file.url;
     const range=req.headers.range;
     if(range&&fSize){
       const[s,e0]=range.replace(/bytes=/,'').split('-');
@@ -199,6 +283,7 @@ app.post('/api/courses', adm, (req,res)=>{
   if(!title){res.status(400).json({ok:false,error:'Потрібна назва'});return;}
   const id=db.newId(),slug=db.slugify(title);
   db.set(d=>{d.courses.push({id,slug,title,description:description||'',price:price||'',badge:badge||'',color:color||'#C8302A',published:!!published,freeAccess:!!freeAccess,createdAt:Date.now(),videos:[],buyers:[],pending:[],includes:includes||[],features:features||[]});});
+  _responseCache.clear();
   res.json({ok:true,id,slug});
 });
 app.patch('/api/courses/:id', adm, (req,res)=>{
@@ -211,9 +296,10 @@ app.patch('/api/courses/:id', adm, (req,res)=>{
     if(published!==undefined)c.published=!!published;if(includes!==undefined)c.includes=includes;
     if(features!==undefined)c.features=features;if(freeAccess!==undefined)c.freeAccess=!!freeAccess;
   });
+  _responseCache.clear();
   res.json({ok:true});
 });
-app.delete('/api/courses/:id', adm, (req,res)=>{db.set(d=>{d.courses=d.courses.filter(c=>c.id!==req.params.id);});res.json({ok:true});});
+app.delete('/api/courses/:id', adm, (req,res)=>{db.set(d=>{d.courses=d.courses.filter(c=>c.id!==req.params.id);});_responseCache.clear();res.json({ok:true});});
 
 // Video upload
 function checkAdm(req,res){
@@ -245,20 +331,24 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async(req,res)
     if(!tgRes.ok){res.status(500).json({ok:false,error:tgRes.description||'Telegram error'});return;}
     const title=req.body.title||`Урок ${(db.getCourse(cid)?.videos?.length||0)+1}`;
     db.set(d=>{const c=d.courses.find(x=>x.id===cid);if(c){if(!c.videos)c.videos=[];c.videos.push({id:db.newId(),title,desc:req.body.desc||'',telegramFileId:tgRes.result.video.file_id,size:tgRes.result.video.file_size||req.file.size||0,addedAt:Date.now()});}});
+    _responseCache.clear();
     res.json({ok:true,total:db.getCourse(cid)?.videos?.length});
   }catch(e){try{fs.unlinkSync(req.file.path);}catch{}res.status(500).json({ok:false,error:e.message});}
 });
 app.patch('/api/courses/:cid/videos/:idx', adm, (req,res)=>{
   db.set(d=>{const c=d.courses.find(x=>x.id===req.params.cid);const v=c?.videos?.[parseInt(req.params.idx)];if(v){if(req.body.title!==undefined)v.title=req.body.title;if(req.body.desc!==undefined)v.desc=req.body.desc;}});
+  _responseCache.clear();
   res.json({ok:true});
 });
 app.delete('/api/courses/:cid/videos/:idx', adm, (req,res)=>{
   db.set(d=>{const c=d.courses.find(x=>x.id===req.params.cid);if(c)c.videos.splice(parseInt(req.params.idx),1);});
+  _responseCache.clear();
   res.json({ok:true});
 });
 app.post('/api/courses/:cid/videos/reorder', adm, (req,res)=>{
   const{from,to}=req.body;
   db.set(d=>{const c=d.courses.find(x=>x.id===req.params.cid);if(c){const[item]=c.videos.splice(from,1);c.videos.splice(to,0,item);}});
+  _responseCache.clear();
   res.json({ok:true});
 });
 
@@ -298,12 +388,11 @@ app.get('/api/course/:cid/videos/:idx/materials/:mid/download',(req,res)=>{
   if(!isAdm&&!c.buyers?.some(b=>b.id===uid)&&!c.freeAccess){res.status(403).send('Доступ заборонено');return;}
   const mat=(c.videos?.[parseInt(req.params.idx)]?.materials||[]).find(m=>m.id===req.params.mid);
   if(!mat){res.status(404).send('Файл не знайдено');return;}
-  fetchJson(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${mat.telegramFileId}`)
-    .then(info=>{
-      if(!info.ok){res.status(500).send('Telegram error');return;}
+  getTgFileUrl(mat.telegramFileId)
+    .then(file=>{
       res.setHeader('Content-Disposition',`attachment; filename="${encodeURIComponent(mat.name)}"`);
       res.setHeader('Content-Type','application/octet-stream');
-      proxyStream(`https://api.telegram.org/file/bot${BOT_TOKEN}/${info.result.file_path}`,res);
+      proxyStream(file.url,res);
     }).catch(e=>res.status(500).send(e.message));
 });
 
@@ -353,12 +442,14 @@ app.post('/api/courses/:cid/grant/:uid', adm, (req,res)=>{
   const uid=parseInt(req.params.uid),cid=req.params.cid;
   db.set(d=>{const c=d.courses.find(x=>x.id===cid);if(!c)return;if(!c.buyers)c.buyers=[];if(!c.buyers.some(b=>b.id===uid)){const p=c.pending?.find(b=>b.id===uid);c.buyers.push({id:uid,name:p?.name||'—',username:p?.username||'',grantedAt:Date.now()});}c.pending=(c.pending||[]).filter(b=>b.id!==uid);});
   try{require('./bot').grantAccess(uid,'','',cid);}catch(e){try{require('./bot').bot.sendMessage(uid,'Доступ активовано! /start');}catch{}}
+  _responseCache.clear();
   res.json({ok:true});
 });
 app.post('/api/courses/:cid/revoke/:uid', adm, (req,res)=>{
   const uid=parseInt(req.params.uid);
   db.set(d=>{const c=d.courses.find(x=>x.id===req.params.cid);if(c)c.buyers=(c.buyers||[]).filter(b=>b.id!==uid);});
   try{require('./bot').bot.sendMessage(uid,'Ваш доступ відкликано.');}catch{}
+  _responseCache.clear();
   res.json({ok:true});
 });
 app.delete('/api/courses/:cid/pending/:uid', adm, (req,res)=>{
@@ -406,6 +497,7 @@ app.post('/api/import', adm, uploadImport.single('file'), (req,res)=>{
     const imp=JSON.parse(fs.readFileSync(req.file.path,'utf8'));
     db.set(d=>{if(imp.courses)for(const c of imp.courses)if(!d.courses.find(x=>x.id===c.id))d.courses.push(c);});
     fs.unlinkSync(req.file.path);
+    _responseCache.clear();
     res.json({ok:true,imported:{courses:imp.courses?.length||0}});
   }catch(e){try{fs.unlinkSync(req.file.path);}catch{}res.status(400).json({ok:false,error:e.message});}
 });
@@ -431,7 +523,6 @@ function tgApiJson(method, body){
     req.on('error',reject); req.write(payload); req.end();
   });
 }
-// Замінити deleteSyncMessage + sendDbToAdmin на це:
 
 async function pinMessage(msgId){
   try{ await tgApiJson('pinChatMessage',{chat_id:ADMIN_ID,message_id:msgId,disable_notification:true}); }catch(e){ console.warn('[sync] pin помилка:', e.message); }
@@ -461,18 +552,22 @@ async function sendDbToAdmin(reason){
       if(oldMsgId && oldMsgId!==newMsgId) await unpinMessage(oldMsgId);
       await pinMessage(newMsgId);
       const d=db.get(); if(!d.settings)d.settings={}; d.settings[SYNC_STATE_KEY]=newMsgId;
-      const fs2=require('fs');
-      try{ fs2.writeFileSync('data/db.json', JSON.stringify(d, null, 2)); }catch{}
+      // Зберігаємо напряму через flushSync (без ще одного debounce)
+      if(db.flushSync) db.flushSync();
       console.log(`[sync] надіслано і закріплено, msgId=${newMsgId}, reason=${reason}`);
     }else{
       console.warn('[sync] Telegram помилка:', tgRes.description);
     }
   }catch(e){ console.warn('[sync] помилка відправки:', e.message); }
 }
+
+// ═══════════════════════════════════════════════════════════
+// ОПТИМІЗАЦІЯ 5: Збільшений debounce для sync (10 сек замість 3)
+// ═══════════════════════════════════════════════════════════
 function scheduleSyncDebounced(){
   if(!syncEnabled)return;
   clearTimeout(syncDebounce);
-  syncDebounce=setTimeout(()=>sendDbToAdmin('зміна даних'), 3000);
+  syncDebounce=setTimeout(()=>sendDbToAdmin('зміна даних'), 10000); // було 3000
 }
 
 // Патчимо db.set щоб відстежувати зміни
@@ -495,43 +590,36 @@ app.post('/api/sync/now', adm, async(_,res)=>{
 async function restoreDbFromTelegram(){
   try{
     console.log('[sync] перевіряю закріплене повідомлення...');
-
     const chatInfo = await tgApiJson('getChat',{chat_id:ADMIN_ID});
     const pinned = chatInfo.result?.pinned_message;
-
     if(!pinned || !pinned.document || pinned.document.file_name !== 'db.json'){
       console.log('[sync] закріпленого db.json немає — перший запуск');
       syncEnabled = true;
       await sendDbToAdmin('перший запуск');
       return;
     }
-
     console.log('[sync] знайдено закріплений db.json, msgId='+pinned.message_id);
     const fileInfo = await tgApiJson('getFile',{file_id:pinned.document.file_id});
     if(!fileInfo.ok) throw new Error('getFile failed');
-
     const fileUrl = 'https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + fileInfo.result.file_path;
     const fileContent = await new Promise((resolve,reject)=>{
       https.get(fileUrl, r=>{let d=''; r.on('data',c=>d+=c); r.on('end',()=>resolve(d));}).on('error',reject);
     });
-
     const restored = JSON.parse(fileContent);
     require('fs').mkdirSync('data',{recursive:true});
     require('fs').writeFileSync('data/db.json', JSON.stringify(restored,null,2));
-
+    // Оновлюємо in-memory кеш
+    if(db.reload) db.reload();
     const courses = restored.courses?.length||0;
     const buyers = (restored.courses||[]).reduce((s,c)=>s+(c.buyers?.length||0),0);
     console.log(`[sync] db.json відновлено! Курсів:${courses}, Покупців:${buyers}`);
-
     lastSyncHash = simpleHash(Buffer.from(fileContent,'utf8'));
     syncEnabled = true;
-
     await tgApiJson('sendMessage',{
       chat_id: ADMIN_ID,
       text: `✅ *Сервер запустився*\n\ndb.json відновлено з закріпленого повідомлення\nКурсів: ${courses}\nПокупців: ${buyers}`,
       parse_mode: 'Markdown'
     }).catch(()=>{});
-
   }catch(e){
     console.warn('[sync] помилка відновлення:', e.message);
     syncEnabled = true;
