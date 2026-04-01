@@ -1,16 +1,9 @@
 /**
- * server_v2.js — OPTIMIZED for 0.1 CPU / 512MB RAM on Render
+ * server.js — OPTIMIZED for 0.1 CPU / 512MB RAM on Render
  *
- * Key changes from v1:
- * 1. compression (gzip) — reduces bandwidth 60-80%
- * 2. Request timeouts — kill slow requests after 30s
- * 3. Dashboard cached 60s (heavy computation)
- * 4. Lazy require() for heavy modules (form-data, archiver)
- * 5. Reduced sync frequency (30s debounce)
- * 6. Keep-alive timeout reduced to free connections faster
- * 7. GC hints via global.gc if available
- * 8. System monitoring endpoint (RAM, CPU, load)
- * 9. Chunked video upload — supports files >50MB via Telegram
+ * Video storage:
+ *   ≤50 MB → Telegram (sendVideo)
+ *   >50 MB → Google Drive (resumable upload)
  */
 
 const express    = require('express');
@@ -23,6 +16,7 @@ const http       = require('http');
 const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
+const gdrive     = require('./gdrive');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
@@ -289,10 +283,10 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
 });
 
 async function streamVideo(video, req, res) {
-  // ═══ Чанковий файл (розбитий на шматки в Telegram) ═══
-  if (video.chunks && video.chunks.length) {
+  // ═══ Google Drive ═══
+  if (video.driveFileId) {
     try {
-      await streamChunkedTg(video.chunks, video.size || 0, req, res);
+      await gdrive.streamFile(video.driveFileId, video.size || 0, req, res);
     } catch (e) {
       if (!res.headersSent) res.status(500).end(e.message);
     }
@@ -304,81 +298,6 @@ async function streamVideo(video, req, res) {
     return;
   }
   res.status(404).end('Відео не знайдено');
-}
-
-// ═══ Стрімінг чанкового відео з Telegram ═══
-async function streamChunkedTg(chunks, totalSize, req, res) {
-  const range = req.headers.range;
-  let start = 0, end = totalSize - 1;
-
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    start = parseInt(parts[0]);
-    if (parts[1]) end = parseInt(parts[1]);
-    else end = Math.min(start + 2 * 1024 * 1024 - 1, totalSize - 1);
-  }
-
-  // Знаходимо перший чанк що містить start
-  let firstChunkIdx = 0;
-  for (let i = 0; i < chunks.length; i++) {
-    if (chunks[i].offset + chunks[i].size > start) { firstChunkIdx = i; break; }
-    if (i === chunks.length - 1) firstChunkIdx = i;
-  }
-
-  if (range) {
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${totalSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': end - start + 1,
-      'Content-Type': 'video/mp4',
-      'Content-Disposition': 'inline',
-    });
-  } else {
-    res.writeHead(200, {
-      'Content-Type': 'video/mp4',
-      'Accept-Ranges': 'bytes',
-      'Content-Length': totalSize,
-      'Content-Disposition': 'inline',
-    });
-  }
-
-  let bytesWritten = 0;
-  const bytesNeeded = end - start + 1;
-
-  for (let i = firstChunkIdx; i < chunks.length && bytesWritten < bytesNeeded; i++) {
-    const ch = chunks[i];
-    let chunkStart = 0, chunkEnd = ch.size - 1;
-
-    if (i === firstChunkIdx) chunkStart = start - ch.offset;
-    if (chunkStart < 0) chunkStart = 0;
-
-    const remaining = bytesNeeded - bytesWritten;
-    if (chunkEnd - chunkStart + 1 > remaining) chunkEnd = chunkStart + remaining - 1;
-
-    // Отримуємо URL файлу з Telegram
-    const fileInfo = await getTgFileUrl(ch.tgFileId);
-
-    await new Promise((resolve, reject) => {
-      const chRange = (chunkStart > 0 || chunkEnd < ch.size - 1)
-        ? `bytes=${chunkStart}-${chunkEnd}` : undefined;
-      proxyStreamChunk(fileInfo.url, res, chRange, resolve, reject);
-    });
-
-    bytesWritten += chunkEnd - chunkStart + 1;
-  }
-  if (!res.writableEnded) res.end();
-}
-
-function proxyStreamChunk(url, res, range, resolve, reject) {
-  const h = range ? { Range: range } : {};
-  const mod = url.startsWith('https') ? https : http;
-  const req = mod.get(url, { headers: h }, up => {
-    up.pipe(res, { end: false });
-    up.on('end', resolve);
-    up.on('error', reject);
-  });
-  req.on('error', reject);
-  req.setTimeout(60000, () => { req.destroy(); reject(new Error('chunk timeout')); });
 }
 
 async function streamTg(fileId, req, res) {
@@ -483,14 +402,13 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
   const title = req.body.title || `Урок ${(db.getCourse(cid)?.videos?.length || 0) + 1}`;
   const desc = req.body.desc || '';
   const size = req.file.size || 0;
-  const TG_MAX = 50 * 1024 * 1024;   // ліміт Telegram Bot API
-  const CHUNK_SIZE = 47 * 1024 * 1024; // 47 МБ — запас до 50 МБ
+  const TG_MAX = 50 * 1024 * 1024;
 
   try {
     let videoEntry;
 
     if (size <= TG_MAX) {
-      // ═══ Файл ≤ 50 МБ → sendVideo (стандартний потік) ═══
+      // ═══ Файл ≤ 50 МБ → sendVideo в Telegram (стандартний потік) ═══
       const FormData = require('form-data'), form = new FormData();
       form.append('chat_id', ADMIN_ID);
       form.append('caption', `${title}\n\n${desc}`);
@@ -506,52 +424,20 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
         addedAt: Date.now()
       };
     } else {
-      // ═══ Файл > 50 МБ → розбити на чанки, кожен ≤ 47 МБ ═══
-      // Стрімимо напряму з оригінального файлу (без тимчасових файлів)
-      const totalChunks = Math.ceil(size / CHUNK_SIZE);
-      const chunks = [];
-
-      for (let i = 0; i < totalChunks; i++) {
-        const offset = i * CHUNK_SIZE;
-        const chSize = Math.min(CHUNK_SIZE, size - offset);
-
-        // Надсилаємо чанк як document — стрімимо напряму з файлу
-        const FormData = require('form-data'), form = new FormData();
-        form.append('chat_id', ADMIN_ID);
-        form.append('caption', `${title} [part ${i + 1}/${totalChunks}]`);
-        form.append('protect_content', 'true');
-        form.append('document', fs.createReadStream(req.file.path, { start: offset, end: offset + chSize - 1 }), {
-          knownLength: chSize,
-          filename: `${req.file.originalname || 'video'}.part${i + 1}`,
-          contentType: 'application/octet-stream'
-        });
-
-        let tgRes;
-        try {
-          tgRes = await postForm('/sendDocument', form);
-        } catch (e) {
-          // Мережева помилка — чистимо і виходимо
-          try { fs.unlinkSync(req.file.path); } catch { }
-          res.status(500).json({ ok: false, error: `Chunk ${i + 1}/${totalChunks} failed: ${e.message}` });
-          return;
-        }
-
-        if (!tgRes.ok) {
-          try { fs.unlinkSync(req.file.path); } catch { }
-          res.status(500).json({ ok: false, error: `Telegram error (chunk ${i + 1}/${totalChunks}): ${tgRes.description}` });
-          return;
-        }
-        chunks.push({ tgFileId: tgRes.result.document.file_id, size: chSize, offset });
-
-        // Примусовий GC після кожного чанка щоб звільнити RAM
-        if (global.gc) try { global.gc(); } catch { }
+      // ═══ Файл > 50 МБ → Google Drive ═══
+      if (!gdrive.configured) {
+        try { fs.unlinkSync(req.file.path); } catch { }
+        res.status(400).json({ ok: false, error: 'Google Drive не налаштований. Додайте GDRIVE_FOLDER_ID та GDRIVE_SA_JSON у змінні середовища.' });
+        return;
       }
-
+      const driveName = `${title} - ${req.file.originalname || 'video.mp4'}`;
+      const mime = req.file.mimetype || 'video/mp4';
+      const result = await gdrive.uploadFile(req.file.path, driveName, mime, size);
       try { fs.unlinkSync(req.file.path); } catch { }
-
       videoEntry = {
         id: db.newId(), title, desc,
-        size, chunks, chunked: true,
+        driveFileId: result.id,
+        size: result.size || size,
         addedAt: Date.now()
       };
     }
@@ -719,7 +605,7 @@ app.get('/api/export/zip', adm, (req, res) => {
   let bCsv = 'course,id,name,username,grantedAt\n', vCsv = 'course,index,title,desc,storage,fileId,size,addedAt\n';
   (d.courses || []).forEach(c => {
     (c.buyers || []).forEach(b => bCsv += `"${c.title}",${b.id},"${b.name}","${b.username || ''}","${new Date(b.grantedAt).toISOString()}"\n`);
-    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.chunked ? 'chunked' : 'single'}","${v.telegramFileId || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
+    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.driveFileId ? 'gdrive' : 'telegram'}","${v.telegramFileId || v.driveFileId || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
   });
   arc.append(bCsv, { name: 'buyers.csv' }); arc.append(vCsv, { name: 'videos.csv' }); arc.finalize();
 });
@@ -906,6 +792,7 @@ app.get('/api/system', adm, (_, res) => {
     arch: os.arch(),
     cacheSize: _responseCache.size,
     tgCacheSize: _tgFileCache.size,
+    gdrive: { configured: gdrive.configured },
   });
 });
 
