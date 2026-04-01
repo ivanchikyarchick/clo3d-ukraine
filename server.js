@@ -1,6 +1,6 @@
 /**
  * server_v2.js — ULTRA-OPTIMIZED for 0.1 CPU / 512MB RAM on Render
- * 
+ *
  * Key changes from v1:
  * 1. compression (gzip) — reduces bandwidth 60-80%
  * 2. Connection limits — max 3 concurrent video streams
@@ -12,6 +12,7 @@
  * 8. Static files cached 7 days
  * 9. Keep-alive timeout reduced to free connections faster
  * 10. GC hints via global.gc if available
+ * 11. System monitoring endpoint (RAM, CPU, load)
  */
 
 const express    = require('express');
@@ -22,6 +23,7 @@ const fs         = require('fs');
 const https      = require('https');
 const http       = require('http');
 const multer     = require('multer');
+const os         = require('os');
 const db         = require('./db');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
@@ -34,8 +36,8 @@ const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const IS_WEB_ONLY = process.env.RENDER_SERVICE_TYPE === 'web';
 
 const app = express();
-fs.mkdirSync('/tmp/vfl_tmp', { recursive: true });
 
+fs.mkdirSync('/tmp/vfl_tmp', { recursive: true });
 const uploadImport   = multer({ dest: '/tmp/vfl_tmp/' });
 const uploadVideo    = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
 const uploadMaterial = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 200 * 1024 * 1024 } });
@@ -44,10 +46,9 @@ const uploadMaterial = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 200 *
 // ОПТИМІЗАЦІЯ 1: gzip compression — зменшує трафік на 60-80%
 // ═══════════════════════════════════════════════════════════
 app.use(compression({
-  level: 1,         // мінімальний рівень — швидкість важливіша за стиск на 0.1 CPU
-  threshold: 1024,  // стискати тільки >1KB
+  level: 1,
+  threshold: 1024,
   filter: (req, res) => {
-    // Не стискаємо відео — воно вже стиснуте
     if (req.path.startsWith('/api/video/')) return false;
     return compression.filter(req, res);
   }
@@ -56,10 +57,10 @@ app.use(compression({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '7d',       // кешувати статику на 7 днів (було 1 день)
+  maxAge: '7d',
   etag: true,
   lastModified: true,
-  immutable: true      // дозволяємо immutable кешування для версіонованих файлів
+  immutable: true
 }));
 
 // ═══ Сесії в RAM ═══
@@ -99,7 +100,6 @@ app.use((req, res, next) => {
 // ОПТИМІЗАЦІЯ 3: Request timeout — вбиваємо зависші запити
 // ═══════════════════════════════════════════════════════════
 app.use((req, res, next) => {
-  // 30s для звичайних, 120s для відео та завантажень
   const timeout = (req.path.includes('/video/') || req.path.includes('/upload')) ? 120000 : 30000;
   req.setTimeout(timeout);
   res.setTimeout(timeout);
@@ -117,7 +117,6 @@ const adm = (req, res, next) => {
 // ОПТИМІЗАЦІЯ 4: Розумний кеш з TTL
 // ═══════════════════════════════════════════════════════════
 const _responseCache = new Map();
-
 function cachedResponse(key, ttlMs, builder) {
   const cached = _responseCache.get(key);
   if (cached && Date.now() - cached.ts < ttlMs) return cached.data;
@@ -125,7 +124,6 @@ function cachedResponse(key, ttlMs, builder) {
   _responseCache.set(key, { data, ts: Date.now() });
   return data;
 }
-
 function invalidateCache() {
   _responseCache.clear();
 }
@@ -149,7 +147,6 @@ app.post('/api/logout', (req, res) => { req.session.destroy(); res.json({ ok: tr
 
 // ═══════════════════════════════════════════════════════════
 // ОПТИМІЗАЦІЯ 5: Dashboard кешується на 60 секунд
-// Це найважчий ендпоінт — фільтрує масиви подій
 // ═══════════════════════════════════════════════════════════
 app.get('/api/dashboard', adm, (req, res) => {
   const data = cachedResponse('dashboard', 60000, () => {
@@ -176,7 +173,7 @@ app.get('/api/dashboard', adm, (req, res) => {
         messages: t.messages || 0, granted: t.granted || 0
       },
       charts: { dayLabels, botByDay, webByDay }, evTypes,
-      recentBot: bEvt.slice(-20).reverse(), // було 30, зменшено
+      recentBot: bEvt.slice(-20).reverse(),
       recentWeb: wEvt.slice(-20).reverse(),
       courses: cs,
     };
@@ -195,6 +192,7 @@ app.get('/api/courses/public', (req, res) => {
   );
   res.json(data);
 });
+
 app.get('/api/course/:slug/public', (req, res) => {
   const data = cachedResponse('course_' + req.params.slug, 30000, () => {
     const c = (db.get().courses || []).find(x => x.slug === req.params.slug && x.published);
@@ -207,11 +205,13 @@ app.get('/api/course/:slug/public', (req, res) => {
 
 // Video lists
 const vidList = (v, i) => ({ i, title: v.title, desc: v.desc, hasMaterials: !!(v.materials?.length) });
+
 app.get('/api/course/:cid/videos/public', (req, res) => {
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).json({ ok: false }); return; }
   res.json((c.videos || []).map(vidList));
 });
+
 app.get('/api/course/:cid/videos/free', (req, res) => {
   const c = (db.get().courses || []).find(x => x.id === req.params.cid && x.freeAccess);
   if (!c) { res.status(403).json({ ok: false }); return; }
@@ -236,7 +236,9 @@ app.post('/api/buyer/login', (req, res) => {
   req.session.buyerName = myCourses[0].buyers.find(b => b.id === uid)?.name || 'Учень';
   res.json({ ok: true, name: req.session.buyerName, courses: myCourses.map(c => ({ id: c.id, slug: c.slug, title: c.title, color: c.color })) });
 });
+
 app.post('/api/buyer/logout', (req, res) => { req.session.buyerId = null; res.json({ ok: true }); });
+
 app.get('/api/buyer/me', (req, res) => {
   if (req.session.isAdminPreview) {
     const courses = (db.get().courses || []).filter(c => c.videos?.length).map(c => ({ id: c.id, slug: c.slug, title: c.title, color: c.color }));
@@ -250,7 +252,6 @@ app.get('/api/buyer/me', (req, res) => {
 
 // ═══════════════════════════════════════════════════════════
 // ОПТИМІЗАЦІЯ 6: Ліміт одночасних відео-стрімів (макс 3)
-// На 0.1 CPU кожен стрім — навантаження на event loop
 // ═══════════════════════════════════════════════════════════
 let _activeStreams = 0;
 const MAX_STREAMS = 3;
@@ -269,7 +270,6 @@ async function getTgFileUrl(fileId) {
     ts: Date.now()
   };
   _tgFileCache.set(fileId, result);
-  // Чистимо кеш якщо > 100 записів
   if (_tgFileCache.size > 100) {
     const now = Date.now();
     for (const [k, v] of _tgFileCache) {
@@ -287,6 +287,7 @@ app.get('/api/video/free/:cid/:idx', (req, res) => {
   if (!v) { res.status(404).end(); return; }
   streamTg(v.telegramFileId, req, res);
 });
+
 app.get('/api/video/stream/:cid/:idx', (req, res) => {
   const isAdm = req.session.isAdmin || req.session.isAdminPreview;
   if (!isAdm) {
@@ -302,7 +303,6 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
 });
 
 async function streamTg(fileId, req, res) {
-  // ═══ Ліміт стрімів ═══
   if (_activeStreams >= MAX_STREAMS) {
     res.status(503).set('Retry-After', '5').end('Server busy');
     return;
@@ -315,9 +315,10 @@ async function streamTg(fileId, req, res) {
     const fSize = file.size;
     const url = file.url;
     const range = req.headers.range;
+
     if (range && fSize) {
       const [s, e0] = range.replace(/bytes=/, '').split('-');
-      const start = parseInt(s), end = e0 ? parseInt(e0) : Math.min(start + 2 * 1024 * 1024, fSize - 1); // макс 2MB чанк
+      const start = parseInt(s), end = e0 ? parseInt(e0) : Math.min(start + 2 * 1024 * 1024, fSize - 1);
       res.writeHead(206, {
         'Content-Range': `bytes ${start}-${end}/${fSize}`,
         'Accept-Ranges': 'bytes',
@@ -357,12 +358,12 @@ function proxyStream(url, res, h = {}) {
     up.on('error', () => { if (!res.headersSent) res.end(); });
   });
   req.on('error', () => { if (!res.headersSent) res.status(502).end(); });
-  // Таймаут на проксі запит
   req.setTimeout(60000, () => { req.destroy(); });
 }
 
 // Admin courses CRUD
 app.get('/api/courses', adm, (req, res) => res.json(db.get().courses || []));
+
 app.post('/api/courses', adm, (req, res) => {
   const { title, description, price, badge, color, published, includes, features, freeAccess } = req.body;
   if (!title) { res.status(400).json({ ok: false, error: 'Потрібна назва' }); return; }
@@ -371,6 +372,7 @@ app.post('/api/courses', adm, (req, res) => {
   invalidateCache();
   res.json({ ok: true, id, slug });
 });
+
 app.patch('/api/courses/:id', adm, (req, res) => {
   db.set(d => {
     const c = d.courses.find(x => x.id === req.params.id); if (!c) return;
@@ -384,6 +386,7 @@ app.patch('/api/courses/:id', adm, (req, res) => {
   invalidateCache();
   res.json({ ok: true });
 });
+
 app.delete('/api/courses/:id', adm, (req, res) => { db.set(d => { d.courses = d.courses.filter(c => c.id !== req.params.id); }); invalidateCache(); res.json({ ok: true }); });
 
 // Video upload
@@ -393,6 +396,7 @@ function checkAdm(req, res) {
   if (req.file) try { fs.unlinkSync(req.file.path); } catch { }
   res.status(401).json({ ok: false, error: 'Unauthorized' }); return false;
 }
+
 function postForm(ep, form) {
   return new Promise((res, rej) => {
     const h = form.getHeaders();
@@ -420,16 +424,19 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
     res.json({ ok: true, total: db.getCourse(cid)?.videos?.length });
   } catch (e) { try { fs.unlinkSync(req.file.path); } catch { } res.status(500).json({ ok: false, error: e.message }); }
 });
+
 app.patch('/api/courses/:cid/videos/:idx', adm, (req, res) => {
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); const v = c?.videos?.[parseInt(req.params.idx)]; if (v) { if (req.body.title !== undefined) v.title = req.body.title; if (req.body.desc !== undefined) v.desc = req.body.desc; } });
   invalidateCache();
   res.json({ ok: true });
 });
+
 app.delete('/api/courses/:cid/videos/:idx', adm, (req, res) => {
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.videos.splice(parseInt(req.params.idx), 1); });
   invalidateCache();
   res.json({ ok: true });
 });
+
 app.post('/api/courses/:cid/videos/reorder', adm, (req, res) => {
   const { from, to } = req.body;
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) { const [item] = c.videos.splice(from, 1); c.videos.splice(to, 0, item); } });
@@ -454,10 +461,12 @@ app.post('/api/courses/:cid/videos/:idx/materials', uploadMaterial.single('file'
     res.json({ ok: true });
   } catch (e) { try { fs.unlinkSync(req.file.path); } catch { } res.status(500).json({ ok: false, error: e.message }); }
 });
+
 app.delete('/api/courses/:cid/videos/:idx/materials/:mid', adm, (req, res) => {
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); const v = c?.videos?.[parseInt(req.params.idx)]; if (v) v.materials = (v.materials || []).filter(m => m.id !== req.params.mid); });
   res.json({ ok: true });
 });
+
 app.get('/api/course/:cid/videos/:idx/materials', (req, res) => {
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).json({ ok: false }); return; }
@@ -465,6 +474,7 @@ app.get('/api/course/:cid/videos/:idx/materials', (req, res) => {
   if (!isAdm && !c.buyers?.some(b => b.id === uid) && !c.freeAccess) { res.status(403).json({ ok: false }); return; }
   res.json((c.videos?.[parseInt(req.params.idx)]?.materials || []).map(m => ({ id: m.id, name: m.name, size: m.size })));
 });
+
 app.get('/api/course/:cid/videos/:idx/materials/:mid/download', (req, res) => {
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).end(); return; }
@@ -487,6 +497,7 @@ app.get('/api/progress/:cid', (req, res) => {
   if (!uid) { res.status(403).json({ ok: false }); return; }
   res.json({ ok: true, ...db.getProgress(uid, req.params.cid) });
 });
+
 app.post('/api/progress/:cid/:idx', (req, res) => {
   if (req.session.isAdminPreview) { res.json({ ok: true, watched: [], lastIdx: 0, completed: false }); return; }
   const uid = req.session.buyerId;
@@ -495,6 +506,7 @@ app.post('/api/progress/:cid/:idx', (req, res) => {
   if (!db.get().courses.find(c => c.id === cid)?.buyers?.some(b => b.id === uid)) { res.status(403).json({ ok: false }); return; }
   res.json({ ok: true, ...db.markWatched(uid, cid, parseInt(req.params.idx)) });
 });
+
 app.get('/api/progress/all/:cid', adm, (req, res) => {
   const c = db.getCourse(req.params.cid);
   if (!c) { res.status(404).json({ ok: false }); return; }
@@ -516,6 +528,7 @@ app.post('/api/notify/new-video/:cid', adm, async (req, res) => {
     res.json({ ok: true, ...await notifyNewContent(req.params.cid, text) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
 app.post('/api/notify/remind/:cid', adm, async (req, res) => {
   try { await require('./bot').sendReminders(req.params.cid); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -529,6 +542,7 @@ app.post('/api/courses/:cid/grant/:uid', adm, (req, res) => {
   invalidateCache();
   res.json({ ok: true });
 });
+
 app.post('/api/courses/:cid/revoke/:uid', adm, (req, res) => {
   const uid = parseInt(req.params.uid);
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.buyers = (c.buyers || []).filter(b => b.id !== uid); });
@@ -536,6 +550,7 @@ app.post('/api/courses/:cid/revoke/:uid', adm, (req, res) => {
   invalidateCache();
   res.json({ ok: true });
 });
+
 app.delete('/api/courses/:cid/pending/:uid', adm, (req, res) => {
   const uid = parseInt(req.params.uid);
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.pending = (c.pending || []).filter(b => b.id !== uid); });
@@ -553,10 +568,10 @@ app.post('/api/broadcast', adm, async (req, res) => {
 
 // Export/Import
 app.get('/api/export/zip', adm, (req, res) => {
-  const archiver = require('archiver'); // lazy load
+  const archiver = require('archiver');
   res.setHeader('Content-Disposition', 'attachment; filename="fashionlab_backup.zip"');
   res.setHeader('Content-Type', 'application/zip');
-  const arc = archiver('zip', { zlib: { level: 1 } }); // рівень 1 замість 9 — економимо CPU
+  const arc = archiver('zip', { zlib: { level: 1 } });
   arc.on('error', e => res.status(500).end(e.message));
   arc.pipe(res);
   arc.file('data/db.json', { name: 'db.json' });
@@ -568,7 +583,9 @@ app.get('/api/export/zip', adm, (req, res) => {
   });
   arc.append(bCsv, { name: 'buyers.csv' }); arc.append(vCsv, { name: 'videos.csv' }); arc.finalize();
 });
+
 app.get('/api/export/json', adm, (req, res) => { res.setHeader('Content-Disposition', 'attachment; filename="fashionlab_db.json"'); res.json(db.get()); });
+
 app.get('/api/export/stats', adm, (req, res) => {
   const { stats } = db.get();
   const all = [...(stats.botEvents || []), ...(stats.webEvents || [])].sort((a, b) => a.ts - b.ts);
@@ -576,6 +593,7 @@ app.get('/api/export/stats', adm, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="fashionlab_stats.csv"');
   res.setHeader('Content-Type', 'text/csv'); res.send(csv);
 });
+
 app.post('/api/import', adm, uploadImport.single('file'), (req, res) => {
   if (!req.file) { res.status(400).json({ ok: false, error: 'Немає файлу' }); return; }
   try {
@@ -595,6 +613,7 @@ let lastSyncHash = '';
 
 function dbJsonBuffer() { return Buffer.from(JSON.stringify(db.get(), null, 2), 'utf8'); }
 function simpleHash(buf) { let h = 5381; for (const b of buf) h = ((h << 5) + h) ^ b; return (h >>> 0).toString(36); }
+
 function tgApiJson(method, body) {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify(body);
@@ -613,6 +632,7 @@ async function sendDbToAdmin(reason) {
   const hash = simpleHash(buf);
   if (hash === lastSyncHash && reason !== 'startup' && reason !== 'manual') return;
   lastSyncHash = hash;
+
   const oldMsgId = db.get().settings?.[SYNC_STATE_KEY];
   try {
     const FormData = require('form-data');
@@ -623,6 +643,7 @@ async function sendDbToAdmin(reason) {
     form.append('parse_mode', 'Markdown');
     form.append('document', buf, { filename: 'db.json', contentType: 'application/json' });
     const tgRes = await postForm('/sendDocument', form);
+
     if (tgRes.ok) {
       const newMsgId = tgRes.result.message_id;
       if (oldMsgId && oldMsgId !== newMsgId) await unpinMessage(oldMsgId);
@@ -703,6 +724,51 @@ app.get('/admin', (_, res) => res.sendFile(path.join(__dirname, 'public', 'admin
 app.get('/health', (_, res) => {
   res.set('Cache-Control', 'no-cache');
   res.json({ ok: true, uptime: process.uptime() | 0, mem: Math.round(process.memoryUsage().rss / 1024 / 1024) });
+});
+
+// ═══════════════════════════════════════════════════════════
+// ОПТИМІЗАЦІЯ 9: System monitoring — RAM, CPU, навантаження
+// ═══════════════════════════════════════════════════════════
+app.get('/api/system', adm, (_, res) => {
+  const mem = process.memoryUsage();
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const cpus = os.cpus();
+  const cpuLoad = os.loadavg();
+  const cpuCount = cpus.length;
+
+  res.json({
+    process: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      external: Math.round(mem.external / 1024 / 1024),
+    },
+    system: {
+      totalMem: Math.round(totalMem / 1024 / 1024),
+      usedMem: Math.round(usedMem / 1024 / 1024),
+      freeMem: Math.round(freeMem / 1024 / 1024),
+      memPct: Math.round(usedMem / totalMem * 100),
+    },
+    cpu: {
+      cores: cpuCount,
+      model: cpus[0]?.model || 'Unknown',
+      speed: cpus[0]?.speed || 0,
+      load1: cpuLoad[0].toFixed(2),
+      load5: cpuLoad[1].toFixed(2),
+      load15: cpuLoad[2].toFixed(2),
+      loadPct: Math.round(cpuLoad[0] / cpuCount * 100),
+    },
+    uptime: process.uptime() | 0,
+    nodeVersion: process.version,
+    platform: os.platform(),
+    arch: os.arch(),
+    activeStreams: _activeStreams,
+    maxStreams: MAX_STREAMS,
+    cacheSize: _responseCache.size,
+    tgCacheSize: _tgFileCache.size,
+  });
 });
 
 module.exports = { app, PORT };
