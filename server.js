@@ -285,9 +285,11 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
 async function streamVideo(video, req, res) {
   // ═══ Cloudflare R2 ═══
   if (video.r2Key) {
+    console.log(`[stream] R2: ${video.r2Key} (${video.size} bytes)`);
     try {
       await r2.streamFile(video.r2Key, video.size || 0, req, res);
     } catch (e) {
+      console.error('[stream] R2 error:', e.message);
       if (!res.headersSent) res.status(500).end(e.message);
     }
     return;
@@ -442,6 +444,7 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
       };
     }
 
+    console.log(`[upload] saved: "${videoEntry.title}" (${(size/1024/1024).toFixed(1)}MB) r2=${!!videoEntry.r2Key} tg=${!!videoEntry.telegramFileId}`);
     db.set(d => { const c = d.courses.find(x => x.id === cid); if (c) { if (!c.videos) c.videos = []; c.videos.push(videoEntry); } });
     invalidateCache();
     res.json({ ok: true, total: db.getCourse(cid)?.videos?.length });
