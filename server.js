@@ -3,7 +3,7 @@
  *
  * Video storage:
  *   ≤50 MB → Telegram (sendVideo)
- *   >50 MB → Google Drive (resumable upload)
+ *   >50 MB → Cloudflare R2 (S3-compatible upload)
  */
 
 const express    = require('express');
@@ -16,7 +16,7 @@ const http       = require('http');
 const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
-const gdrive     = require('./gdrive');
+const r2         = require('./r2');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
@@ -283,10 +283,10 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
 });
 
 async function streamVideo(video, req, res) {
-  // ═══ Google Drive ═══
-  if (video.driveFileId) {
+  // ═══ Cloudflare R2 ═══
+  if (video.r2Key) {
     try {
-      await gdrive.streamFile(video.driveFileId, video.size || 0, req, res);
+      await r2.streamFile(video.r2Key, video.size || 0, req, res);
     } catch (e) {
       if (!res.headersSent) res.status(500).end(e.message);
     }
@@ -424,20 +424,20 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
         addedAt: Date.now()
       };
     } else {
-      // ═══ Файл > 50 МБ → Google Drive ═══
-      if (!gdrive.configured) {
+      // ═══ Файл > 50 МБ → Cloudflare R2 ═══
+      if (!r2.configured) {
         try { fs.unlinkSync(req.file.path); } catch { }
-        res.status(400).json({ ok: false, error: 'Google Drive не налаштований. Додайте GDRIVE_FOLDER_ID та GDRIVE_SA_JSON у змінні середовища.' });
+        res.status(400).json({ ok: false, error: 'R2 не налаштований. Додайте R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET у змінні середовища.' });
         return;
       }
-      const driveName = `${title} - ${req.file.originalname || 'video.mp4'}`;
+      const r2key = r2.makeKey(cid, req.file.originalname);
       const mime = req.file.mimetype || 'video/mp4';
-      const result = await gdrive.uploadFile(req.file.path, driveName, mime, size);
+      await r2.uploadFile(r2key, req.file.path, mime, size);
       try { fs.unlinkSync(req.file.path); } catch { }
       videoEntry = {
         id: db.newId(), title, desc,
-        driveFileId: result.id,
-        size: result.size || size,
+        r2Key: r2key,
+        size,
         addedAt: Date.now()
       };
     }
@@ -605,7 +605,7 @@ app.get('/api/export/zip', adm, (req, res) => {
   let bCsv = 'course,id,name,username,grantedAt\n', vCsv = 'course,index,title,desc,storage,fileId,size,addedAt\n';
   (d.courses || []).forEach(c => {
     (c.buyers || []).forEach(b => bCsv += `"${c.title}",${b.id},"${b.name}","${b.username || ''}","${new Date(b.grantedAt).toISOString()}"\n`);
-    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.driveFileId ? 'gdrive' : 'telegram'}","${v.telegramFileId || v.driveFileId || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
+    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.r2Key ? 'r2' : 'telegram'}","${v.telegramFileId || v.r2Key || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
   });
   arc.append(bCsv, { name: 'buyers.csv' }); arc.append(vCsv, { name: 'videos.csv' }); arc.finalize();
 });
@@ -792,7 +792,7 @@ app.get('/api/system', adm, (_, res) => {
     arch: os.arch(),
     cacheSize: _responseCache.size,
     tgCacheSize: _tgFileCache.size,
-    gdrive: { configured: gdrive.configured },
+    r2: { configured: r2.configured },
   });
 });
 
