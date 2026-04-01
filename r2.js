@@ -12,10 +12,10 @@ const https = require('https');
 const crypto = require('crypto');
 const fs     = require('fs');
 
-const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '7f4d14bf10c6eb177000a84d3add3b62';
-const ACCESS_KEY = process.env.R2_ACCESS_KEY  || 'f8eb8505e2d20e5a57dc0c682d3efa81';
-const SECRET_KEY = process.env.R2_SECRET_KEY  || '43e32a11c21b600ef604e981290a036b3617f8ce00e639cd71eec3d622b0ece5';
-const BUCKET     = process.env.R2_BUCKET      || 'fashionlab-videos';
+const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '';
+const ACCESS_KEY = process.env.R2_ACCESS_KEY  || '';
+const SECRET_KEY = process.env.R2_SECRET_KEY  || '';
+const BUCKET     = process.env.R2_BUCKET      || '';
 
 const configured = !!(ACCOUNT_ID && ACCESS_KEY && SECRET_KEY && BUCKET);
 const ENDPOINT   = `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`;
