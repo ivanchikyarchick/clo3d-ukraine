@@ -25,7 +25,6 @@ const http       = require('http');
 const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
-const b2         = require('./b2');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
@@ -101,7 +100,7 @@ app.use((req, res, next) => {
 // ОПТИМІЗАЦІЯ 3: Request timeout — вбиваємо зависші запити
 // ═══════════════════════════════════════════════════════════
 app.use((req, res, next) => {
-  const timeout = (req.path.includes('/upload') || req.method === 'POST' && (req.path.includes('/videos') || req.path.includes('/materials'))) ? 900000 : (req.path.includes('/video/') ? 120000 : 30000);
+  const timeout = (req.path.includes('/upload') || req.method === 'POST' && (req.path.includes('/videos') || req.path.includes('/materials'))) ? 1200000 : (req.path.includes('/video/') ? 120000 : 30000);
   req.setTimeout(timeout);
   res.setTimeout(timeout);
   next();
@@ -304,8 +303,8 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
 });
 
 async function streamVideo(video, req, res) {
-  // B2 сховище
-  if (video.storage === 'b2' && video.b2Key) {
+  // ═══ Чанковий файл (розбитий на шматки в Telegram) ═══
+  if (video.chunks && video.chunks.length) {
     if (_activeStreams >= MAX_STREAMS) {
       res.status(503).set('Retry-After', '5').end('Server busy');
       return;
@@ -313,19 +312,94 @@ async function streamVideo(video, req, res) {
     _activeStreams++;
     res.on('close', () => { _activeStreams--; });
     try {
-      await b2.streamFile(video.b2Key, video.size || 0, req, res);
+      await streamChunkedTg(video.chunks, video.size || 0, req, res);
     } catch (e) {
       _activeStreams--;
       if (!res.headersSent) res.status(500).end(e.message);
     }
     return;
   }
-  // Telegram (стандартний потік)
+  // ═══ Одиночний файл в Telegram ═══
   if (video.telegramFileId) {
     streamTg(video.telegramFileId, req, res);
     return;
   }
   res.status(404).end('Відео не знайдено');
+}
+
+// ═══ Стрімінг чанкового відео з Telegram ═══
+async function streamChunkedTg(chunks, totalSize, req, res) {
+  const range = req.headers.range;
+  let start = 0, end = totalSize - 1;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    start = parseInt(parts[0]);
+    if (parts[1]) end = parseInt(parts[1]);
+    else end = Math.min(start + 2 * 1024 * 1024 - 1, totalSize - 1);
+  }
+
+  // Знаходимо перший чанк що містить start
+  let firstChunkIdx = 0;
+  for (let i = 0; i < chunks.length; i++) {
+    if (chunks[i].offset + chunks[i].size > start) { firstChunkIdx = i; break; }
+    if (i === chunks.length - 1) firstChunkIdx = i;
+  }
+
+  if (range) {
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': end - start + 1,
+      'Content-Type': 'video/mp4',
+      'Content-Disposition': 'inline',
+    });
+  } else {
+    res.writeHead(200, {
+      'Content-Type': 'video/mp4',
+      'Accept-Ranges': 'bytes',
+      'Content-Length': totalSize,
+      'Content-Disposition': 'inline',
+    });
+  }
+
+  let bytesWritten = 0;
+  const bytesNeeded = end - start + 1;
+
+  for (let i = firstChunkIdx; i < chunks.length && bytesWritten < bytesNeeded; i++) {
+    const ch = chunks[i];
+    let chunkStart = 0, chunkEnd = ch.size - 1;
+
+    if (i === firstChunkIdx) chunkStart = start - ch.offset;
+    if (chunkStart < 0) chunkStart = 0;
+
+    const remaining = bytesNeeded - bytesWritten;
+    if (chunkEnd - chunkStart + 1 > remaining) chunkEnd = chunkStart + remaining - 1;
+
+    // Отримуємо URL файлу з Telegram
+    const fileInfo = await getTgFileUrl(ch.tgFileId);
+
+    await new Promise((resolve, reject) => {
+      const chRange = (chunkStart > 0 || chunkEnd < ch.size - 1)
+        ? `bytes=${chunkStart}-${chunkEnd}` : undefined;
+      proxyStreamChunk(fileInfo.url, res, chRange, resolve, reject);
+    });
+
+    bytesWritten += chunkEnd - chunkStart + 1;
+  }
+  if (!res.writableEnded) res.end();
+}
+
+function proxyStreamChunk(url, res, range, resolve, reject) {
+  const h = range ? { Range: range } : {};
+  const mod = url.startsWith('https') ? https : http;
+  const req = mod.get(url, { headers: h }, up => {
+    up.pipe(res, { end: false });
+    up.on('end', resolve);
+    up.on('error', reject);
+  });
+  req.on('error', reject);
+  req.setTimeout(60000, () => { req.destroy(); reject(new Error('chunk timeout')); });
 }
 
 async function streamTg(fileId, req, res) {
@@ -438,28 +512,14 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
   const title = req.body.title || `Урок ${(db.getCourse(cid)?.videos?.length || 0) + 1}`;
   const desc = req.body.desc || '';
   const size = req.file.size || 0;
+  const TG_MAX = 50 * 1024 * 1024;   // ліміт Telegram Bot API
+  const CHUNK_SIZE = 47 * 1024 * 1024; // 47 МБ — запас до 50 МБ
 
   try {
     let videoEntry;
 
-    if (size > b2.TG_MAX_SIZE) {
-      // ═══ Файл > 50 МБ → Backblaze B2 ═══
-      if (!b2.configured) {
-        res.status(400).json({ ok: false, error: 'B2 не налаштований. Файли > 50 МБ потребують B2 сховище. Додайте B2_ENDPOINT, B2_BUCKET, B2_KEY_ID, B2_APP_KEY у змінні середовища.' });
-        try { fs.unlinkSync(req.file.path); } catch { }
-        return;
-      }
-      const b2key = b2.makeKey(cid, req.file.originalname);
-      const contentType = req.file.mimetype || 'video/mp4';
-      await b2.uploadFile(b2key, req.file.path, contentType, size);
-      try { fs.unlinkSync(req.file.path); } catch { }
-      videoEntry = {
-        id: db.newId(), title, desc,
-        storage: 'b2', b2Key: b2key,
-        size, addedAt: Date.now()
-      };
-    } else {
-      // ═══ Файл ≤ 50 МБ → Telegram (стандартний потік) ═══
+    if (size <= TG_MAX) {
+      // ═══ Файл ≤ 50 МБ → sendVideo (стандартний потік) ═══
       const FormData = require('form-data'), form = new FormData();
       form.append('chat_id', ADMIN_ID);
       form.append('caption', `${title}\n\n${desc}`);
@@ -474,12 +534,66 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
         size: tgRes.result.video.file_size || size,
         addedAt: Date.now()
       };
+    } else {
+      // ═══ Файл > 50 МБ → розбити на чанки, кожен ≤ 47 МБ ═══
+      const totalChunks = Math.ceil(size / CHUNK_SIZE);
+      const chunks = [];
+
+      for (let i = 0; i < totalChunks; i++) {
+        const offset = i * CHUNK_SIZE;
+        const chSize = Math.min(CHUNK_SIZE, size - offset);
+        const chunkPath = `${req.file.path}_ch${i}`;
+
+        // Створюємо тимчасовий файл чанка
+        await new Promise((res2, rej2) => {
+          const rs = fs.createReadStream(req.file.path, { start: offset, end: offset + chSize - 1 });
+          const ws = fs.createWriteStream(chunkPath);
+          rs.pipe(ws);
+          ws.on('finish', res2);
+          ws.on('error', rej2);
+        });
+
+        // Надсилаємо чанк як document в Telegram
+        const FormData = require('form-data'), form = new FormData();
+        form.append('chat_id', ADMIN_ID);
+        form.append('caption', `${title} [part ${i + 1}/${totalChunks}]`);
+        form.append('protect_content', 'true');
+        form.append('document', fs.createReadStream(chunkPath), {
+          filename: `${req.file.originalname || 'video'}.part${i + 1}`,
+          contentType: 'application/octet-stream'
+        });
+        const tgRes = await postForm('/sendDocument', form);
+        try { fs.unlinkSync(chunkPath); } catch { }
+        if (!tgRes.ok) {
+          // Чистимо тимчасові файли при помилці
+          try { fs.unlinkSync(req.file.path); } catch { }
+          for (let j = i + 1; j < totalChunks; j++) {
+            try { fs.unlinkSync(`${req.file.path}_ch${j}`); } catch { }
+          }
+          res.status(500).json({ ok: false, error: `Telegram error (chunk ${i + 1}/${totalChunks}): ${tgRes.description}` });
+          return;
+        }
+        chunks.push({ tgFileId: tgRes.result.document.file_id, size: chSize, offset });
+      }
+
+      try { fs.unlinkSync(req.file.path); } catch { }
+
+      videoEntry = {
+        id: db.newId(), title, desc,
+        size, chunks, chunked: true,
+        addedAt: Date.now()
+      };
     }
 
     db.set(d => { const c = d.courses.find(x => x.id === cid); if (c) { if (!c.videos) c.videos = []; c.videos.push(videoEntry); } });
     invalidateCache();
     res.json({ ok: true, total: db.getCourse(cid)?.videos?.length });
-  } catch (e) { try { fs.unlinkSync(req.file.path); } catch { } res.status(500).json({ ok: false, error: e.message }); }
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch { }
+    // Чистимо всі тимчасові чанки при помилці
+    for (let j = 0; j < 20; j++) { try { fs.unlinkSync(`${req.file.path}_ch${j}`); } catch { } }
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.patch('/api/courses/:cid/videos/:idx', adm, (req, res) => {
@@ -488,13 +602,8 @@ app.patch('/api/courses/:cid/videos/:idx', adm, (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete('/api/courses/:cid/videos/:idx', adm, async (req, res) => {
-  const idx = parseInt(req.params.idx);
-  let removedVideo = null;
-  db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) { removedVideo = c.videos[idx]; c.videos.splice(idx, 1); } });
-  if (removedVideo?.storage === 'b2' && removedVideo.b2Key) {
-    try { await b2.deleteFile(removedVideo.b2Key); } catch { }
-  }
+app.delete('/api/courses/:cid/videos/:idx', adm, (req, res) => {
+  db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.videos.splice(parseInt(req.params.idx), 1); });
   invalidateCache();
   res.json({ ok: true });
 });
@@ -641,7 +750,7 @@ app.get('/api/export/zip', adm, (req, res) => {
   let bCsv = 'course,id,name,username,grantedAt\n', vCsv = 'course,index,title,desc,storage,fileId,size,addedAt\n';
   (d.courses || []).forEach(c => {
     (c.buyers || []).forEach(b => bCsv += `"${c.title}",${b.id},"${b.name}","${b.username || ''}","${new Date(b.grantedAt).toISOString()}"\n`);
-    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.storage || 'telegram'}","${v.telegramFileId || v.b2Key || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
+    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.chunked ? 'chunked' : 'single'}","${v.telegramFileId || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
   });
   arc.append(bCsv, { name: 'buyers.csv' }); arc.append(vCsv, { name: 'videos.csv' }); arc.finalize();
 });
@@ -830,7 +939,6 @@ app.get('/api/system', adm, (_, res) => {
     maxStreams: MAX_STREAMS,
     cacheSize: _responseCache.size,
     tgCacheSize: _tgFileCache.size,
-    b2: { configured: b2.configured },
   });
 });
 
