@@ -25,6 +25,7 @@ const http       = require('http');
 const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
+const b2         = require('./b2');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 const PORT           = process.env.PORT || 3000;
@@ -100,7 +101,7 @@ app.use((req, res, next) => {
 // ОПТИМІЗАЦІЯ 3: Request timeout — вбиваємо зависші запити
 // ═══════════════════════════════════════════════════════════
 app.use((req, res, next) => {
-  const timeout = (req.path.includes('/video/') || req.path.includes('/upload')) ? 120000 : 30000;
+  const timeout = (req.path.includes('/upload') || req.method === 'POST' && (req.path.includes('/videos') || req.path.includes('/materials'))) ? 900000 : (req.path.includes('/video/') ? 120000 : 30000);
   req.setTimeout(timeout);
   res.setTimeout(timeout);
   next();
@@ -285,7 +286,7 @@ app.get('/api/video/free/:cid/:idx', (req, res) => {
   if (!c || !c.freeAccess) { res.status(403).end(); return; }
   const v = c.videos?.[parseInt(req.params.idx)];
   if (!v) { res.status(404).end(); return; }
-  streamTg(v.telegramFileId, req, res);
+  streamVideo(v, req, res);
 });
 
 app.get('/api/video/stream/:cid/:idx', (req, res) => {
@@ -299,8 +300,33 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
   const c = db.get().courses.find(x => x.id === req.params.cid);
   const v = c?.videos?.[parseInt(req.params.idx)];
   if (!v) { res.status(404).end(); return; }
-  streamTg(v.telegramFileId, req, res);
+  streamVideo(v, req, res);
 });
+
+async function streamVideo(video, req, res) {
+  // B2 сховище
+  if (video.storage === 'b2' && video.b2Key) {
+    if (_activeStreams >= MAX_STREAMS) {
+      res.status(503).set('Retry-After', '5').end('Server busy');
+      return;
+    }
+    _activeStreams++;
+    res.on('close', () => { _activeStreams--; });
+    try {
+      await b2.streamFile(video.b2Key, video.size || 0, req, res);
+    } catch (e) {
+      _activeStreams--;
+      if (!res.headersSent) res.status(500).end(e.message);
+    }
+    return;
+  }
+  // Telegram (стандартний потік)
+  if (video.telegramFileId) {
+    streamTg(video.telegramFileId, req, res);
+    return;
+  }
+  res.status(404).end('Відео не знайдено');
+}
 
 async function streamTg(fileId, req, res) {
   if (_activeStreams >= MAX_STREAMS) {
@@ -408,18 +434,49 @@ function postForm(ep, form) {
 app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, res) => {
   if (!checkAdm(req, res)) return;
   if (!req.file) { res.status(400).json({ ok: false, error: 'Немає файлу' }); return; }
+  const cid = req.params.cid;
+  const title = req.body.title || `Урок ${(db.getCourse(cid)?.videos?.length || 0) + 1}`;
+  const desc = req.body.desc || '';
+  const size = req.file.size || 0;
+
   try {
-    const FormData = require('form-data'), form = new FormData();
-    form.append('chat_id', ADMIN_ID);
-    form.append('caption', `${req.body.title || 'Урок'}\n\n${req.body.desc || ''}`);
-    form.append('protect_content', 'true');
-    form.append('video', fs.createReadStream(req.file.path), { filename: req.file.originalname || 'video.mp4', contentType: req.file.mimetype || 'video/mp4' });
-    const tgRes = await postForm('/sendVideo', form);
-    fs.unlinkSync(req.file.path);
-    if (!tgRes.ok) { res.status(500).json({ ok: false, error: tgRes.description || 'Telegram error' }); return; }
-    const cid = req.params.cid;
-    const title = req.body.title || `Урок ${(db.getCourse(cid)?.videos?.length || 0) + 1}`;
-    db.set(d => { const c = d.courses.find(x => x.id === cid); if (c) { if (!c.videos) c.videos = []; c.videos.push({ id: db.newId(), title, desc: req.body.desc || '', telegramFileId: tgRes.result.video.file_id, size: tgRes.result.video.file_size || req.file.size || 0, addedAt: Date.now() }); } });
+    let videoEntry;
+
+    if (size > b2.TG_MAX_SIZE) {
+      // ═══ Файл > 50 МБ → Backblaze B2 ═══
+      if (!b2.configured) {
+        res.status(400).json({ ok: false, error: 'B2 не налаштований. Файли > 50 МБ потребують B2 сховище. Додайте B2_ENDPOINT, B2_BUCKET, B2_KEY_ID, B2_APP_KEY у змінні середовища.' });
+        try { fs.unlinkSync(req.file.path); } catch { }
+        return;
+      }
+      const b2key = b2.makeKey(cid, req.file.originalname);
+      const contentType = req.file.mimetype || 'video/mp4';
+      await b2.uploadFile(b2key, req.file.path, contentType, size);
+      try { fs.unlinkSync(req.file.path); } catch { }
+      videoEntry = {
+        id: db.newId(), title, desc,
+        storage: 'b2', b2Key: b2key,
+        size, addedAt: Date.now()
+      };
+    } else {
+      // ═══ Файл ≤ 50 МБ → Telegram (стандартний потік) ═══
+      const FormData = require('form-data'), form = new FormData();
+      form.append('chat_id', ADMIN_ID);
+      form.append('caption', `${title}\n\n${desc}`);
+      form.append('protect_content', 'true');
+      form.append('video', fs.createReadStream(req.file.path), { filename: req.file.originalname || 'video.mp4', contentType: req.file.mimetype || 'video/mp4' });
+      const tgRes = await postForm('/sendVideo', form);
+      try { fs.unlinkSync(req.file.path); } catch { }
+      if (!tgRes.ok) { res.status(500).json({ ok: false, error: tgRes.description || 'Telegram error' }); return; }
+      videoEntry = {
+        id: db.newId(), title, desc,
+        telegramFileId: tgRes.result.video.file_id,
+        size: tgRes.result.video.file_size || size,
+        addedAt: Date.now()
+      };
+    }
+
+    db.set(d => { const c = d.courses.find(x => x.id === cid); if (c) { if (!c.videos) c.videos = []; c.videos.push(videoEntry); } });
     invalidateCache();
     res.json({ ok: true, total: db.getCourse(cid)?.videos?.length });
   } catch (e) { try { fs.unlinkSync(req.file.path); } catch { } res.status(500).json({ ok: false, error: e.message }); }
@@ -431,8 +488,13 @@ app.patch('/api/courses/:cid/videos/:idx', adm, (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete('/api/courses/:cid/videos/:idx', adm, (req, res) => {
-  db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.videos.splice(parseInt(req.params.idx), 1); });
+app.delete('/api/courses/:cid/videos/:idx', adm, async (req, res) => {
+  const idx = parseInt(req.params.idx);
+  let removedVideo = null;
+  db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) { removedVideo = c.videos[idx]; c.videos.splice(idx, 1); } });
+  if (removedVideo?.storage === 'b2' && removedVideo.b2Key) {
+    try { await b2.deleteFile(removedVideo.b2Key); } catch { }
+  }
   invalidateCache();
   res.json({ ok: true });
 });
@@ -576,10 +638,10 @@ app.get('/api/export/zip', adm, (req, res) => {
   arc.pipe(res);
   arc.file('data/db.json', { name: 'db.json' });
   const d = db.get();
-  let bCsv = 'course,id,name,username,grantedAt\n', vCsv = 'course,index,title,desc,fileId,size,addedAt\n';
+  let bCsv = 'course,id,name,username,grantedAt\n', vCsv = 'course,index,title,desc,storage,fileId,size,addedAt\n';
   (d.courses || []).forEach(c => {
     (c.buyers || []).forEach(b => bCsv += `"${c.title}",${b.id},"${b.name}","${b.username || ''}","${new Date(b.grantedAt).toISOString()}"\n`);
-    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.telegramFileId}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
+    (c.videos || []).forEach((v, i) => vCsv += `"${c.title}",${i + 1},"${v.title || ''}","${(v.desc || '').replace(/"/g, "'")}","${v.storage || 'telegram'}","${v.telegramFileId || v.b2Key || ''}",${v.size || 0},"${new Date(v.addedAt).toISOString()}"\n`);
   });
   arc.append(bCsv, { name: 'buyers.csv' }); arc.append(vCsv, { name: 'videos.csv' }); arc.finalize();
 });
@@ -768,6 +830,7 @@ app.get('/api/system', adm, (_, res) => {
     maxStreams: MAX_STREAMS,
     cacheSize: _responseCache.size,
     tgCacheSize: _tgFileCache.size,
+    b2: { configured: b2.configured },
   });
 });
 
