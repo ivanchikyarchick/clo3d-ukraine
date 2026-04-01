@@ -432,7 +432,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <div class="fdrop" id="ufdrop">
           <input type="file" id="upl-file" accept="video/*" onchange="onUplFile()">
           <div>🎬 Клікніть або перетягніть відео</div>
-           <div style="font-size:.73rem;color:var(--muted);margin-top:.25rem">MP4, MOV — до 2 ГБ (файли >50 МБ зберігаються на Google Drive)</div>
+           <div style="font-size:.73rem;color:var(--muted);margin-top:.25rem">MP4, MOV — до 2 ГБ (файли >50 МБ зберігаються на Cloudflare R2)</div>
           <div id="upl-fn" style="font-size:.75rem;color:var(--grn);margin-top:.3rem"></div>
         </div>
       </div>
@@ -650,7 +650,7 @@ function renderMcVids(){
       <div class="vii">
         <div class="vit" id="vit-${i}" onclick="editVT(${i})">${v.title||'—'}</div>
         <div class="vid2" id="vid2-${i}" onclick="editVD(${i})">${v.desc||'<em style="color:var(--muted)">без опису</em>'}</div>
-        <div class="vim">${v.size?(v.size/1024/1024).toFixed(1)+' MB · ':''} ${v.driveFileId?'☁️ Drive · ':''} ${v.addedAt?new Date(v.addedAt).toLocaleDateString('uk'):''}</div>
+        <div class="vim">${v.size?(v.size/1024/1024).toFixed(1)+' MB · ':''} ${v.r2Key?'☁️ R2 · ':''} ${v.addedAt?new Date(v.addedAt).toLocaleDateString('uk'):''}</div>
       </div>
       <div class="via">
         ${i>0?`<button class="btn btn-gh" onclick="mvVid(${i},${i-1})" style="padding:.3rem .5rem">↑</button>`:''}
@@ -737,7 +737,7 @@ async function doUpload(){
   if(!uplFile){toast('⚠️ Виберіть файл');return;}
   const MAX_SIZE=2*1024*1024*1024, TG_MAX=50*1024*1024;
   if(uplFile.size>MAX_SIZE){toast('⚠️ Файл занадто великий (макс 2 ГБ)');return;}
-  if(uplFile.size>TG_MAX&&!window._driveOk){toast('⚠️ Файл >50 МБ потребує Google Drive (не налаштований)');return;}
+  if(uplFile.size>TG_MAX&&!window._driveOk){toast('⚠️ Файл >50 МБ потребує Cloudflare R2 (не налаштований)');return;}
   const btn=document.getElementById('upl-btn'),prog=document.getElementById('uprog'),bar=document.getElementById('up-bar'),pct=document.getElementById('up-pct'),txt=document.getElementById('up-txt'),res=document.getElementById('upl-res');
   btn.disabled=true; btn.textContent='⏳'; prog.classList.add('show'); bar.style.width='0%'; pct.textContent='0%'; txt.textContent='Підготовка...'; res.textContent='';
   const fd=new FormData(); fd.append('title',title); fd.append('desc',document.getElementById('upl-desc').value); fd.append('video',uplFile);
@@ -953,9 +953,9 @@ async function checkDrive(){
   const el=document.getElementById('drive-status');
   if(!el)return;
   try{const r=await fetch('/api/system');const d=await r.json();
-    if(d.gdrive?.configured){window._driveOk=true;el.innerHTML='☁️ <b>Google Drive підключено</b> — файли >50 МБ зберігаються на Drive';el.style.color='var(--grn)';}
-    else{window._driveOk=false;el.innerHTML='⚠️ <b>Drive не налаштований</b> — файли >50 МБ не можна завантажити. Додайте ENV: GDRIVE_FOLDER_ID, GDRIVE_SA_JSON';el.style.color='var(--gold)';}
-  }catch{window._driveOk=false;el.innerHTML='Не вдалося перевірити Drive';el.style.color='var(--muted)';}
+    if(d.r2?.configured){window._driveOk=true;el.innerHTML='☁️ <b>Cloudflare R2 підключено</b> — файли >50 МБ зберігаються на R2';el.style.color='var(--grn)';}
+    else{window._driveOk=false;el.innerHTML='⚠️ <b>R2 не налаштований</b> — файли >50 МБ не можна завантажити. Додайте ENV: R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET';el.style.color='var(--gold)';}
+  }catch{window._driveOk=false;el.innerHTML='Не вдалося перевірити R2';el.style.color='var(--muted)';}
 }
 
   // ── SYSTEM MONITOR ───────────────────────────────
