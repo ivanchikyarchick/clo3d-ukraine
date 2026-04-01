@@ -6,24 +6,16 @@
  *   R2_ACCESS_KEY  — R2 Access Key ID (з API токену)
  *   R2_SECRET_KEY  — R2 Secret Access Key
  *   R2_BUCKET      — Назва бакету
- *
- * Налаштування:
- *   1. Cloudflare Dashboard → R2 Object Storage
- *   2. Create bucket (напр. "fashionlab-videos")
- *   3. Manage R2 API Tokens → Create token (з правами Object Read & Write)
- *   4. Збережіть Account ID, Access Key ID, Secret Access Key
  */
 
+const https = require('https');
+const crypto = require('crypto');
+const fs     = require('fs');
 
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '7f4d14bf10c6eb177000a84d3add3b62';
 const ACCESS_KEY = process.env.R2_ACCESS_KEY  || 'f8eb8505e2d20e5a57dc0c682d3efa81';
 const SECRET_KEY = process.env.R2_SECRET_KEY  || '43e32a11c21b600ef604e981290a036b3617f8ce00e639cd71eec3d622b0ece5';
 const BUCKET     = process.env.R2_BUCKET      || 'fashionlab-videos';
-
-const https = require('https');
-const http  = require('http');
-const crypto = require('crypto');
-const fs     = require('fs');
 
 const configured = !!(ACCOUNT_ID && ACCESS_KEY && SECRET_KEY && BUCKET);
 const ENDPOINT   = `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`;
@@ -36,13 +28,13 @@ function _sha256(data) {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
-function _signRequest(method, path, headers, bodyStreamOrBuffer) {
+function _signRequest(method, path, headers, isStreamingBody) {
   const now  = new Date();
   const date = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const stamp = date.slice(0, 8);
 
   headers['x-amz-date']    = date;
-  headers['x-amz-content-sha256'] = bodyStreamOrBuffer ? 'UNSIGNED-PAYLOAD' : 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+  headers['x-amz-content-sha256'] = isStreamingBody ? 'UNSIGNED-PAYLOAD' : 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
   const signedHeaders = Object.keys(headers).sort().map(k => k.toLowerCase()).join(';');
   const canonicalHeaders = Object.keys(headers).sort().map(k => `${k.toLowerCase()}:${headers[k].trim()}\n`).join('');
@@ -67,9 +59,6 @@ function _signRequest(method, path, headers, bodyStreamOrBuffer) {
 
 // ─── Upload ─────────────────────────────────────────────────
 
-/**
- * Завантажити файл з диску в R2 (потокове)
- */
 function uploadFile(key, filePath, contentType, size) {
   return new Promise((resolve, reject) => {
     if (!configured) return reject(new Error('R2 не налаштований'));
@@ -77,8 +66,8 @@ function uploadFile(key, filePath, contentType, size) {
     const path   = `/${BUCKET}/${key}`;
     const stream = fs.createReadStream(filePath);
     const headers = {
-      'Host':          new URL(ENDPOINT).hostname,
-      'Content-Type':  contentType || 'video/mp4',
+      'Host':           new URL(ENDPOINT).hostname,
+      'Content-Type':   contentType || 'video/mp4',
       'Content-Length': String(size),
     };
     _signRequest('PUT', path, headers, true);
@@ -86,43 +75,53 @@ function uploadFile(key, filePath, contentType, size) {
     const req = https.request({
       hostname: new URL(ENDPOINT).hostname,
       path, method: 'PUT', headers,
+      timeout: 300000, // 5 хв на з'єднання
     }, res => {
       let body = '';
       res.on('data', c => body += c);
       res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) resolve({ key, size });
-        else reject(new Error(`R2 upload ${res.statusCode}: ${body.slice(0, 300)}`));
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log(`[R2] upload OK: ${key} (${size} bytes)`);
+          resolve({ key, size });
+        } else {
+          reject(new Error(`R2 upload ${res.statusCode}: ${body.slice(0, 300)}`));
+        }
       });
     });
     req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('R2 upload timeout')); });
     stream.pipe(req);
-    stream.on('error', reject);
+    stream.on('error', (e) => { req.destroy(); reject(e); });
   });
 }
 
 // ─── Streaming ──────────────────────────────────────────────
 
-/**
- * Стрімити файл з R2 (з Range support)
- */
-function streamFile(key, size, req, res) {
+function streamFile(key, size, clientReq, clientRes) {
   return new Promise((resolve, reject) => {
     if (!configured) return reject(new Error('R2 не налаштований'));
 
     const path = `/${BUCKET}/${key}`;
-    const range = req.headers.range;
+    const range = clientReq.headers.range;
     const headers = { 'Host': new URL(ENDPOINT).hostname };
-
-    if (range && size) {
-      headers['Range'] = range;
-    }
+    if (range && size) headers['Range'] = range;
     _signRequest('GET', path, headers, false);
+
+    let settled = false;
+    const done = (err) => {
+      if (settled) return;
+      settled = true;
+      if (err) reject(err); else resolve();
+    };
 
     const gReq = https.request({
       hostname: new URL(ENDPOINT).hostname,
       path, method: 'GET', headers,
+      timeout: 30000, // 30с на з'єднання
     }, gRes => {
-      // Формуємо тільки безпечні заголовки (R2 повертає content-encoding: aws-chunked, transfer-encoding які ламають відео)
+      if (clientRes.destroyed) { gReq.destroy(); done(); return; }
+
+      // Тільки безпечні заголовки (R2 повертає content-encoding/aws-chunked які ламають відео)
       const outHeaders = {
         'Content-Type': 'video/mp4',
         'Content-Disposition': 'inline',
@@ -130,14 +129,34 @@ function streamFile(key, size, req, res) {
       };
       if (gRes.headers['content-length']) outHeaders['Content-Length'] = gRes.headers['content-length'];
       if (gRes.headers['content-range'])  outHeaders['Content-Range']  = gRes.headers['content-range'];
-      if (gRes.headers['etag'])           outHeaders['ETag']           = gRes.headers['etag'];
 
-      res.writeHead(gRes.statusCode, outHeaders);
-      gRes.pipe(res);
-      gRes.on('end', resolve);
-      gRes.on('error', reject);
+      if (!clientRes.headersSent) {
+        clientRes.writeHead(gRes.statusCode, outHeaders);
+      }
+
+      gRes.pipe(clientRes);
+      gRes.on('end', () => done());
+      gRes.on('error', (e) => { clientRes.destroy(); done(e); });
     });
-    gReq.on('error', () => { if (!res.headersSent) res.status(502).end(); reject; });
+
+    gReq.on('error', (e) => {
+      console.error('[R2] stream error:', e.message);
+      if (!clientRes.headersSent) try { clientRes.status(502).end('R2 stream error'); } catch { }
+      done(e);
+    });
+    gReq.on('timeout', () => {
+      console.error('[R2] stream timeout');
+      gReq.destroy();
+      if (!clientRes.headersSent) try { clientRes.status(504).end('R2 timeout'); } catch { }
+      done(new Error('R2 stream timeout'));
+    });
+
+    // Якщо клієнт відключився — знищуємо запит до R2
+    clientRes.on('close', () => {
+      gReq.destroy();
+      done();
+    });
+
     gReq.end();
   });
 }
