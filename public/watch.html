@@ -216,7 +216,8 @@ function play(idx){
   let hideLoaderTimer=setTimeout(()=>{ if(loader) loader.classList.add('h'); if(video) video.style.opacity='1'; }, 12000);
   
   const onReady = () => { clearTimeout(hideLoaderTimer); if(loader) loader.classList.add('h'); if(video) video.style.opacity='1'; };
-  if(streamUrl.includes('.m3u8') || Hls.isSupported()){
+  // Спочатку перевіряємо, чи це HLS (.m3u8)
+  if(streamUrl.includes('.m3u8')){
     if(Hls.isSupported()){
       const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, enableWorker: true, autoStartLoad: true });
       currentHls = hls;
@@ -227,8 +228,21 @@ function play(idx){
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
       video.addEventListener('canplay', onReady, {once:true});
-    } else { video.src = streamUrl; video.addEventListener('canplay', onReady, {once:true}); }
-  } else { video.src = streamUrl; video.addEventListener('canplay', onReady, {once:true}); }
+    } else {
+      // HLS не підтримується - показуємо помилку
+      if(loader) loader.querySelector('.vl-t').innerHTML='HLS не підтримується у вашому браузері';
+      setTimeout(()=>{ if(loader) loader.classList.add('h'); video.style.opacity='1'; }, 2000);
+    }
+  } else {
+    // Звичайне відео (mp4, webm, тощо)
+    video.src = streamUrl;
+    video.addEventListener('canplay', onReady, {once:true});
+    video.addEventListener('error', () => {
+      console.error('Video error:', video.error);
+      if(loader) loader.querySelector('.vl-t').innerHTML='Помилка відтворення відео. Спробуйте інший урок або браузер.';
+      setTimeout(()=>{ if(loader) loader.classList.add('h'); video.style.opacity='1'; }, 2000);
+    }, {once:true});
+  }
   
   video.addEventListener('contextmenu', e=>e.preventDefault());
   video.addEventListener('dragstart', e=>e.preventDefault());
