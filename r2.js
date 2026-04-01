@@ -25,11 +25,6 @@ const http  = require('http');
 const crypto = require('crypto');
 const fs     = require('fs');
 
-const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '';
-const ACCESS_KEY = process.env.R2_ACCESS_KEY  || '';
-const SECRET_KEY = process.env.R2_SECRET_KEY  || '';
-const BUCKET     = process.env.R2_BUCKET      || '';
-
 const configured = !!(ACCOUNT_ID && ACCESS_KEY && SECRET_KEY && BUCKET);
 const ENDPOINT   = `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`;
 const REGION     = 'auto';
