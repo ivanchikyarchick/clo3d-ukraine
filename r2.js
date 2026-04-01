@@ -15,15 +15,20 @@
  */
 
 
+const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '7f4d14bf10c6eb177000a84d3add3b62';
+const ACCESS_KEY = process.env.R2_ACCESS_KEY  || 'f8eb8505e2d20e5a57dc0c682d3efa81';
+const SECRET_KEY = process.env.R2_SECRET_KEY  || '43e32a11c21b600ef604e981290a036b3617f8ce00e639cd71eec3d622b0ece5';
+const BUCKET     = process.env.R2_BUCKET      || 'fashionlab-videos';
+
 const https = require('https');
 const http  = require('http');
 const crypto = require('crypto');
 const fs     = require('fs');
 
-const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '7f4d14bf10c6eb177000a84d3add3b62';
-const ACCESS_KEY = process.env.R2_ACCESS_KEY  || 'f8eb8505e2d20e5a57dc0c682d3efa81';
-const SECRET_KEY = process.env.R2_SECRET_KEY  || '43e32a11c21b600ef604e981290a036b3617f8ce00e639cd71eec3d622b0ece5';
-const BUCKET     = process.env.R2_BUCKET      || 'fashionlab-videos';
+const ACCOUNT_ID = process.env.R2_ACCOUNT_ID  || '';
+const ACCESS_KEY = process.env.R2_ACCESS_KEY  || '';
+const SECRET_KEY = process.env.R2_SECRET_KEY  || '';
+const BUCKET     = process.env.R2_BUCKET      || '';
 
 const configured = !!(ACCOUNT_ID && ACCESS_KEY && SECRET_KEY && BUCKET);
 const ENDPOINT   = `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`;
@@ -122,11 +127,17 @@ function streamFile(key, size, req, res) {
       hostname: new URL(ENDPOINT).hostname,
       path, method: 'GET', headers,
     }, gRes => {
-      res.writeHead(gRes.statusCode, {
-        ...gRes.headers,
+      // Формуємо тільки безпечні заголовки (R2 повертає content-encoding: aws-chunked, transfer-encoding які ламають відео)
+      const outHeaders = {
         'Content-Type': 'video/mp4',
         'Content-Disposition': 'inline',
-      });
+        'Accept-Ranges': 'bytes',
+      };
+      if (gRes.headers['content-length']) outHeaders['Content-Length'] = gRes.headers['content-length'];
+      if (gRes.headers['content-range'])  outHeaders['Content-Range']  = gRes.headers['content-range'];
+      if (gRes.headers['etag'])           outHeaders['ETag']           = gRes.headers['etag'];
+
+      res.writeHead(gRes.statusCode, outHeaders);
       gRes.pipe(res);
       gRes.on('end', resolve);
       gRes.on('error', reject);
