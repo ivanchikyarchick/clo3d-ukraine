@@ -345,16 +345,19 @@ function fetchJson(url) {
 
 function proxyStream(url, res, h = {}) {
   const mod = url.startsWith('https') ? https : http;
+  console.log(`[proxy] → ${url.slice(0, 80)}...`);
   const req = mod.get(url, { headers: h }, up => {
-    if (!res.headersSent) {
-      res.writeHead(up.statusCode || 200, up.headers);
-    }
+    // Тільки безпечні заголовки (Telegram повертає transfer-encoding/content-encoding які ламають)
+    const outH = { 'Content-Type': up.headers['content-type'] || 'application/octet-stream' };
+    if (up.headers['content-length']) outH['Content-Length'] = up.headers['content-length'];
+    if (!res.headersSent) res.writeHead(up.statusCode || 200, outH);
     up.pipe(res);
-    up.on('error', () => { if (!res.writableEnded) res.end(); });
+    up.on('end', () => console.log('[proxy] done'));
+    up.on('error', (e) => { console.error('[proxy] up error:', e.message); if (!res.writableEnded) res.end(); });
   });
-  req.on('error', () => { if (!res.headersSent) res.status(502).end(); else if (!res.writableEnded) res.end(); });
-  req.setTimeout(60000, () => { req.destroy(); if (!res.headersSent) res.status(504).end(); else if (!res.writableEnded) res.end(); });
-  res.on('close', () => { req.destroy(); });
+  req.on('error', (e) => { console.error('[proxy] req error:', e.message); if (!res.headersSent) res.status(502).end(); else if (!res.writableEnded) res.end(); });
+  req.setTimeout(60000, () => { console.error('[proxy] timeout'); req.destroy(); if (!res.writableEnded) res.end(); });
+  res.on('close', () => { console.log('[proxy] client closed'); req.destroy(); });
 }
 
 // Admin courses CRUD
@@ -524,12 +527,17 @@ app.get('/api/course/:cid/videos/:idx/materials/:mid/download', (req, res) => {
   if (!isAdm && !c.buyers?.some(b => b.id === uid) && !c.freeAccess) { res.status(403).end(); return; }
   const mat = (c.videos?.[parseInt(req.params.idx)]?.materials || []).find(m => m.id === req.params.mid);
   if (!mat) { res.status(404).end(); return; }
+  console.log(`[mat-dl] start: ${mat.name} (${mat.telegramFileId})`);
   getTgFileUrl(mat.telegramFileId)
     .then(file => {
+      console.log(`[mat-dl] proxy: ${mat.name} size=${file.size}`);
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(mat.name)}"`);
       res.setHeader('Content-Type', 'application/octet-stream');
       proxyStream(file.url, res);
-    }).catch(e => res.status(500).end(e.message));
+    }).catch(e => {
+      console.error(`[mat-dl] error: ${e.message}`);
+      if (!res.headersSent) res.status(500).end(e.message);
+    });
 });
 
 // Progress
