@@ -176,6 +176,45 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <div class="cb"><h3>🌐 Сайт</h3><div id="wl" style="max-height:240px;overflow-y:auto"></div></div>
       </div>
     </div>
+    <!-- System Monitor -->
+<div class="cr" style="margin-bottom:1.5rem">
+  <div class="cb" style="grid-column:1/-1">
+    <h3>🖥️ Навантаження сервера <span id="sys-uptime" style="font-family:Inter;font-size:.7rem;color:var(--muted);font-weight:400;margin-left:.5rem"></span></h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:1rem">
+      <!-- RAM -->
+      <div style="background:var(--s2);border-radius:10px;padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">💾 RAM</span>
+          <span id="sys-mem-pct" style="font-family:Syne;font-weight:800;font-size:1.1rem"></span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden">
+          <div id="sys-mem-bar" style="height:100%;border-radius:6px;transition:width .5s,background .5s"></div>
+        </div>
+        <div id="sys-mem-detail" style="font-size:.7rem;color:var(--muted);margin-top:.4rem"></div>
+      </div>
+      <!-- CPU -->
+      <div style="background:var(--s2);border-radius:10px;padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">⚡ CPU Load</span>
+          <span id="sys-cpu-pct" style="font-family:Syne;font-weight:800;font-size:1.1rem"></span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden">
+          <div id="sys-cpu-bar" style="height:100%;border-radius:6px;transition:width .5s,background .5s"></div>
+        </div>
+        <div id="sys-cpu-detail" style="font-size:.7rem;color:var(--muted);margin-top:.4rem"></div>
+      </div>
+      <!-- Process -->
+      <div style="background:var(--s2);border-radius:10px;padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">📦 Node.js Process</span>
+          <span id="sys-proc" style="font-family:Syne;font-weight:800;font-size:1.1rem;color:var(--blue)"></span>
+        </div>
+        <div id="sys-proc-detail" style="font-size:.7rem;color:var(--muted);margin-top:.4rem;line-height:1.6"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
     <!-- COURSES -->
     <div class="tab" id="tab-courses">
@@ -905,6 +944,40 @@ async function syncNow(){
 }
 
 load(); loadSettings(); loadSyncStatus(); setInterval(load,30000);
+
+  // ── SYSTEM MONITOR ───────────────────────────────
+async function loadSystem(){
+  try{
+    const d=await fetch('/api/system').then(r=>r.json());
+    // RAM bar
+    const memPct=d.system.memPct;
+    const memColor=memPct>85?'var(--red)':memPct>60?'var(--gold)':'var(--grn)';
+    document.getElementById('sys-mem-pct').textContent=memPct+'%';
+    document.getElementById('sys-mem-pct').style.color=memColor;
+    document.getElementById('sys-mem-bar').style.width=memPct+'%';
+    document.getElementById('sys-mem-bar').style.background=memColor;
+    document.getElementById('sys-mem-detail').textContent=
+      `${d.system.usedMem} / ${d.system.totalMem} MB · Вільно: ${d.system.freeMem} MB`;
+    // CPU bar
+    const cpuPct=Math.min(d.cpu.loadPct,100);
+    const cpuColor=cpuPct>80?'var(--red)':cpuPct>50?'var(--gold)':'var(--grn)';
+    document.getElementById('sys-cpu-pct').textContent=cpuPct+'%';
+    document.getElementById('sys-cpu-pct').style.color=cpuColor;
+    document.getElementById('sys-cpu-bar').style.width=cpuPct+'%';
+    document.getElementById('sys-cpu-bar').style.background=cpuColor;
+    document.getElementById('sys-cpu-detail').textContent=
+      `Load: ${d.cpu.load1} / ${d.cpu.load5} / ${d.cpu.load15} · Ядер: ${d.cpu.cores}`;
+    // Process
+    document.getElementById('sys-proc').textContent=d.process.rss+' MB';
+    document.getElementById('sys-proc-detail').innerHTML=
+      `Heap: ${d.process.heapUsed}/${d.process.heapTotal} MB<br>Стрімів: ${d.activeStreams}/3 · Кеш: ${d.cacheSize} · TG кеш: ${d.tgCacheSize}`;
+    // Uptime
+    const h=Math.floor(d.uptime/3600), m=Math.floor(d.uptime%3600/60);
+    document.getElementById('sys-uptime').textContent=`⏱ ${h}г ${m}хв`;
+  }catch{}
+}
+loadSystem(); setInterval(loadSystem, 10000); // кожні 10 сек
+
 </script>
 </body>
 </html>
