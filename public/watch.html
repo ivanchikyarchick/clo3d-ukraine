@@ -5,17 +5,14 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Vitaliia 3D Fashion Lab — Мої курси</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="icon" href="img/favicon.png" type="image/png">
+<link rel="icon" href="img/favicon.png" type="image/png">
+<!-- hls.js for compressed HLS streams -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <style>
 :root{--bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;--acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--red:#f87171;--txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18)}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;
-  /* Prevent text selection on video area */
-  -webkit-user-select:none;-moz-user-select:none;user-select:none}
-/* Allow text select in inputs */
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;-webkit-user-select:none;-moz-user-select:none;user-select:none}
 input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
-
-/* GATE */
 #gate{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
 .gbox{background:var(--s1);border:1px solid var(--brd);border-radius:24px;padding:3rem 2.5rem;width:100%;max-width:420px;text-align:center}
 .gbox .gt{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:.3rem}
@@ -28,11 +25,7 @@ input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
 .gerr{color:var(--red);font-size:.8rem;margin-top:.6rem}
 .gnote{font-size:.73rem;color:var(--muted);margin-top:1.1rem;line-height:1.6}
 .gnote a{color:var(--acc2);text-decoration:none}
-
-/* APP */
 #app{display:none;min-height:100vh;flex-direction:column}
-
-/* HEADER */
 header{background:var(--s1);border-bottom:1px solid var(--brd);padding:.85rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .hdr-brand{display:flex;flex-direction:column;gap:.1rem}
 .hdr-logo{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -41,19 +34,13 @@ header{background:var(--s1);border-bottom:1px solid var(--brd);padding:.85rem 2r
 .hdr-r span{color:var(--txt)}
 .hdr-btn{background:none;border:1px solid var(--brd);border-radius:8px;padding:.3rem .75rem;color:var(--muted);font-size:.73rem;cursor:pointer;transition:.2s;font-family:'Inter',sans-serif}
 .hdr-btn:hover{border-color:rgba(200,48,42,.4);color:var(--txt)}
-
-/* GLOBAL PROGRESS BAR */
 .global-prog{height:3px;background:var(--s3);position:relative}
 .global-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:.5s}
-
-/* COURSE TABS */
 .ctabs{padding:.85rem 2rem;background:var(--s2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .ctabs-label{font-size:.72rem;color:var(--muted);letter-spacing:.06em;flex-shrink:0}
 .ctab{padding:.4rem 1rem;border-radius:100px;border:1px solid var(--brd);background:transparent;color:var(--muted);font-size:.78rem;font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;transition:.2s}
 .ctab:hover{color:var(--txt);border-color:rgba(200,48,42,.3)}
 .ctab.on{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border-color:transparent}
-
-/* LAYOUT */
 .layout{display:flex;flex:1;min-height:0;overflow:hidden}
 .sidebar{width:300px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
 @media(max-width:900px){.sidebar{width:260px}}
@@ -73,22 +60,9 @@ header{background:var(--s1);border-bottom:1px solid var(--brd);padding:.85rem 2r
 .lin{width:26px;height:26px;border-radius:8px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-family:'Syne',sans-serif;font-weight:700;color:var(--muted);flex-shrink:0;transition:.2s}
 .lit{font-size:.82rem;font-weight:500;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lid{font-size:.7rem;color:var(--muted);margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-/* VIDEO AREA */
 .va{flex:1;padding:2rem;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto;min-width:0}
-
-/* VIDEO WRAPPER — ANTI-DOWNLOAD */
-.vwrap{border-radius:16px;overflow:hidden;position:relative;border:1px solid var(--brd);background:#000;
-  /* Prevent drag */
-  -webkit-user-drag:none;user-drag:none}
-
-/* Invisible overlay to block right-click save / drag */
-.voverlay{position:absolute;inset:0;z-index:5;
-  background:transparent;
-  /* Blocks right-click context menu */
-  pointer-events:none}
-
-/* LOADER */
+.vwrap{border-radius:16px;overflow:hidden;position:relative;border:1px solid var(--brd);background:#000;-webkit-user-drag:none;user-drag:none}
+.voverlay{position:absolute;inset:0;z-index:5;background:transparent;pointer-events:none}
 .vloader{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;background:linear-gradient(135deg,#0a0a18,#10101e);transition:opacity .5s;border-radius:16px}
 .vloader.h{opacity:0;pointer-events:none}
 .vspin{width:50px;height:50px;border-radius:50%;border:3px solid rgba(200,48,42,.15);border-top-color:var(--acc);border-right-color:var(--acc2);animation:spin 1s linear infinite}
@@ -97,25 +71,14 @@ header{background:var(--s1);border-bottom:1px solid var(--brd);padding:.85rem 2r
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .vl-t{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
 .vl-s{font-size:.78rem;color:var(--muted);text-align:center;max-width:220px}
-.vdots span{animation:dot 1.4s infinite;opacity:0;display:inline-block}
-.vdots span:nth-child(2){animation-delay:.2s}.vdots span:nth-child(3){animation-delay:.4s}
-@keyframes dot{0%,80%,100%{opacity:0}40%{opacity:1}}
 .vlbar{width:170px;height:3px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
 .vlbar-f{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px;animation:lbar 2.5s ease-in-out infinite}
 @keyframes lbar{0%{width:0%;margin-left:0}50%{width:80%}70%{width:90%}100%{width:0%;margin-left:100%}}
-
-video{width:100%;display:block;object-fit:contain;background:#000;min-height:280px;max-height:66vh;
-  opacity:0;transition:opacity .4s;
-  /* Remove all download/save controls */
-  -webkit-user-drag:none;
-  pointer-events:auto}
-/* Hide all native download buttons */
+video{width:100%;display:block;object-fit:contain;background:#000;min-height:280px;max-height:66vh;opacity:0;transition:opacity .4s;-webkit-user-drag:none;pointer-events:auto}
 video::-webkit-media-controls-download-button{display:none!important;width:0!important;height:0!important}
 video::-webkit-media-controls-enclosure{overflow:hidden!important}
 video::-internal-media-controls-download-button{display:none!important}
 video::-webkit-media-controls-panel{overflow:hidden!important}
-
-/* META */
 .vmeta{background:var(--s1);border:1px solid var(--brd);border-radius:16px;padding:1.4rem 1.75rem}
 .vm-top{display:flex;align-items:flex-start;gap:1rem;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap}
 .vmt{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800}
@@ -123,17 +86,13 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 .vm-watched{background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)}
 .vm-new{background:rgba(200,48,42,.1);color:var(--acc2);border:1px solid rgba(200,48,42,.2)}
 .vmd{color:var(--muted);font-size:.88rem;line-height:1.6;margin-bottom:.85rem}
-
-/* PROGRESS STATS */
 .vprog-stats{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding:.85rem 1rem;background:var(--s2);border-radius:12px;border:1px solid var(--brd)}
 .vps{text-align:center;flex:1;min-width:80px}
 .vps .vpsv{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;line-height:1}
-.vps .vpsv.g{color:var(--grn)}.vps .vpsv.b{color:var(--blue,#60a5fa)}.vps .vpsv.go{color:var(--gold)}.vps .vpsv.a{color:var(--acc2)}
+.vps .vpsv.g{color:var(--grn)}.vps .vpsv.b{color:#60a5fa}.vps .vpsv.go{color:var(--gold)}.vps .vpsv.a{color:var(--acc2)}
 .vps .vpsl{font-size:.67rem;color:var(--muted);margin-top:.25rem;text-transform:uppercase;letter-spacing:.06em}
 .vbar-wrap{height:6px;background:var(--s3);border-radius:6px;overflow:hidden;margin-bottom:1rem}
 .vbar-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:6px;transition:.4s}
-
-/* BUTTONS */
 .vnav{display:flex;gap:.7rem;flex-wrap:wrap;align-items:center}
 .vbtn{display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.2rem;border-radius:10px;font-size:.8rem;font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;border:none;transition:.2s}
 .vb-prev{background:var(--s2);color:var(--muted);border:1px solid var(--brd)}.vb-prev:hover:not(:disabled){color:var(--txt);border-color:rgba(200,48,42,.3)}
@@ -142,497 +101,182 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 .vb-done{background:rgba(52,211,153,.14);color:var(--grn);border:1px solid rgba(52,211,153,.28)}.vb-done:hover{background:rgba(52,211,153,.24)}
 .vb-dl{background:rgba(96,165,250,.12);color:#60a5fa;border:1px solid rgba(96,165,250,.25);text-decoration:none}.vb-dl:hover{background:rgba(96,165,250,.22)}
 .vcnt{font-size:.74rem;color:var(--muted);margin-left:auto}
-/* Floating feedback button */
 .fb-float{position:fixed;bottom:1.5rem;left:1.5rem;z-index:1000;display:inline-flex;align-items:center;gap:.45rem;padding:.55rem 1rem;border-radius:100px;background:rgba(17,8,8,.85);border:1px solid rgba(251,191,36,.25);color:var(--gold);font-size:.75rem;font-family:'Syne',sans-serif;font-weight:600;text-decoration:none;backdrop-filter:blur(8px);transition:.2s;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .fb-float:hover{background:rgba(251,191,36,.15);border-color:rgba(251,191,36,.5)}
-
-/* cert styles removed */
-
-/* EMPTY */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:350px;text-align:center;gap:1rem;color:var(--muted)}
 .empty strong{font-family:'Syne',sans-serif;font-size:1.1rem;color:var(--txt)}
-
-/* TOAST */
 #toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1.25rem;font-size:.82rem;box-shadow:0 8px 28px rgba(0,0,0,.4);transform:translateY(14px);opacity:0;transition:.25s;pointer-events:none;max-width:280px}
 #toast.show{transform:none;opacity:1}
-
-/* RESUME TOAST */
-#resume-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(16px);z-index:9998;
-  background:linear-gradient(135deg,rgba(30,16,16,.97),rgba(22,12,12,.97));
-  border:1px solid rgba(96,165,250,.35);border-radius:12px;
-  padding:.75rem 1.3rem;font-size:.83rem;color:var(--txt);
-  box-shadow:0 8px 28px rgba(0,0,0,.5);
-  opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
+#resume-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(16px);z-index:9998;background:linear-gradient(135deg,rgba(30,16,16,.97),rgba(22,12,12,.97));border:1px solid rgba(96,165,250,.35);border-radius:12px;padding:.75rem 1.3rem;font-size:.83rem;color:var(--txt);box-shadow:0 8px 28px rgba(0,0,0,.5);opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
 #resume-toast strong{color:#60a5fa}
 #resume-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-/* MATERIALS POPUP */
-#mat-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-60%);z-index:5000;
-  background:linear-gradient(135deg,var(--s2),var(--s3));
-  border:1px solid rgba(96,165,250,.35);border-radius:20px;
-  padding:2rem 2.2rem;width:100%;max-width:400px;text-align:center;
-  box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(96,165,250,.1);
-  opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+#mat-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-60%);z-index:5000;background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid rgba(96,165,250,.35);border-radius:20px;padding:2rem 2.2rem;width:100%;max-width:400px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(96,165,250,.1);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
 #mat-popup.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
-#mat-overlay{position:fixed;inset:0;z-index:4999;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
-  opacity:0;pointer-events:none;transition:opacity .3s}
+#mat-overlay{position:fixed;inset:0;z-index:4999;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .3s}
 #mat-overlay.show{opacity:1;pointer-events:auto}
 .mat-icon{font-size:2.8rem;margin-bottom:.9rem;display:block;animation:matbounce .6s ease both}
 @keyframes matbounce{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 .mat-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:.6rem;color:var(--txt)}
 .mat-text{font-size:.86rem;color:var(--muted);line-height:1.6;margin-bottom:1.5rem}
 .mat-text strong{color:#60a5fa}
-.mat-btn-dl{width:100%;padding:.85rem;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;
-  border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#fff;
-  cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.6rem}
+.mat-btn-dl{width:100%;padding:.85rem;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.6rem}
 .mat-btn-dl:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.35)}
-.mat-btn-skip{width:100%;padding:.55rem;background:transparent;border:none;
-  font-size:.78rem;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;transition:.2s}
+.mat-btn-skip{width:100%;padding:.55rem;background:transparent;border:none;font-size:.78rem;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;transition:.2s}
 .mat-btn-skip:hover{color:var(--txt)}
 </style>
 </head>
 <body>
-
-<!-- Anti-devtools hint (cosmetic) -->
-<div style="display:none" aria-hidden="true">Vitalia Fashion Lab © Protected Content</div>
-
-<div id="gate">
-  <div class="gbox">
-    <div class="gt">Vitaliia 3D Fashion Lab</div>
-    <div class="gb">Навчальна пл��тформа</div>
-    <p class="gs">Введіть ваш <strong>Telegram ID</strong> для доступу до куплених курсів</p>
-    <input type="number" id="tid" placeholder="Ваш Telegram ID" autocomplete="off">
-    <button class="gbtn" onclick="login()">Увійти →</button>
-    <div class="gerr" id="gerr"></div>
-    <div class="gnote">
-      Ваш ID: напишіть <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> в Telegram<br>
-      Немає доступу? <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">@Clo3dua_bot</a>
-    </div>
-  </div>
-</div>
-
-<div id="app">
-  <header>
-    <div class="hdr-brand">
-      <div class="hdr-logo">Vitaliia 3D Fashion Lab</div>
-      <div class="hdr-sub">Навчальна платформа</div>
-    </div>
-    <div class="hdr-r">
-      <span id="uname">—</span>
-      <button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button>
-<button class="hdr-btn" onclick="logout()">Вийти</button>
-    </div>
-  </header>
-  <div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div>
-  <div class="ctabs" id="ctabs" style="display:none"></div>
-  <div class="layout" id="layout">
-    <aside class="sidebar">
-      <div class="sb-head">
-        <div class="sb-title">Уроки курсу</div>
-        <div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div>
-        <div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div>
-      </div>
-      <div class="sb-list" id="llist"></div>
-    </aside>
-    <main class="va" id="va">
-      <div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div>
-    </main>
-  </div>
-</div>
-
+<div id="gate"><div class="gbox"><div class="gt">Vitaliia 3D Fashion Lab</div><div class="gb">Навчальна платформа</div><p class="gs">Введіть ваш <strong>Telegram ID</strong> для доступу до куплених курсів</p><input type="number" id="tid" placeholder="Ваш Telegram ID" autocomplete="off"><button class="gbtn" onclick="login()">Увійти →</button><div class="gerr" id="gerr"></div><div class="gnote">Ваш ID: напишіть <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@Clo3dua_bot</a> в Telegram<br>Немає доступу? <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">@Clo3dua_bot</a></div></div></div>
+<div id="app"><header><div class="hdr-brand"><div class="hdr-logo">Vitaliia 3D Fashion Lab</div><div class="hdr-sub">Навчальна платформа</div></div><div class="hdr-r"><span id="uname">—</span><button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button><button class="hdr-btn" onclick="logout()">Вийти</button></div></header><div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div><div class="ctabs" id="ctabs" style="display:none"></div><div class="layout" id="layout"><aside class="sidebar"><div class="sb-head"><div class="sb-title">Уроки курсу</div><div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div><div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div></div><div class="sb-list" id="llist"></div></aside><main class="va" id="va"><div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div></main></div></div>
 <a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
-<div id="toast"></div>
-<div id="resume-toast"></div>
-
-<!-- Materials popup -->
-<div id="mat-overlay" onclick="closeMatPopup()"></div>
-<div id="mat-popup" role="dialog" aria-modal="true">
-  <span class="mat-icon">📎</span>
-  <div class="mat-title">Увага!</div>
-  <p class="mat-text">До цього відео прикріплені <strong>навчальні файли</strong>.<br>Вам потрібно завантажити їх!</p>
-  <button class="mat-btn-dl" id="mat-dl-btn" onclick="handleMatDownload()">⬇ Завантажити матеріали</button>
-</div>
+<div id="toast"></div><div id="resume-toast"></div>
+<div id="mat-overlay" onclick="closeMatPopup()"></div><div id="mat-popup" role="dialog" aria-modal="true"><span class="mat-icon">📎</span><div class="mat-title">Увага!</div><p class="mat-text">До цього відео прикріплені <strong>навчальні файли</strong>.<br>Вам потрібно завантажити їх!</p><button class="mat-btn-dl" id="mat-dl-btn" onclick="handleMatDownload()">⬇ Завантажити матеріали</button></div>
 
 <script>
-// ── STATE ──────────────────────────────────────────────────
 let myCourses=[], curCourse=null, vids=[], curIdx=-1, progress={watched:[],lastIdx:0,completed:false};
-let isFreeMode = false; // режим без авторизації
-const LS = 'vfl_last';
+let isFreeMode = false, currentHls = null;
+const LS = 'vfl_last', LS_FREE_PREFIX = 'vfl_free_prog_', LS_VID_POS = 'vfl_vidpos_';
 
-// ── Anti-devtools: disable F12 / right-click globally ──────
-document.addEventListener('contextmenu', e => {
-  // Allow on inputs
-  if(['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
-  e.preventDefault();
-});
-document.addEventListener('keydown', e => {
-  // Block F12, Ctrl+U, Ctrl+S, Ctrl+Shift+I/J/C
-  if(e.key==='F12') { e.preventDefault(); return false; }
-  if(e.ctrlKey && ['u','s','p'].includes(e.key.toLowerCase())) { e.preventDefault(); return false; }
-  if(e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase())) { e.preventDefault(); return false; }
-});
+document.addEventListener('contextmenu', e => { if(!['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault(); });
+document.addEventListener('keydown', e => { if(e.key==='F12'||(e.ctrlKey&&['u','s','p'].includes(e.key.toLowerCase()))||(e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(e.key.toLowerCase()))){ e.preventDefault(); return false; } });
 
-// ── AUTH ──────────────────────────────────────────────────
 async function checkMe(){
-  // Перевіряємо ?course= параметр — вільний доступ
   const params = new URLSearchParams(location.search);
   const courseSlug = params.get('course');
-  if (courseSlug) {
-    // Перевіряємо чи курс є вільним
+  if(courseSlug){
     const c = await fetch(`/api/course/${courseSlug}/public`).then(r=>r.json()).catch(()=>null);
-    if (c && c.freeAccess) {
-      await openFreeCourse(c);
-      return;
-    }
+    if(c && c.freeAccess){ await openFreeCourse(c); return; }
   }
-  // Звичайний логін
   const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
   if(d.ok) showApp(d.name,d.courses);
 }
 
-async function openFreeCourse(c) {
-  isFreeMode = true;
-  curCourse = c;
-  myCourses = [c];
+async function openFreeCourse(c){
+  isFreeMode=true; curCourse=c; myCourses=[c];
   document.getElementById('gate').style.display='none';
   const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
   document.getElementById('uname').textContent = c.title;
-  // Ховаємо прогрес та сертифікати для free режиму
-  document.querySelector('.hdr-btn[onclick="showProgress()"]')?.remove();
-  document.querySelector('.hdr-btn[onclick="showAllCerts()"]')?.remove();
-  // Завантажуємо відео через free endpoint
   vids = await fetch(`/api/course/${c.id}/videos/free`).then(r=>r.json()).catch(()=>[]);
-  // Відновлюємо прогрес з localStorage для безкоштовних курсів
   progress = loadFreeProgress(c.id);
-  updateSidebarProg();
-  renderList();
+  updateSidebarProg(); renderList();
   const startIdx = progress.lastIdx ?? 0;
   if(vids.length) play(Math.min(startIdx, vids.length-1));
 }
-async function login(){
-  const id=document.getElementById('tid').value.trim(); if(!id)return;
-  const d=await fetch('/api/buyer/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegramId:id})}).then(r=>r.json());
-  if(d.ok) showApp(d.name,d.courses);
-  else document.getElementById('gerr').textContent='❌ '+d.error;
-}
+
+async function login(){ const id=document.getElementById('tid').value.trim(); if(!id)return; const d=await fetch('/api/buyer/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegramId:id})}).then(r=>r.json()); if(d.ok) showApp(d.name,d.courses); else document.getElementById('gerr').textContent='❌ '+d.error; }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
 document.getElementById('tid').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
 
 function showApp(name,courses){
   document.getElementById('gate').style.display='none';
   const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
-  document.getElementById('uname').textContent=name;
-  myCourses=courses||[];
+  document.getElementById('uname').textContent=name; myCourses=courses||[];
   if(myCourses.length>1){
     const ct=document.getElementById('ctabs'); ct.style.display='flex';
-    ct.innerHTML='<span class="ctabs-label">Курс:</span>'+
-      myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title}</button>`).join('');
-    // Load pcts async
-    myCourses.forEach(async c=>{
-      const[p,vs]=await Promise.all([
-        fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),
-        fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])
-      ]);
-      const pct=vs.length?Math.round(p.watched.length/vs.length*100):0;
-      const btn=document.querySelector(`.ctab[data-cid="${c.id}"]`);
-      if(btn) btn.textContent=c.title+(p.completed?' ✅':` ${pct}%`);
-    });
+    ct.innerHTML='<span class="ctabs-label">Курс:</span>'+myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title}</button>`).join('');
+    myCourses.forEach(async c=>{ const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]); const pct=vs.length?Math.round(p.watched.length/vs.length*100):0; const btn=document.querySelector(`.ctab[data-cid="${c.id}"]`); if(btn) btn.textContent=c.title+(p.completed?' ✅':` ${pct}%`); });
   }
-  const last=tryLoadLast();
-  const first=(last?.cid&&myCourses.find(c=>c.id===last.cid))||myCourses[0];
+  const last=tryLoadLast(); const first=(last?.cid&&myCourses.find(c=>c.id===last.cid))||myCourses[0];
   if(first) selectCourse(first.id, last?.cid===first.id ? (last.idx??null) : null);
 }
-
 function tryLoadLast(){ try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch{return{}} }
 function saveLast(cid,idx){ try{localStorage.setItem(LS,JSON.stringify({cid,idx}))}catch{} }
 
 async function selectCourse(cid, startIdx=null){
   curCourse=myCourses.find(c=>c.id===cid);
   document.querySelectorAll('.ctab').forEach(t=>t.classList.toggle('on',t.dataset.cid===cid));
-  [vids, progress]=await Promise.all([
-    fetch(`/api/course/${cid}/videos/public`).then(r=>r.json()),
-    fetch(`/api/progress/${cid}`).then(r=>r.json()).catch(()=>({watched:[],lastIdx:0,completed:false}))
-  ]);
-  updateSidebarProg();
-  renderList();
+  [vids, progress]=await Promise.all([fetch(`/api/course/${cid}/videos/public`).then(r=>r.json()),fetch(`/api/progress/${cid}`).then(r=>r.json()).catch(()=>({watched:[],lastIdx:0,completed:false}))]);
+  updateSidebarProg(); renderList();
   const idx=startIdx??progress.lastIdx??0;
   if(vids.length) play(Math.min(idx, vids.length-1));
 }
+function updateSidebarProg(){ const total=vids.length, done=(progress.watched||[]).length; const pct=total?Math.round(done/total*100):0; document.getElementById('sb-fill').style.width=pct+'%'; document.getElementById('sb-done').textContent=`${done}/${total} уроків`; document.getElementById('sb-pct').textContent=pct+'%'; document.getElementById('global-fill').style.width=pct+'%'; }
+function renderList(){ document.getElementById('llist').innerHTML=vids.map((v,i)=>{ const w=(progress.watched||[]).includes(i); return `<div class="li ${i===curIdx?'on':''} ${w?'watched':''}" onclick="play(${i})"><div class="lin">${w&&i!==curIdx?'✓':(i+1)}</div><div style="flex:1;min-width:0"><div class="lit">${v.title||'Урок '+(i+1)}</div>${v.desc?`<div class="lid">${v.desc}</div>`:''}</div></div>`; }).join(''); }
 
-// ── Sidebar ────────────────────────────────────────────────
-function updateSidebarProg(){
-  const total=vids.length, done=(progress.watched||[]).length;
-  const pct=total?Math.round(done/total*100):0;
-  document.getElementById('sb-fill').style.width=pct+'%';
-  document.getElementById('sb-done').textContent=`${done}/${total} уроків`;
-  document.getElementById('sb-pct').textContent=pct+'%';
-  document.getElementById('global-fill').style.width=pct+'%';
-}
+function destroyHls(){ if(currentHls){ currentHls.destroy(); currentHls=null; } }
 
-function renderList(){
-  document.getElementById('llist').innerHTML=vids.map((v,i)=>{
-    const w=(progress.watched||[]).includes(i);
-    return `<div class="li ${i===curIdx?'on':''} ${w?'watched':''}" onclick="play(${i})">
-      <div class="lin">${w&&i!==curIdx?'✓':(i+1)}</div>
-      <div style="flex:1;min-width:0">
-        <div class="lit">${v.title||'Урок '+(i+1)}</div>
-        ${v.desc?`<div class="lid">${v.desc}</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── Play ──────────────────────────────────────────────────
 function play(idx){
   if(idx<0||idx>=vids.length)return;
+  if(curIdx===idx) return;
+  destroyHls();
   curIdx=idx; renderList();
-  const v=vids[idx], cid=curCourse?.id;
-  const total=vids.length, done=(progress.watched||[]).length;
-  const overallPct=total?Math.round(done/total*100):0;
-  const isWatched=(progress.watched||[]).includes(idx);
+  const v=vids[idx], cid=curCourse?.id, total=vids.length, done=(progress.watched||[]).length, overallPct=total?Math.round(done/total*100):0, isWatched=(progress.watched||[]).includes(idx);
   saveLast(cid,idx);
-
   document.getElementById('va').innerHTML=`
-    <div class="vwrap" id="vwrap">
-      <div class="vloader" id="vl">
-        <div class="vl-ico">🎬</div>
-        <div class="vspin" style="position:absolute;opacity:.4;width:80px;height:80px;border-width:2px"></div>
-        <div class="vl-t">Завантаження<span class="vdots"><span>.</span><span>.</span><span>.</span></span></div>
-        <div class="vl-s">${v.title||'Урок '+(idx+1)}</div>
-        <div class="vlbar"><div class="vlbar-f"></div></div>
-      </div>
-      <video id="vid" controls playsinline preload="metadata"
-        style="opacity:0"
-        controlsList="nodownload noremoteplayback nofullscreen"
-        disablePictureInPicture
-        crossorigin="use-credentials">
-        <source src="${isFreeMode ? `/api/video/free/${cid}/${idx}` : `/api/video/stream/${cid}/${idx}`}" type="video/mp4">
-      </video>
-      <div class="voverlay" id="vovl"></div>
-    </div>
-    <div class="vmeta">
-      <div class="vm-top">
-        <div class="vmt">${v.title||'Урок '+(idx+1)}</div>
-        <span class="vm-badge ${isWatched?'vm-watched':'vm-new'}">${isWatched?'✅ Переглянуто':'🔵 Новий урок'}</span>
-      </div>
-      ${v.desc?`<p class="vmd">${v.desc}</p>`:''}
-      <div class="vprog-stats">
-        <div class="vps"><div class="vpsv go">${done}/${total}</div><div class="vpsl">Пройдено</div></div>
-        <div class="vps"><div class="vpsv a">${overallPct}%</div><div class="vpsl">Прогрес</div></div>
-        <div class="vps"><div class="vpsv b">${total-done}</div><div class="vpsl">Залишилось</div></div>
-        <div class="vps"><div class="vpsv g">${progress.completed?'✓':'—'}</div><div class="vpsl">Завершено</div></div>
-      </div>
-      <div class="vbar-wrap"><div class="vbar-fill" id="vbar" style="width:${overallPct}%"></div></div>
-      <div class="vnav">
-        <button class="vbtn vb-prev" onclick="play(${idx-1})" ${idx===0?'disabled':''}>← Попереднє</button>
-        ${!isWatched?`<button class="vbtn vb-done" id="done-btn" onclick="markDone(${idx})">✓ Позначити пройденим</button>`:''}
-        <button class="vbtn vb-next" onclick="play(${idx+1})" ${idx===total-1?'disabled':''}>Наступне →</button>
-        <span class="vcnt">Урок ${idx+1} з ${total}</span>
-      </div>
-      ${v.hasMaterials?`<div class="vnav" style="margin-top:.6rem"><button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button></div>`:''}
-    </div>`;
-
-  // Show materials popup if this video has attached files
+    <div class="vwrap" id="vwrap"><div class="vloader" id="vl"><div class="vl-ico">🎬</div><div class="vspin" style="position:absolute;opacity:.4;width:80px;height:80px;border-width:2px"></div><div class="vl-t">Завантаження HLS<span class="vdots"><span>.</span><span>.</span><span>.</span></span></div><div class="vl-s">${v.title||'Урок '+(idx+1)}</div><div class="vlbar"><div class="vlbar-f"></div></div></div><video id="vid" controls playsinline preload="metadata" style="opacity:0" controlsList="nodownload noremoteplayback nofullscreen" disablePictureInPicture crossorigin="use-credentials"></video><div class="voverlay" id="vovl"></div></div>
+    <div class="vmeta"><div class="vm-top"><div class="vmt">${v.title||'Урок '+(idx+1)}</div><span class="vm-badge ${isWatched?'vm-watched':'vm-new'}">${isWatched?'✅ Переглянуто':'🔵 Новий урок'}</span></div>${v.desc?`<p class="vmd">${v.desc}</p>`:''}
+    <div class="vprog-stats"><div class="vps"><div class="vpsv go">${done}/${total}</div><div class="vpsl">Пройдено</div></div><div class="vps"><div class="vpsv a">${overallPct}%</div><div class="vpsl">Прогрес</div></div><div class="vps"><div class="vpsv b">${total-done}</div><div class="vpsl">Залишилось</div></div><div class="vps"><div class="vpsv g">${progress.completed?'✓':'—'}</div><div class="vpsl">Завершено</div></div></div>
+    <div class="vbar-wrap"><div class="vbar-fill" id="vbar" style="width:${overallPct}%"></div></div>
+    <div class="vnav"><button class="vbtn vb-prev" onclick="play(${idx-1})" ${idx===0?'disabled':''}>← Попереднє</button>${!isWatched?`<button class="vbtn vb-done" id="done-btn" onclick="markDone(${idx})">✓ Позначити пройденим</button>`:''}<button class="vbtn vb-next" onclick="play(${idx+1})" ${idx===total-1?'disabled':''}>Наступне →</button><span class="vcnt">Урок ${idx+1} з ${total}</span></div>
+    ${v.hasMaterials?`<div class="vnav" style="margin-top:.6rem"><button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button></div>`:''}</div>`;
+  
   if(v.hasMaterials) setTimeout(()=>showMatPopup(idx), 800);
-
-  const vid=document.getElementById('vid');
-  const vl=document.getElementById('vl');
-  const vovl=document.getElementById('vovl');
-
-  // Show video, hide loader
-  const showVid=()=>{ vl.classList.add('h'); vid.style.opacity='1'; };
-  vid.addEventListener('canplay',showVid,{once:true});
-  vid.addEventListener('loadeddata',showVid,{once:true});
-  setTimeout(showVid,12000);
-  vid.addEventListener('waiting',()=>{
-    vl.classList.remove('h'); vid.style.opacity='.3';
-    vl.querySelector('.vl-t').innerHTML='Буферизація<span class="vdots"><span>.</span><span>.</span><span>.</span></span>';
-  });
-  vid.addEventListener('playing',showVid);
-
-  // ── MAX VIDEO PROTECTION ────────────────────────────────
-  // Block context menu on video
-  vid.addEventListener('contextmenu', e=>e.preventDefault());
-  // Block drag
-  vid.addEventListener('dragstart', e=>e.preventDefault());
-  // Transparent overlay re-enables after video starts (allows controls)
-  vid.addEventListener('play',()=>{ vovl.style.pointerEvents='none'; });
-  vid.addEventListener('pause',()=>{ vovl.style.pointerEvents='none'; });
-
-  // Prevent keyboard shortcuts on video element
-  vid.addEventListener('keydown', e=>{
-    if(['s','u'].includes(e.key.toLowerCase())&&(e.ctrlKey||e.metaKey)) e.preventDefault();
-  });
-
-  // Restore saved position when video is ready
-  vid.addEventListener('loadedmetadata', function(){
+  const video=document.getElementById('vid'), loader=document.getElementById('vl'), overlay=document.getElementById('vovl');
+  const streamUrl = isFreeMode ? `/api/video/free/${cid}/${idx}` : `/api/video/stream/${cid}/${idx}`;
+  let hideLoaderTimer=setTimeout(()=>{ if(loader) loader.classList.add('h'); if(video) video.style.opacity='1'; }, 12000);
+  
+  const onReady = () => { clearTimeout(hideLoaderTimer); if(loader) loader.classList.add('h'); if(video) video.style.opacity='1'; };
+  if(streamUrl.includes('.m3u8') || Hls.isSupported()){
+    if(Hls.isSupported()){
+      const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, enableWorker: true, autoStartLoad: true });
+      currentHls = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { onReady(); video.play().catch(e=>console.warn); });
+      hls.on(Hls.Events.ERROR, (_, data) => { if(data.fatal){ console.error('HLS fatal error', data); if(loader) loader.querySelector('.vl-t').innerHTML='Помилка відтворення, спробуйте інший урок'; setTimeout(()=>{ if(loader) loader.classList.add('h'); video.style.opacity='1'; }, 2000); } });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      video.addEventListener('canplay', onReady, {once:true});
+    } else { video.src = streamUrl; video.addEventListener('canplay', onReady, {once:true}); }
+  } else { video.src = streamUrl; video.addEventListener('canplay', onReady, {once:true}); }
+  
+  video.addEventListener('contextmenu', e=>e.preventDefault());
+  video.addEventListener('dragstart', e=>e.preventDefault());
+  video.addEventListener('play',()=>{ if(overlay) overlay.style.pointerEvents='none'; });
+  video.addEventListener('pause',()=>{ if(overlay) overlay.style.pointerEvents='none'; });
+  video.addEventListener('keydown', e=>{ if(['s','u'].includes(e.key.toLowerCase())&&(e.ctrlKey||e.metaKey)) e.preventDefault(); });
+  
+  video.addEventListener('loadedmetadata', function(){
     const saved = loadVideoPos(curCourse?.id, idx);
-    // Don't restore if nearly at end (last 5s) — let it play from start
-    if(saved > 5 && vid.duration && saved < vid.duration - 5){
-      vid.currentTime = saved;
+    if(saved > 5 && video.duration && saved < video.duration - 5){
+      video.currentTime = saved;
       showResumeToast(saved);
     }
   }, {once:true});
-
-  // Auto-mark when 80% watched + save position every 5s
-  let autoMarked=false;
-  let _lastSavedTime=0;
-  vid.addEventListener('timeupdate', function(){
-    if(!autoMarked && vid.duration && vid.currentTime/vid.duration>=0.8){
-      autoMarked=true;
-      markDone(idx,true);
-    }
-    // Save position every 5 seconds (throttle to avoid excessive writes)
-    if(vid.currentTime - _lastSavedTime >= 5){
-      _lastSavedTime = vid.currentTime;
-      saveVideoPos(curCourse?.id, idx, vid.currentTime);
-    }
-    // Save last position for free courses
-    if(isFreeMode && vid.duration && curCourse?.id){
-      const p=loadFreeProgress(curCourse.id);
-      p.lastIdx=idx;
-      saveFreeProgress(curCourse.id, p);
-    }
+  
+  let autoMarked=false, _lastSavedTime=0;
+  const saveInterval = setInterval(()=>{ if(video && !video.paused && video.currentTime && video.currentTime - _lastSavedTime >=5){ _lastSavedTime=video.currentTime; saveVideoPos(curCourse?.id, idx, video.currentTime); } }, 3000);
+  video.addEventListener('timeupdate', function(){
+    if(!autoMarked && video.duration && video.currentTime/video.duration>=0.8){ autoMarked=true; markDone(idx,true); }
+    if(isFreeMode && video.duration && curCourse?.id){ const p=loadFreeProgress(curCourse.id); p.lastIdx=idx; saveFreeProgress(curCourse.id, p); }
   });
-
-  // Save on pause and before page unload
-  vid.addEventListener('pause', ()=>{ if(vid.currentTime>0) saveVideoPos(curCourse?.id, idx, vid.currentTime); });
-  window._vidUnloadSave = ()=>{ if(vid.currentTime>0) saveVideoPos(curCourse?.id, idx, vid.currentTime); };
+  video.addEventListener('pause', ()=>{ if(video.currentTime>0) saveVideoPos(curCourse?.id, idx, video.currentTime); });
+  window._vidUnloadSave = ()=>{ if(video.currentTime>0) saveVideoPos(curCourse?.id, idx, video.currentTime); clearInterval(saveInterval); };
+  video.addEventListener('ended', ()=>{ clearInterval(saveInterval); });
 }
 
-// ── localStorage progress for free courses ────────────────
-const LS_FREE_PREFIX = 'vfl_free_prog_';
-function loadFreeProgress(cid){
-  try{return JSON.parse(localStorage.getItem(LS_FREE_PREFIX+cid)||'{"watched":[],"lastIdx":0,"completed":false}');}
-  catch{return {watched:[],lastIdx:0,completed:false};}
-}
-function saveFreeProgress(cid, p){
-  try{localStorage.setItem(LS_FREE_PREFIX+cid, JSON.stringify(p));}catch{}
-}
-
-// ── Video position save / restore ─────────────────────────
-const LS_VID_POS = 'vfl_vidpos_';
-function saveVideoPos(cid, idx, time){
-  if(!cid && cid!==0) return;
-  try{ localStorage.setItem(`${LS_VID_POS}${cid}_${idx}`, String(Math.floor(time))); }catch{}
-}
-function loadVideoPos(cid, idx){
-  try{ return parseFloat(localStorage.getItem(`${LS_VID_POS}${cid}_${idx}`)||'0')||0; }catch{ return 0; }
-}
-function clearVideoPos(cid, idx){
-  try{ localStorage.removeItem(`${LS_VID_POS}${cid}_${idx}`); }catch{}
-}
-
-function showResumeToast(sec){
-  const m=Math.floor(sec/60), s=Math.floor(sec%60);
-  const label=m>0?`${m} хв ${s} с`:`${s} с`;
-  const t=document.getElementById('resume-toast');
-  t.innerHTML=`▶ Продовжуємо з <strong>${label}</strong>`;
-  t.classList.add('show');
-  clearTimeout(t._rt); t._rt=setTimeout(()=>t.classList.remove('show'),4500);
-}
-
-// Save position before tab/window close
+function loadFreeProgress(cid){ try{return JSON.parse(localStorage.getItem(LS_FREE_PREFIX+cid)||'{"watched":[],"lastIdx":0,"completed":false}');}catch{return {watched:[],lastIdx:0,completed:false};} }
+function saveFreeProgress(cid, p){ try{localStorage.setItem(LS_FREE_PREFIX+cid, JSON.stringify(p));}catch{} }
+function saveVideoPos(cid, idx, time){ if(cid!==undefined && idx!==undefined) try{ localStorage.setItem(`${LS_VID_POS}${cid}_${idx}`, String(Math.floor(time))); }catch{} }
+function loadVideoPos(cid, idx){ try{ return parseFloat(localStorage.getItem(`${LS_VID_POS}${cid}_${idx}`)||'0')||0; }catch{ return 0; } }
+function clearVideoPos(cid, idx){ try{ localStorage.removeItem(`${LS_VID_POS}${cid}_${idx}`); }catch{} }
+function showResumeToast(sec){ const m=Math.floor(sec/60), s=Math.floor(sec%60); const label=m>0?`${m} хв ${s} с`:`${s} с`; const t=document.getElementById('resume-toast'); t.innerHTML=`▶ Продовжуємо з <strong>${label}</strong>`; t.classList.add('show'); clearTimeout(t._rt); t._rt=setTimeout(()=>t.classList.remove('show'),4500); }
 window.addEventListener('beforeunload', ()=>{ window._vidUnloadSave?.(); });
 
-// ── Download materials ────────────────────────────────────
-async function downloadMaterials(idx){
-  const cid=curCourse?.id;
-  const mats=await fetch(`/api/course/${cid}/videos/${idx}/materials`).then(r=>r.json()).catch(()=>[]);
-  if(!mats.length){showToast('📎 Матеріали не знайдено');return;}
-  // Download each file
-  for(const m of mats){
-    const a=document.createElement('a');
-    a.href=`/api/course/${cid}/videos/${idx}/materials/${m.id}/download`;
-    a.download=m.name||'material';
-    a.target='_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    await new Promise(r=>setTimeout(r,400));
-  }
-}
+async function downloadMaterials(idx){ const cid=curCourse?.id; const mats=await fetch(`/api/course/${cid}/videos/${idx}/materials`).then(r=>r.json()).catch(()=>[]); if(!mats.length){showToast('📎 Матеріали не знайдено');return;} for(const m of mats){ const a=document.createElement('a'); a.href=`/api/course/${cid}/videos/${idx}/materials/${m.id}/download`; a.download=m.name||'material'; a.target='_blank'; document.body.appendChild(a); a.click(); document.body.removeChild(a); await new Promise(r=>setTimeout(r,400)); } }
 
-// ── Mark Watched ──────────────────────────────────────────
 async function markDone(idx, silent=false){
-  const cid=curCourse?.id;
-  let p;
-  if(isFreeMode){
-    // Free course — save to localStorage
-    p = loadFreeProgress(cid);
-    if(!p.watched.includes(idx)) p.watched.push(idx);
-    p.lastIdx=idx;
-    const total=vids.length;
-    if(p.watched.length>=total) p.completed=true;
-    saveFreeProgress(cid, p);
-  } else {
-    p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null);
-    if(!p) return;
-  }
-  progress=p;
-  updateSidebarProg();
-  renderList();
-  // Update badge in DOM
-  const badge=document.querySelector('.vm-badge');
-  if(badge){badge.className='vm-badge vm-watched';badge.textContent='✅ Переглянуто';}
-  document.getElementById('done-btn')?.remove();
-  // Update stats
-  const total=vids.length, done=p.watched.length;
-  const pct=total?Math.round(done/total*100):0;
-  const el=document.getElementById('vbar'); if(el) el.style.width=pct+'%';
-  document.querySelectorAll('.vpsv').forEach((el,i)=>{
-    if(i===0) el.textContent=`${done}/${total}`;
-    if(i===1) el.textContent=`${pct}%`;
-    if(i===2) el.textContent=`${total-done}`;
-    if(i===3) el.textContent=p.completed?'✓':'—';
-  });
-  // Update ctab
-  const btn=document.querySelector(`.ctab[data-cid="${cid}"]`);
-  if(btn) btn.textContent=curCourse?.title+(p.completed?' ✅':`  ${pct}%`);
+  const cid=curCourse?.id; let p;
+  if(isFreeMode){ p=loadFreeProgress(cid); if(!p.watched.includes(idx)) p.watched.push(idx); p.lastIdx=idx; if(p.watched.length>=vids.length) p.completed=true; saveFreeProgress(cid, p); } 
+  else { p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null); if(!p) return; }
+  progress=p; updateSidebarProg(); renderList(); const badge=document.querySelector('.vm-badge'); if(badge){badge.className='vm-badge vm-watched';badge.textContent='✅ Переглянуто';} document.getElementById('done-btn')?.remove(); const total=vids.length, done=p.watched.length, pct=total?Math.round(done/total*100):0; const el=document.getElementById('vbar'); if(el) el.style.width=pct+'%'; document.querySelectorAll('.vpsv').forEach((el,i)=>{ if(i===0) el.textContent=`${done}/${total}`; if(i===1) el.textContent=`${pct}%`; if(i===2) el.textContent=`${total-done}`; if(i===3) el.textContent=p.completed?'✓':'—'; }); const btn=document.querySelector(`.ctab[data-cid="${cid}"]`); if(btn) btn.textContent=curCourse?.title+(p.completed?' ✅':`  ${pct}%`); if(!silent) showToast('✅ Урок позначено пройденим!'); clearVideoPos(cid, idx); }
 
-  if(!silent) showToast('✅ Урок позначено пройденим!');
-  // Clear saved position — lesson is done, next time play from start
-  clearVideoPos(cid, idx);
-
-  // course completed
-}
-
-// ── Progress Modal (inline) ────────────────────────────────
-async function showProgress(){
-  const lines=[];
-  for(const c of myCourses){
-    const[p,vs]=await Promise.all([
-      fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),
-      fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])
-    ]);
-    const done=p.watched.length, total=vs.length;
-    const pct=total?Math.round(done/total*100):0;
-    lines.push(`<b>${c.title}</b><br><small>${done}/${total} уроків · ${pct}% ${p.completed?'· ✅ Завершено':''}</small>`);
-  }
-  showToast('📊 '+lines.join(' | '));
-}
-
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.innerHTML=msg; t.classList.add('show');
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),4000);
-}
-
-// ── Materials Popup ───────────────────────────────────────
+async function showProgress(){ const lines=[]; for(const c of myCourses){ const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]); const done=p.watched.length, total=vs.length, pct=total?Math.round(done/total*100):0; lines.push(`<b>${c.title}</b><br><small>${done}/${total} уроків · ${pct}% ${p.completed?'· ✅ Завершено':''}</small>`); } showToast('📊 '+lines.join(' | ')); }
+function showToast(msg){ const t=document.getElementById('toast'); t.innerHTML=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),4000); }
 let _matPopupIdx = -1;
-function showMatPopup(idx){
-  _matPopupIdx = idx;
-  document.getElementById('mat-overlay').classList.add('show');
-  document.getElementById('mat-popup').classList.add('show');
-}
-function closeMatPopup(){
-  document.getElementById('mat-overlay').classList.remove('show');
-  document.getElementById('mat-popup').classList.remove('show');
-}
-function handleMatDownload(){
-  closeMatPopup();
-  if(_matPopupIdx >= 0) downloadMaterials(_matPopupIdx);
-}
+function showMatPopup(idx){ _matPopupIdx = idx; document.getElementById('mat-overlay').classList.add('show'); document.getElementById('mat-popup').classList.add('show'); }
+function closeMatPopup(){ document.getElementById('mat-overlay').classList.remove('show'); document.getElementById('mat-popup').classList.remove('show'); }
+function handleMatDownload(){ closeMatPopup(); if(_matPopupIdx >= 0) downloadMaterials(_matPopupIdx); }
 
 checkMe();
 </script>
