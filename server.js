@@ -1,18 +1,16 @@
 /**
- * server_v2.js — ULTRA-OPTIMIZED for 0.1 CPU / 512MB RAM on Render
+ * server_v2.js — OPTIMIZED for 0.1 CPU / 512MB RAM on Render
  *
  * Key changes from v1:
  * 1. compression (gzip) — reduces bandwidth 60-80%
- * 2. Connection limits — max 3 concurrent video streams
- * 3. Request timeouts — kill slow requests after 30s
- * 4. Dashboard cached 60s (heavy computation)
- * 5. Lazy require() for heavy modules (form-data, archiver)
- * 6. Bot loaded ONLY if RENDER_SERVICE_TYPE !== 'web' or not set
- * 7. Reduced sync frequency (30s debounce)
- * 8. Static files cached 7 days
- * 9. Keep-alive timeout reduced to free connections faster
- * 10. GC hints via global.gc if available
- * 11. System monitoring endpoint (RAM, CPU, load)
+ * 2. Request timeouts — kill slow requests after 30s
+ * 3. Dashboard cached 60s (heavy computation)
+ * 4. Lazy require() for heavy modules (form-data, archiver)
+ * 5. Reduced sync frequency (30s debounce)
+ * 6. Keep-alive timeout reduced to free connections faster
+ * 7. GC hints via global.gc if available
+ * 8. System monitoring endpoint (RAM, CPU, load)
+ * 9. Chunked video upload — supports files >50MB via Telegram
  */
 
 const express    = require('express');
@@ -32,8 +30,6 @@ const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 
-// ═══ Визначаємо чи це web-only чи повний процес ═══
-const IS_WEB_ONLY = process.env.RENDER_SERVICE_TYPE === 'web';
 
 const app = express();
 
@@ -56,12 +52,7 @@ app.use(compression({
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '7d',
-  etag: true,
-  lastModified: true,
-  immutable: true
-}));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ═══ Сесії в RAM ═══
 app.use(session({
@@ -250,11 +241,6 @@ app.get('/api/buyer/me', (req, res) => {
   res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => ({ id: c.id, slug: c.slug, title: c.title, color: c.color })) });
 });
 
-// ═══════════════════════════════════════════════════════════
-// ОПТИМІЗАЦІЯ 6: Ліміт одночасних відео-стрімів (макс 3)
-// ═══════════════════════════════════════════════════════════
-let _activeStreams = 0;
-const MAX_STREAMS = 3;
 
 const _tgFileCache = new Map();
 const TG_FILE_CACHE_TTL = 50 * 60 * 1000;
@@ -305,16 +291,9 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
 async function streamVideo(video, req, res) {
   // ═══ Чанковий файл (розбитий на шматки в Telegram) ═══
   if (video.chunks && video.chunks.length) {
-    if (_activeStreams >= MAX_STREAMS) {
-      res.status(503).set('Retry-After', '5').end('Server busy');
-      return;
-    }
-    _activeStreams++;
-    res.on('close', () => { _activeStreams--; });
     try {
       await streamChunkedTg(video.chunks, video.size || 0, req, res);
     } catch (e) {
-      _activeStreams--;
       if (!res.headersSent) res.status(500).end(e.message);
     }
     return;
@@ -403,13 +382,6 @@ function proxyStreamChunk(url, res, range, resolve, reject) {
 }
 
 async function streamTg(fileId, req, res) {
-  if (_activeStreams >= MAX_STREAMS) {
-    res.status(503).set('Retry-After', '5').end('Server busy');
-    return;
-  }
-  _activeStreams++;
-  res.on('close', () => { _activeStreams--; });
-
   try {
     const file = await getTgFileUrl(fileId);
     const fSize = file.size;
@@ -437,7 +409,6 @@ async function streamTg(fileId, req, res) {
       proxyStream(url, res);
     }
   } catch (e) {
-    _activeStreams--;
     if (!res.headersSent) res.status(500).end(e.message);
   }
 }
@@ -536,44 +507,44 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
       };
     } else {
       // ═══ Файл > 50 МБ → розбити на чанки, кожен ≤ 47 МБ ═══
+      // Стрімимо напряму з оригінального файлу (без тимчасових файлів)
       const totalChunks = Math.ceil(size / CHUNK_SIZE);
       const chunks = [];
 
       for (let i = 0; i < totalChunks; i++) {
         const offset = i * CHUNK_SIZE;
         const chSize = Math.min(CHUNK_SIZE, size - offset);
-        const chunkPath = `${req.file.path}_ch${i}`;
 
-        // Створюємо тимчасовий файл чанка
-        await new Promise((res2, rej2) => {
-          const rs = fs.createReadStream(req.file.path, { start: offset, end: offset + chSize - 1 });
-          const ws = fs.createWriteStream(chunkPath);
-          rs.pipe(ws);
-          ws.on('finish', res2);
-          ws.on('error', rej2);
-        });
-
-        // Надсилаємо чанк як document в Telegram
+        // Надсилаємо чанк як document — стрімимо напряму з файлу
         const FormData = require('form-data'), form = new FormData();
         form.append('chat_id', ADMIN_ID);
         form.append('caption', `${title} [part ${i + 1}/${totalChunks}]`);
         form.append('protect_content', 'true');
-        form.append('document', fs.createReadStream(chunkPath), {
+        form.append('document', fs.createReadStream(req.file.path, { start: offset, end: offset + chSize - 1 }), {
+          knownLength: chSize,
           filename: `${req.file.originalname || 'video'}.part${i + 1}`,
           contentType: 'application/octet-stream'
         });
-        const tgRes = await postForm('/sendDocument', form);
-        try { fs.unlinkSync(chunkPath); } catch { }
-        if (!tgRes.ok) {
-          // Чистимо тимчасові файли при помилці
+
+        let tgRes;
+        try {
+          tgRes = await postForm('/sendDocument', form);
+        } catch (e) {
+          // Мережева помилка — чистимо і виходимо
           try { fs.unlinkSync(req.file.path); } catch { }
-          for (let j = i + 1; j < totalChunks; j++) {
-            try { fs.unlinkSync(`${req.file.path}_ch${j}`); } catch { }
-          }
+          res.status(500).json({ ok: false, error: `Chunk ${i + 1}/${totalChunks} failed: ${e.message}` });
+          return;
+        }
+
+        if (!tgRes.ok) {
+          try { fs.unlinkSync(req.file.path); } catch { }
           res.status(500).json({ ok: false, error: `Telegram error (chunk ${i + 1}/${totalChunks}): ${tgRes.description}` });
           return;
         }
         chunks.push({ tgFileId: tgRes.result.document.file_id, size: chSize, offset });
+
+        // Примусовий GC після кожного чанка щоб звільнити RAM
+        if (global.gc) try { global.gc(); } catch { }
       }
 
       try { fs.unlinkSync(req.file.path); } catch { }
@@ -590,8 +561,6 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
     res.json({ ok: true, total: db.getCourse(cid)?.videos?.length });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { }
-    // Чистимо всі тимчасові чанки при помилці
-    for (let j = 0; j < 20; j++) { try { fs.unlinkSync(`${req.file.path}_ch${j}`); } catch { } }
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -935,8 +904,6 @@ app.get('/api/system', adm, (_, res) => {
     nodeVersion: process.version,
     platform: os.platform(),
     arch: os.arch(),
-    activeStreams: _activeStreams,
-    maxStreams: MAX_STREAMS,
     cacheSize: _responseCache.size,
     tgCacheSize: _tgFileCache.size,
   });
