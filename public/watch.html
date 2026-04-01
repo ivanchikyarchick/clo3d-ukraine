@@ -155,6 +155,40 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 /* TOAST */
 #toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1.25rem;font-size:.82rem;box-shadow:0 8px 28px rgba(0,0,0,.4);transform:translateY(14px);opacity:0;transition:.25s;pointer-events:none;max-width:280px}
 #toast.show{transform:none;opacity:1}
+
+/* RESUME TOAST */
+#resume-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(16px);z-index:9998;
+  background:linear-gradient(135deg,rgba(30,16,16,.97),rgba(22,12,12,.97));
+  border:1px solid rgba(96,165,250,.35);border-radius:12px;
+  padding:.75rem 1.3rem;font-size:.83rem;color:var(--txt);
+  box-shadow:0 8px 28px rgba(0,0,0,.5);
+  opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
+#resume-toast strong{color:#60a5fa}
+#resume-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* MATERIALS POPUP */
+#mat-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-60%);z-index:5000;
+  background:linear-gradient(135deg,var(--s2),var(--s3));
+  border:1px solid rgba(96,165,250,.35);border-radius:20px;
+  padding:2rem 2.2rem;width:100%;max-width:400px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(96,165,250,.1);
+  opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+#mat-popup.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+#mat-overlay{position:fixed;inset:0;z-index:4999;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+#mat-overlay.show{opacity:1;pointer-events:auto}
+.mat-icon{font-size:2.8rem;margin-bottom:.9rem;display:block;animation:matbounce .6s ease both}
+@keyframes matbounce{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+.mat-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;margin-bottom:.6rem;color:var(--txt)}
+.mat-text{font-size:.86rem;color:var(--muted);line-height:1.6;margin-bottom:1.5rem}
+.mat-text strong{color:#60a5fa}
+.mat-btn-dl{width:100%;padding:.85rem;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;
+  border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#fff;
+  cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.6rem}
+.mat-btn-dl:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.35)}
+.mat-btn-skip{width:100%;padding:.55rem;background:transparent;border:none;
+  font-size:.78rem;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;transition:.2s}
+.mat-btn-skip:hover{color:var(--txt)}
 </style>
 </head>
 <body>
@@ -208,6 +242,16 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 
 <a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
 <div id="toast"></div>
+<div id="resume-toast"></div>
+
+<!-- Materials popup -->
+<div id="mat-overlay" onclick="closeMatPopup()"></div>
+<div id="mat-popup" role="dialog" aria-modal="true">
+  <span class="mat-icon">📎</span>
+  <div class="mat-title">Увага!</div>
+  <p class="mat-text">До цього відео прикріплені <strong>навчальні файли</strong>.<br>Вам потрібно завантажити їх!</p>
+  <button class="mat-btn-dl" id="mat-dl-btn" onclick="handleMatDownload()">⬇ Завантажити матеріали</button>
+</div>
 
 <script>
 // ── STATE ──────────────────────────────────────────────────
@@ -388,6 +432,9 @@ function play(idx){
       ${v.hasMaterials?`<div class="vnav" style="margin-top:.6rem"><button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button></div>`:''}
     </div>`;
 
+  // Show materials popup if this video has attached files
+  if(v.hasMaterials) setTimeout(()=>showMatPopup(idx), 800);
+
   const vid=document.getElementById('vid');
   const vl=document.getElementById('vl');
   const vovl=document.getElementById('vovl');
@@ -417,12 +464,28 @@ function play(idx){
     if(['s','u'].includes(e.key.toLowerCase())&&(e.ctrlKey||e.metaKey)) e.preventDefault();
   });
 
-  // Auto-mark when 80% watched
+  // Restore saved position when video is ready
+  vid.addEventListener('loadedmetadata', function(){
+    const saved = loadVideoPos(curCourse?.id, idx);
+    // Don't restore if nearly at end (last 5s) — let it play from start
+    if(saved > 5 && vid.duration && saved < vid.duration - 5){
+      vid.currentTime = saved;
+      showResumeToast(saved);
+    }
+  }, {once:true});
+
+  // Auto-mark when 80% watched + save position every 5s
   let autoMarked=false;
+  let _lastSavedTime=0;
   vid.addEventListener('timeupdate', function(){
     if(!autoMarked && vid.duration && vid.currentTime/vid.duration>=0.8){
       autoMarked=true;
       markDone(idx,true);
+    }
+    // Save position every 5 seconds (throttle to avoid excessive writes)
+    if(vid.currentTime - _lastSavedTime >= 5){
+      _lastSavedTime = vid.currentTime;
+      saveVideoPos(curCourse?.id, idx, vid.currentTime);
     }
     // Save last position for free courses
     if(isFreeMode && vid.duration && curCourse?.id){
@@ -431,6 +494,10 @@ function play(idx){
       saveFreeProgress(curCourse.id, p);
     }
   });
+
+  // Save on pause and before page unload
+  vid.addEventListener('pause', ()=>{ if(vid.currentTime>0) saveVideoPos(curCourse?.id, idx, vid.currentTime); });
+  window._vidUnloadSave = ()=>{ if(vid.currentTime>0) saveVideoPos(curCourse?.id, idx, vid.currentTime); };
 }
 
 // ── localStorage progress for free courses ────────────────
@@ -442,6 +509,31 @@ function loadFreeProgress(cid){
 function saveFreeProgress(cid, p){
   try{localStorage.setItem(LS_FREE_PREFIX+cid, JSON.stringify(p));}catch{}
 }
+
+// ── Video position save / restore ─────────────────────────
+const LS_VID_POS = 'vfl_vidpos_';
+function saveVideoPos(cid, idx, time){
+  if(!cid && cid!==0) return;
+  try{ localStorage.setItem(`${LS_VID_POS}${cid}_${idx}`, String(Math.floor(time))); }catch{}
+}
+function loadVideoPos(cid, idx){
+  try{ return parseFloat(localStorage.getItem(`${LS_VID_POS}${cid}_${idx}`)||'0')||0; }catch{ return 0; }
+}
+function clearVideoPos(cid, idx){
+  try{ localStorage.removeItem(`${LS_VID_POS}${cid}_${idx}`); }catch{}
+}
+
+function showResumeToast(sec){
+  const m=Math.floor(sec/60), s=Math.floor(sec%60);
+  const label=m>0?`${m} хв ${s} с`:`${s} с`;
+  const t=document.getElementById('resume-toast');
+  t.innerHTML=`▶ Продовжуємо з <strong>${label}</strong>`;
+  t.classList.add('show');
+  clearTimeout(t._rt); t._rt=setTimeout(()=>t.classList.remove('show'),4500);
+}
+
+// Save position before tab/window close
+window.addEventListener('beforeunload', ()=>{ window._vidUnloadSave?.(); });
 
 // ── Download materials ────────────────────────────────────
 async function downloadMaterials(idx){
@@ -499,6 +591,8 @@ async function markDone(idx, silent=false){
   if(btn) btn.textContent=curCourse?.title+(p.completed?' ✅':`  ${pct}%`);
 
   if(!silent) showToast('✅ Урок позначено пройденим!');
+  // Clear saved position — lesson is done, next time play from start
+  clearVideoPos(cid, idx);
 
   // course completed
 }
@@ -522,6 +616,22 @@ function showToast(msg){
   const t=document.getElementById('toast');
   t.innerHTML=msg; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+// ── Materials Popup ───────────────────────────────────────
+let _matPopupIdx = -1;
+function showMatPopup(idx){
+  _matPopupIdx = idx;
+  document.getElementById('mat-overlay').classList.add('show');
+  document.getElementById('mat-popup').classList.add('show');
+}
+function closeMatPopup(){
+  document.getElementById('mat-overlay').classList.remove('show');
+  document.getElementById('mat-popup').classList.remove('show');
+}
+function handleMatDownload(){
+  closeMatPopup();
+  if(_matPopupIdx >= 0) downloadMaterials(_matPopupIdx);
 }
 
 checkMe();
