@@ -432,11 +432,10 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <div class="fdrop" id="ufdrop">
           <input type="file" id="upl-file" accept="video/*" onchange="onUplFile()">
           <div>🎬 Клікніть або перетягніть відео</div>
-           <div style="font-size:.73rem;color:var(--muted);margin-top:.25rem">MP4, MOV — до 600 МБ (або більше з B2)</div>
+           <div style="font-size:.73rem;color:var(--muted);margin-top:.25rem">MP4, MOV — до 600 МБ (розбивається на шматки автоматично)</div>
           <div id="upl-fn" style="font-size:.75rem;color:var(--grn);margin-top:.3rem"></div>
         </div>
       </div>
-      <div id="b2-status" style="font-size:.73rem;margin-top:.5rem;padding:.4rem .7rem;border-radius:6px;background:var(--s3)"></div>
       <div class="uprog" id="uprog">
         <div class="upl"><span id="up-txt">Завантаження...</span><span id="up-pct">0%</span></div>
         <div class="upbar-w"><div class="upbar" id="up-bar"></div></div>
@@ -650,7 +649,7 @@ function renderMcVids(){
       <div class="vii">
         <div class="vit" id="vit-${i}" onclick="editVT(${i})">${v.title||'—'}</div>
         <div class="vid2" id="vid2-${i}" onclick="editVD(${i})">${v.desc||'<em style="color:var(--muted)">без опису</em>'}</div>
-        <div class="vim">${v.size?(v.size/1024/1024).toFixed(1)+' MB · ':''} ${v.storage==='b2'?'☁️ B2 · ':''} ${v.addedAt?new Date(v.addedAt).toLocaleDateString('uk'):''}</div>
+        <div class="vim">${v.size?(v.size/1024/1024).toFixed(1)+' MB · ':''} ${v.chunked?'📦 '+v.chunks.length+' шматків · ':''} ${v.addedAt?new Date(v.addedAt).toLocaleDateString('uk'):''}</div>
       </div>
       <div class="via">
         ${i>0?`<button class="btn btn-gh" onclick="mvVid(${i},${i-1})" style="padding:.3rem .5rem">↑</button>`:''}
@@ -735,9 +734,8 @@ async function doUpload(){
   const title=document.getElementById('upl-title').value.trim();
   if(!title){toast('⚠️ Введіть назву');return;}
   if(!uplFile){toast('⚠️ Виберіть файл');return;}
-  const MAX_B2=2*1024*1024*1024, MAX_TG=50*1024*1024;
-  if(uplFile.size>MAX_B2){toast('⚠️ Файл занадто великий (макс 2 ГБ)');return;}
-  if(uplFile.size>MAX_TG&&!window._b2ok){toast('⚠️ Файл > 50 МБ потребує B2 сховище (не налаштоване)');return;}
+  const MAX_SIZE=2*1024*1024*1024;
+  if(uplFile.size>MAX_SIZE){toast('⚠️ Файл занадто великий (макс 2 ГБ)');return;}
   const btn=document.getElementById('upl-btn'),prog=document.getElementById('uprog'),bar=document.getElementById('up-bar'),pct=document.getElementById('up-pct'),txt=document.getElementById('up-txt'),res=document.getElementById('upl-res');
   btn.disabled=true; btn.textContent='⏳'; prog.classList.add('show'); bar.style.width='0%'; pct.textContent='0%'; txt.textContent='Підготовка...'; res.textContent='';
   const fd=new FormData(); fd.append('title',title); fd.append('desc',document.getElementById('upl-desc').value); fd.append('video',uplFile);
@@ -947,16 +945,7 @@ async function syncNow(){
   btn.disabled=false; btn.textContent='📤 Надіслати зараз';
 }
 
-load(); loadSettings(); loadSyncStatus(); checkB2(); setInterval(load,30000);
-
-async function checkB2(){
-  const el=document.getElementById('b2-status');
-  if(!el)return;
-  try{const r=await fetch('/api/system');const d=await r.json();
-    if(d.b2?.configured){window._b2ok=true;el.innerHTML='☁️ <b>B2 сховище активне</b> — файли до 600 МБ+ автоматично зберігаються в B2';el.style.color='var(--grn)';}
-    else{window._b2ok=false;el.innerHTML='⚠️ <b>B2 не налаштований</b> — файли > 50 МБ не можна завантажити. Додайте ENV: B2_ENDPOINT, B2_BUCKET, B2_KEY_ID, B2_APP_KEY';el.style.color='var(--gold)';}
-  }catch{window._b2ok=false;el.innerHTML='Не вдалося перевірити B2';el.style.color='var(--muted)';}
-}
+load(); loadSettings(); loadSyncStatus(); setInterval(load,30000);
 
   // ── SYSTEM MONITOR ───────────────────────────────
 async function loadSystem(){
