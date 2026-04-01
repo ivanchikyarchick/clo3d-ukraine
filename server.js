@@ -24,8 +24,18 @@ const uploadMaterial = multer({ dest:'/tmp/vfl_tmp/', limits:{fileSize:200*1024*
 app.use(express.json());
 app.use(express.urlencoded({ extended:true }));
 app.use(express.static(path.join(__dirname,'public')));
-app.use(session({ secret: process.env.SESSION_SECRET||'vfl_secret_2025', resave:false, saveUninitialized:false, cookie:{maxAge:7*24*60*60*1000} }));
+const FileStore = require('session-file-store')(session);
 
+app.use(session({ 
+  store: new FileStore({ 
+    path: './data/sessions', // Зберігаємо сесії у файлах в папці data 
+    retries: 0 
+  }),
+  secret: process.env.SESSION_SECRET || 'vfl_secret_2025', 
+  resave: false, 
+  saveUninitialized: false, 
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } 
+}));
 app.use((req,res,next)=>{
   res.setHeader('X-Frame-Options','SAMEORIGIN');
   res.setHeader('X-Content-Type-Options','nosniff');
