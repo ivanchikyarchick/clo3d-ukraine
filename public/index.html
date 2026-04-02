@@ -90,6 +90,30 @@ section{padding:6rem 2rem}
 .course-card:hover .cc-arr svg{stroke:white}
 .courses-empty{padding:3rem;text-align:center;color:var(--muted);font-size:.9rem;background:var(--bg)}
 
+/* INDIVIDUAL SERVICE */
+.individual-section{background:var(--s2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd)}
+.individual-card{background:var(--bg);border:1px solid var(--brd);border-radius:20px;padding:2.5rem;display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;transition:.3s}
+.individual-card:hover{border-color:var(--acc)}
+@media(max-width:800px){.individual-card{grid-template-columns:1fr;gap:2rem}}
+.ic-left{display:flex;flex-direction:column;gap:1.25rem}
+.ic-badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:100px;padding:.35rem .85rem;font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);width:fit-content}
+.ic-title{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;line-height:1.1}
+.ic-subtitle{font-size:.95rem;color:var(--muted);font-weight:300;line-height:1.7}
+.ic-features{display:flex;flex-direction:column;gap:.75rem;margin:.5rem 0 1rem}
+.ic-feature{display:flex;align-items:flex-start;gap:.65rem;font-size:.85rem;color:var(--txt)}
+.ic-feature span{color:var(--grn);font-weight:600}
+.ic-format{display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.78rem;color:var(--muted);padding:1rem 0;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);margin:.5rem 0 1.5rem}
+.ic-format div{display:flex;align-items:center;gap:.4rem}
+.ic-price{font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;color:var(--gold);margin-bottom:.25rem}
+.ic-price-note{font-size:.72rem;color:var(--muted);margin-bottom:1.5rem}
+.ic-btn{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:.9rem 2rem;background:linear-gradient(135deg,var(--gold),#f59e0b);border-radius:100px;font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:#000;text-decoration:none;transition:.25s;width:fit-content}
+.ic-btn:hover{opacity:.88;transform:translateY(-2px);box-shadow:0 8px 24px rgba(251,191,36,.35)}
+.ic-note{font-size:.72rem;color:var(--muted);font-style:italic;margin-top:1rem}
+.ic-right{position:relative;display:flex;align-items:center;justify-content:center}
+.ic-avatar{width:200px;height:200px;border-radius:50%;object-fit:cover;border:3px solid var(--acc)}
+.ic-decor{position:absolute;width:280px;height:280px;border:1px solid var(--brd);border-radius:50%;opacity:.3;animation:pulse 4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.1);opacity:.15}}
+
 /* ABOUT */
 .about-section{background:var(--bg)}
 .about-inner{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
@@ -252,6 +276,37 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
       <div class="why-card rv d1"><div class="why-ico">🎬</div><strong>Безкоштовні уроки</strong><p>На нашому ютуб-каналі ви знайдете безкоштовні уроки з CLO 3D.</p></div>
       <div class="why-card rv d2"><div class="why-ico">🎓</div><strong>Сертифікат</strong><p>Сертифікат після успішного проходження інтенсиву з Clo 3D для конструкторів одягу.</p></div>
       <div class="why-card rv d3"><div class="why-ico">💬</div><strong>Підтримка</strong><p>Закритий чат, відповіді на запитання та розбір домашніх завдань.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- INDIVIDUAL SERVICE -->
+<section class="individual-section">
+  <div class="sec-inner">
+    <div class="individual-card rv">
+      <div class="ic-left">
+        <div class="ic-badge">🎯 Індивідуальна послуга</div>
+        <div class="ic-title">Індивідуальний розбір з Віталією Ярошенко</div>
+        <p class="ic-subtitle">Практична допомога у програмах Valentina та CLO 3D від конструктора-експерта.</p>
+        <div class="ic-features">
+          <div class="ic-feature"><span>✓</span> Відповіді на запитання: розберемо складні вузли, інструменти чи алгоритми побудови</div>
+          <div class="ic-feature"><span>✓</span> Перевірка файлів: перегляну ваш файл у Valentina чи CLO, знайду помилки та допоможу виправити</div>
+          <div class="ic-feature"><span>✓</span> Технічний супровід: допоможу адаптувати вашу базу під конкретний виріб</div>
+        </div>
+        <div class="ic-format">
+          <div>⏱️ 1 – 1,3 години</div>
+          <div>📹 Google Meet</div>
+          <div>🎁 Відеозапис зустрічі</div>
+        </div>
+        <div class="ic-price">800 грн</div>
+        <div class="ic-price-note">на етапі запуску · далі буде 1000 грн</div>
+        <a href="https://t.me/Clo3dua_bot" class="ic-btn" target="_blank" rel="noopener">Записатися на розбір <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <p class="ic-note">💡 Для максимально ефективної роботи, будь ласка, надсилайте ваш файл або список запитань за 24 години до початку зустрічі</p>
+      </div>
+      <div class="ic-right">
+        <div class="ic-decor"></div>
+        <img class="ic-avatar" src="/img/about1.jpg" alt="Віталія Ярошенко" onerror="this.style.background='var(--s2)'">
+      </div>
     </div>
   </div>
 </section>
