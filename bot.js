@@ -43,6 +43,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 const getFop = () => db.get().settings?.fop || '';
 
 const waitingPhone = {};
+const waitingIndividual = {};
 
 function accessGrantedMsg(uid, title) {
   return `*Доступ до курсу «${title}» активовано!*\n\n` +
@@ -58,7 +59,7 @@ bot.onText(/\/start/, msg => {
   db.trackBot('start', uid, msg.from.username || msg.from.first_name);
   const mine = getBuyerCourses(uid), kb = [];
   if (mine.length) { kb.push([{ text: 'Мої курси', callback_data: 'my_courses' }], [{ text: 'Мій прогрес', callback_data: 'my_progress' }]); }
-  kb.push([{ text: 'Придбати курс', callback_data: 'catalogue' }]);
+  kb.push([{ text: 'Придбати курс', callback_data: 'catalogue' }], [{ text: '🎯 Індивідуальний розбір', callback_data: 'individual' }]);
   bot.sendMessage(uid, `*Vitaliia 3D Fashion Lab*\n\nCLO 3D українською\n\nОберіть дію:`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: kb } });
 });
 
@@ -172,6 +173,42 @@ bot.on('callback_query', async q => {
     return;
   }
 
+  if (data === 'individual') {
+    waitingIndividual[uid] = true;
+    const fop = getFop();
+    let msg = `*Індивідуальний розбір*\n💰 Ціна: 800 грн\n\n`;
+    if (fop) msg += `*Реквізити для оплати:*\n\`${fop}\`\n\n`;
+    msg += `Надішліть **фото квитанції** про оплату для підтвердження:`;
+    bot.sendMessage(uid, msg, { parse_mode: 'Markdown' });
+    return;
+  }
+
+  if (data.startsWith('grant-individual:')) {
+    if (uid !== ADMIN_ID) return;
+    const tid = parseInt(data.split(':')[1]);
+    db.set(d => {
+      if (!d.individualRequests) d.individualRequests = [];
+      const req = d.individualRequests.find(r => r.id === tid);
+      if (req) req.status = 'granted';
+    });
+    try { bot.editMessageText(q.message.text + '\n\n✅ Доступ видано!', { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: 'Markdown' }); } catch { }
+    try { bot.sendMessage(tid, '🎉 Ваш індивідуальний розбір підтверджено! Очікуйте на зв\'язок для узгодження часу.'); } catch { }
+    return;
+  }
+
+  if (data.startsWith('reject-individual:')) {
+    if (uid !== ADMIN_ID) return;
+    const tid = parseInt(data.split(':')[1]);
+    db.set(d => {
+      if (!d.individualRequests) d.individualRequests = [];
+      const idx = d.individualRequests.findIndex(r => r.id === tid);
+      if (idx > -1) d.individualRequests.splice(idx, 1);
+    });
+    try { bot.editMessageText(q.message.text + '\n\n❌ Відхилено.', { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: 'Markdown' }); } catch { }
+    try { bot.sendMessage(tid, 'На жаль, вашу заявку на індивідуальний розбір відхилено. Зверніться до адміністратора.'); } catch { }
+    return;
+  }
+
   if (data.startsWith('grant:')) {
     if (uid !== ADMIN_ID) return;
     const parts = data.split(':');
@@ -192,24 +229,47 @@ bot.on('callback_query', async q => {
 
 bot.on('photo', async msg => {
   const uid = msg.from.id;
-  if (!waitingPhone[uid]) return;
-  const { cid } = waitingPhone[uid]; delete waitingPhone[uid];
-  const c = db.getCourse(cid); if (!c) return;
-  const u = msg.from;
-  const photo = msg.photo[msg.photo.length - 1];
-  const receiptFileId = photo.file_id;
-  db.set(d => { const cx = (d.courses || []).find(x => x.id === cid); if (!cx) return; if (!cx.pending) cx.pending = []; if (!cx.pending.some(b => b.id === uid)) cx.pending.push({ id: uid, name: u.first_name, username: u.username || '', phone: '', receiptFileId, requestedAt: Date.now() }); });
-  db.trackBot('buy_request', uid, u.username || u.first_name, { cid });
-  bot.sendMessage(uid, 'Заявку відправлено! Очікуйте підтвердження оплати.');
-  const total = (db.get().courses || []).reduce((s, c) => s + (c.pending?.length || 0), 0);
-  const fop = getFop();
-  let adminMsg = `*Нова заявка — ${c.title}*\n\n👤 ${u.first_name} @${u.username || '—'}\nID: \`${uid}\``;
-  if (fop) adminMsg += `\n\nФОП: \`${fop}\``;
-  adminMsg += `\n\nЗаявок: ${total}`;
-  try {
-    await bot.sendPhoto(ADMIN_ID, receiptFileId, { caption: adminMsg, parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
-  } catch {
-    bot.sendMessage(ADMIN_ID, adminMsg + '\n\n📎 Квитанція (не вдалось показати)', { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
+  
+  // Handle course purchase
+  if (waitingPhone[uid]) {
+    const { cid } = waitingPhone[uid]; delete waitingPhone[uid];
+    const c = db.getCourse(cid); if (!c) return;
+    const u = msg.from;
+    const photo = msg.photo[msg.photo.length - 1];
+    const receiptFileId = photo.file_id;
+    db.set(d => { const cx = (d.courses || []).find(x => x.id === cid); if (!cx) return; if (!cx.pending) cx.pending = []; if (!cx.pending.some(b => b.id === uid)) cx.pending.push({ id: uid, name: u.first_name, username: u.username || '', phone: '', receiptFileId, requestedAt: Date.now() }); });
+    db.trackBot('buy_request', uid, u.username || u.first_name, { cid });
+    bot.sendMessage(uid, 'Заявку відправлено! Очікуйте підтвердження оплати.');
+    const total = (db.get().courses || []).reduce((s, c) => s + (c.pending?.length || 0), 0);
+    const fop = getFop();
+    let adminMsg = `*Нова заявка — ${c.title}*\n\n👤 ${u.first_name} @${u.username || '—'}\nID: \`${uid}\``;
+    if (fop) adminMsg += `\n\nФОП: \`${fop}\``;
+    adminMsg += `\n\nЗаявок: ${total}`;
+    try {
+      await bot.sendPhoto(ADMIN_ID, receiptFileId, { caption: adminMsg, parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
+    } catch {
+      bot.sendMessage(ADMIN_ID, adminMsg + '\n\n📎 Квитанція (не вдалось показати)', { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
+    }
+    return;
+  }
+  
+  // Handle individual service purchase
+  if (waitingIndividual[uid]) {
+    delete waitingIndividual[uid];
+    const u = msg.from;
+    const photo = msg.photo[msg.photo.length - 1];
+    const receiptFileId = photo.file_id;
+    db.set(d => { if (!d.individualRequests) d.individualRequests = []; d.individualRequests.push({ id: uid, name: u.first_name, username: u.username || '', receiptFileId, requestedAt: Date.now() }); });
+    db.trackBot('individual_request', uid, u.username || u.first_name, {});
+    bot.sendMessage(uid, 'Заявку відправлено! Очікуйте підтвердження. Ми зв\'яжемося з вами для узгодження часу.');
+    const total = (db.get().individualRequests || []).length;
+    let adminMsg = `*Нова заявка — Індивідуальний розбір*\n\n👤 ${u.first_name} @${u.username || '—'}\nID: \`${uid}\`\n\nЗаявок: ${total}`;
+    try {
+      await bot.sendPhoto(ADMIN_ID, receiptFileId, { caption: adminMsg, parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Підтвердити', callback_data: `grant-individual:${uid}` }, { text: 'Відхилити', callback_data: `reject-individual:${uid}` }]] } });
+    } catch {
+      bot.sendMessage(ADMIN_ID, adminMsg + '\n\n📎 Квитанція (не вдалось показати)', { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Підтвердити', callback_data: `grant-individual:${uid}` }, { text: 'Відхилити', callback_data: `reject-individual:${uid}` }]] } });
+    }
+    return;
   }
 });
 
