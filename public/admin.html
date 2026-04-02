@@ -228,7 +228,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <!-- PENDING -->
     <div class="tab" id="tab-pending">
       <div class="sh"><div><h2>Заявки</h2><p>Очікують підтвердження оплати</p></div></div>
-      <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Телефон</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
+      <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Квитанція</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
     </div>
 
     <!-- NOTIFICATIONS -->
@@ -575,13 +575,13 @@ function renderPending(cs){
       <td>${b.name||'—'}</td>
       <td>${b.username?'@'+b.username:'—'}</td>
       <td><code>${b.id}</code></td>
-      <td style="font-size:.82rem">${b.phone||'—'}</td>
+      <td>${b.receiptFileId?`<a href="/api/courses/${c.id}/pending/${b.id}/receipt" class="btn btn-go" style="text-decoration:none;font-size:.7rem" target="_blank">📎 Завантажити</a>`:'<span style="color:var(--muted);font-size:.75rem">Немає</span>'}</td>
       <td>${b.requestedAt?new Date(b.requestedAt).toLocaleString('uk'):'—'}</td>
       <td style="display:flex;gap:.4rem">
         <button class="btn btn-g" onclick="grant('${c.id}',${b.id})">✅</button>
         <button class="btn btn-r" onclick="reject('${c.id}',${b.id})">❌</button>
       </td>
-    </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
+    </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
 }
 
 function renderLogs(bot,web){
