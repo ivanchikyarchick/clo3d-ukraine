@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow">
-<title id="pt">Курс — Vitalia 3D Fashion Lab</title>
+<title id="pt">Курс — Vitaliia 3D Fashion Lab</title>
 <meta name="description" id="pd" content="Курс CLO 3D від Vitalia 3D Fashion Lab">
 <link id="pc" rel="canonical" href="">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -157,7 +157,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 <!-- WHAT YOU GET -->
 <section class="wg-sec">
   <div class="sec-inner">
-    <div class="sec-eyebrow rv">Що отримаєш</div>
+    <div class="sec-eyebrow rv">Що ви отримаєте</div>
     <div class="sec-title rv">Програма включає</div>
     <div class="wg-grid" id="wg-grid"></div>
   </div>
@@ -166,7 +166,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 <!-- BUY -->
 <section class="buy-sec">
   <div class="sec-inner">
-    <div class="buy-title rv">Розпочни навчання</div>
+    <div class="buy-title rv">Розпочинайте навчання</div>
     <div class="buy-price rv" id="buy-price"></div>
     <p class="buy-note rv">Одноразова оплата · Захищений контент</p>
     <a href="https://t.me/Clo3dua_bot" class="tg-btn rv" target="_blank" rel="noopener">
@@ -177,7 +177,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 </section>
 
 <footer>
-  <div class="foot-brand">Vitalia 3D Fashion Lab</div>
+  <div class="foot-brand">Vitaliia 3D Fashion Lab</div>
   <p>© 2026 · Всі права захищено</p>
   <div class="foot-links">
     <a href="/">Всі курси</a>
@@ -202,7 +202,7 @@ async function load() {
     document.title = `${c.title} — Vitalia 3D Fashion Lab`;
     document.getElementById('pd').content  = c.description || `Курс CLO 3D: ${c.title}`;
     document.getElementById('pc').href     = `/course/${c.slug}`;
-    document.getElementById('pt').textContent = `${c.title} — Vitalia 3D Fashion Lab`;
+    document.getElementById('pt').textContent = `${c.title} — Vitaliia 3D Fashion Lab`;
 
     // Structured data
     const sd = document.createElement('script');
@@ -210,7 +210,7 @@ async function load() {
     sd.textContent = JSON.stringify({
       "@context":"https://schema.org","@type":"Course",
       "name": c.title, "description": c.description || '',
-      "provider": {"@type":"Organization","name":"Vitalia 3D Fashion Lab"}
+      "provider": {"@type":"Organization","name":"Vitaliia 3D Fashion Lab"}
     });
     document.head.appendChild(sd);
 
