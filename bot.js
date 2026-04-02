@@ -59,7 +59,7 @@ bot.onText(/\/start/, msg => {
   db.trackBot('start', uid, msg.from.username || msg.from.first_name);
   const mine = getBuyerCourses(uid), kb = [];
   if (mine.length) { kb.push([{ text: 'Мої курси', callback_data: 'my_courses' }], [{ text: 'Мій прогрес', callback_data: 'my_progress' }]); }
-  kb.push([{ text: 'Придбати курс', callback_data: 'catalogue' }], [{ text: '🎯 Індивідуальний розбір', callback_data: 'individual' }]);
+  kb.push([{ text: 'Придбати курс', callback_data: 'catalogue' }]);
   bot.sendMessage(uid, `*Vitaliia 3D Fashion Lab*\n\nCLO 3D українською\n\nОберіть дію:`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: kb } });
 });
 
