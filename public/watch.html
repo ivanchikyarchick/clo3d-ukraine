@@ -185,12 +185,14 @@ function showApp(name,courses){
   }
   const last=tryLoadLast(); const first=(last?.cid&&myCourses.find(c=>c.id===last.cid))||myCourses[0];
   if(first) selectCourse(first.id, last?.cid===first.id ? (last.idx??null) : null);
+  updateAccessCountdown();
 }
 function tryLoadLast(){ try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch{return{}} }
 function saveLast(cid,idx){ try{localStorage.setItem(LS,JSON.stringify({cid,idx}))}catch{} }
 
 async function selectCourse(cid, startIdx=null){
   curCourse=myCourses.find(c=>c.id===cid);
+  curIdx=-1; // Reset video index when changing course
   document.querySelectorAll('.ctab').forEach(t=>t.classList.toggle('on',t.dataset.cid===cid));
   [vids, progress]=await Promise.all([fetch(`/api/course/${cid}/videos/public`).then(r=>r.json()),fetch(`/api/progress/${cid}`).then(r=>r.json()).catch(()=>({watched:[],lastIdx:0,completed:false}))]);
   updateSidebarProg(); renderList(); updateAccessCountdown();
