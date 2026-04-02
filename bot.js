@@ -109,7 +109,7 @@ bot.onText(/\/buyers/, msg => {
 bot.onText(/\/pending/, msg => {
   if (msg.from.id !== ADMIN_ID) return;
   const lines = [];
-  (db.get().courses || []).forEach(c => { if (c.pending?.length) { lines.push(`*${c.title}:*`); c.pending.forEach((b, i) => lines.push(`  ${i + 1}. ${b.name} @${b.username || '—'} \`${b.id}\` ${b.phone ? `📞${b.phone}` : ''}`)); } });
+  (db.get().courses || []).forEach(c => { if (c.pending?.length) { lines.push(`*${c.title}:*`); c.pending.forEach((b, i) => lines.push(`  ${i + 1}. ${b.name} @${b.username || '—'} \`${b.id}\` ${b.receiptFileId ? '📎 квитанція' : ''}`)); } });
   bot.sendMessage(ADMIN_ID, lines.join('\n') || 'Заявок немає.', { parse_mode: 'Markdown' });
 });
 
@@ -167,8 +167,8 @@ bot.on('callback_query', async q => {
     const fop = getFop();
     let msg = `*${c.title}*\nЦіна: ${c.price || '—'}\n\n`;
     if (fop) msg += `*Реквізити ФОП:*\n\`${fop}\`\n\n`;
-    msg += `Надішліть номер телефону для підтвердження оплати:`;
-    bot.sendMessage(uid, msg, { parse_mode: 'Markdown', reply_markup: { keyboard: [[{ text: 'Надіслати номер телефону', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } });
+    msg += `Надішліть **фото квитанції** про оплату для підтвердження:`;
+    bot.sendMessage(uid, msg, { parse_mode: 'Markdown' });
     return;
   }
 
@@ -190,30 +190,34 @@ bot.on('callback_query', async q => {
   }
 });
 
-bot.on('contact', async msg => {
-  const uid = msg.from.id, phone = msg.contact?.phone_number || '';
+bot.on('photo', async msg => {
+  const uid = msg.from.id;
   if (!waitingPhone[uid]) return;
   const { cid } = waitingPhone[uid]; delete waitingPhone[uid];
   const c = db.getCourse(cid); if (!c) return;
   const u = msg.from;
-  db.set(d => { const cx = (d.courses || []).find(x => x.id === cid); if (!cx) return; if (!cx.pending) cx.pending = []; if (!cx.pending.some(b => b.id === uid)) cx.pending.push({ id: uid, name: u.first_name, username: u.username || '', phone, requestedAt: Date.now() }); });
-  db.trackBot('buy_request', uid, u.username || u.first_name, { cid, phone });
-  bot.sendMessage(uid, 'Заявку відправлено! Очікуйте підтвердження оплати.', { reply_markup: { remove_keyboard: true } });
+  const photo = msg.photo[msg.photo.length - 1];
+  const receiptFileId = photo.file_id;
+  db.set(d => { const cx = (d.courses || []).find(x => x.id === cid); if (!cx) return; if (!cx.pending) cx.pending = []; if (!cx.pending.some(b => b.id === uid)) cx.pending.push({ id: uid, name: u.first_name, username: u.username || '', phone: '', receiptFileId, requestedAt: Date.now() }); });
+  db.trackBot('buy_request', uid, u.username || u.first_name, { cid });
+  bot.sendMessage(uid, 'Заявку відправлено! Очікуйте підтвердження оплати.');
   const total = (db.get().courses || []).reduce((s, c) => s + (c.pending?.length || 0), 0);
   const fop = getFop();
-  let adminMsg = `*Нова заявка — ${c.title}*\n\n👤 ${u.first_name} @${u.username || '—'}\nID: \`${uid}\`\n📞 Тел: ${phone || '(не вказано)'}`;
+  let adminMsg = `*Нова заявка — ${c.title}*\n\n👤 ${u.first_name} @${u.username || '—'}\nID: \`${uid}\``;
   if (fop) adminMsg += `\n\nФОП: \`${fop}\``;
   adminMsg += `\n\nЗаявок: ${total}`;
-  bot.sendMessage(ADMIN_ID, adminMsg, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
+  try {
+    await bot.sendPhoto(ADMIN_ID, receiptFileId, { caption: adminMsg, parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
+  } catch {
+    bot.sendMessage(ADMIN_ID, adminMsg + '\n\n📎 Квитанція (не вдалось показати)', { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Видати доступ', callback_data: `grant:${cid}:${uid}:${encodeURIComponent(u.first_name)}:${u.username || ''}` }, { text: 'Відхилити', callback_data: `reject:${cid}:${uid}` }]] } });
+  }
 });
 
 bot.on('message', msg => {
   const uid = msg.from.id;
   if (!waitingPhone[uid]) return;
-  const text = (msg.text || '').trim();
-  if (!/^\+?[\d\s\-()]{7,15}$/.test(text)) return;
-  msg.contact = { phone_number: text };
-  bot.emit('contact', msg);
+  if (msg.photo) return;
+  bot.sendMessage(uid, 'Надішліть **фото** квитанції про оплату, а не текст.', { parse_mode: 'Markdown' });
 });
 
 function grantAccess(uid, name, username, cid) {
