@@ -109,8 +109,9 @@ section{padding:6rem 2rem}
 .ic-btn:hover{opacity:.88;transform:translateY(-2px);box-shadow:0 6px 20px rgba(200,48,42,.35)}
 .ic-note{font-size:.65rem;color:var(--muted);font-style:italic;margin-top:.75rem}
 .ic-right{position:relative;display:flex;align-items:center;justify-content:center}
-.ic-avatar{width:140px;height:140px;border-radius:50%;object-fit:cover;border:3px solid var(--acc)}
-.ic-decor{position:absolute;width:190px;height:190px;border:1px solid var(--brd);border-radius:50%;opacity:.3;animation:pulse 4s ease-in-out infinite}
+.ic-avatar{width:320px;height:320px;border-radius:12px;object-fit:cover;border:3px solid var(--acc);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.ic-decor{position:absolute;width:380px;height:380px;border:1px solid var(--brd);border-radius:12px;opacity:.3;animation:pulse 4s ease-in-out infinite}
+@media(max-width:750px){.ic-avatar{width:220px;height:220px}.ic-decor{width:280px;height:280px}}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.1);opacity:.15}}
 
 /* ABOUT */
@@ -255,7 +256,7 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
         </div>
         <div class="ic-price">800 грн</div>
         <div class="ic-price-note">на етапі запуску · далі буде 1000 грн</div>
-        <a href="https://t.me/Clo3dua_bot" class="ic-btn" target="_blank" rel="noopener">Записатися на розбір <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <a href="/individual.html" class="ic-btn" target="_blank">Записатися на розбір <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
         <p class="ic-note">💡 Для максимально ефективної роботи, будь ласка, надсилайте ваш файл або список запитань за 24 години до початку зустрічі</p>
       </div>
       <div class="ic-right">
