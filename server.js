@@ -685,6 +685,47 @@ app.get('/api/courses/:cid/pending/:uid/receipt', adm, async (req, res) => {
   }
 });
 
+app.get('/api/individual/requests', adm, (req, res) => {
+  const requests = db.get().individualRequests || [];
+  res.json({ ok: true, requests });
+});
+
+app.get('/api/individual/requests/:uid/receipt', adm, async (req, res) => {
+  const r = db.get().individualRequests?.find(x => x.id === parseInt(req.params.uid));
+  if (!r?.receiptFileId) { res.status(404).json({ ok: false, error: 'Квитанція не знайдена' }); return; }
+  try {
+    const file = await getTgFileUrl(r.receiptFileId);
+    const mod = file.url.startsWith('https') ? https : http;
+    res.setHeader('Content-Disposition', `attachment; filename="receipt_individual_${req.params.uid}.jpg"`);
+    res.setHeader('Content-Type', 'image/jpeg');
+    const rq = mod.get(file.url, up => { up.pipe(res); });
+    rq.on('error', () => { if (!res.headersSent) res.status(502).end(); });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/individual/confirm/:uid', adm, (req, res) => {
+  const uid = parseInt(req.params.uid);
+  db.set(d => {
+    if (!d.individualRequests) return;
+    const r = d.individualRequests.find(x => x.id === uid);
+    if (r) r.status = 'granted';
+  });
+  try { require('./bot').bot.sendMessage(uid, '🎉 Ваш індивідуальний розбір підтверджено! Очікуйте на зв\'язок для узгодження часу.'); } catch { }
+  res.json({ ok: true });
+});
+
+app.post('/api/individual/reject/:uid', adm, (req, res) => {
+  const uid = parseInt(req.params.uid);
+  db.set(d => {
+    if (!d.individualRequests) return;
+    d.individualRequests = d.individualRequests.filter(x => x.id !== uid);
+  });
+  try { require('./bot').bot.sendMessage(uid, 'На жаль, вашу заявку на індивідуальний розбір відхилено.'); } catch { }
+  res.json({ ok: true });
+});
+
 // Broadcast
 app.post('/api/broadcast', adm, async (req, res) => {
   const { message, cid } = req.body;
