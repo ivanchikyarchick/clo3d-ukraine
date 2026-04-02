@@ -143,7 +143,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   </div>
   <div class="ni on" onclick="go('dash')"><span class="ic">📊</span> Дашборд</div>
   <div class="ni" onclick="go('courses')"><span class="ic">📚</span> Курси</div>
-  <div class="ni" onclick="go('pending')"><span class="ic">⏳</span> Заявки <span class="nb" id="nb"></span></div>
+  <div class="ni" onclick="go('pending')"><span class="ic">⏳</span> Заявки курсів <span class="nb" id="nb"></span></div>
+  <div class="ni" onclick="go('individual')"><span class="ic">🎯</span> Індивідуальні <span class="nb" id="nb-ind"></span></div>
   <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
   <div class="ni" onclick="go('stats')"><span class="ic">📈</span> Статистика</div>
   <div class="ni" onclick="go('export')"><span class="ic">💾</span> Експорт / Імпорт</div>
@@ -227,8 +228,14 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
     <!-- PENDING -->
     <div class="tab" id="tab-pending">
-      <div class="sh"><div><h2>Заявки</h2><p>Очікують підтвердження оплати</p></div></div>
+      <div class="sh"><div><h2>Заявки на курси</h2><p>Очікують підтвердження оплати</p></div></div>
       <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Квитанція</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
+    </div>
+
+    <!-- INDIVIDUAL REQUESTS -->
+    <div class="tab" id="tab-individual">
+      <div class="sh"><div><h2>Індивідуальні розбори</h2><p>Заявки на персональні консультації</p></div></div>
+      <div class="tb-box"><table><thead><tr><th>Ім'я</th><th>Username</th><th>ID</th><th>Квитанція</th><th>Час</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="individual-tb"></tbody></table></div>
     </div>
 
     <!-- NOTIFICATIONS -->
@@ -478,8 +485,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
 <script>
 let D=null, charts={}, curCourseId=null, uplFile=null, impFile=null;
-const TABS=['dash','courses','pending','notify','stats','export','settings'];
-const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',settings:'Налаштування'};
+const TABS=['dash','courses','pending','individual','notify','stats','export','settings'];
+const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',individual:'Індивідуальні розбори',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',settings:'Налаштування'};
 const EI={start:'🚀',buy_request:'🛒',granted:'✅',video_view:'▶️',visit:'🌐',login_fail:'🔑',broadcast:'📢'};
 const COLORS=['#C8302A','#E8D8D5','#34d399','#fbbf24','#f472b6','#60a5fa','#f87171','#fb923c','#a3e635'];
 
@@ -514,6 +521,18 @@ async function load(){
   document.getElementById('s-gr').textContent=s.granted||0;
   if(s.pending>0){const nb=document.getElementById('nb');nb.textContent=s.pending;nb.style.display='inline';}
   else document.getElementById('nb').style.display='none';
+  
+  // Load individual requests
+  try{
+    const ir=await fetch('/api/individual/requests').then(x=>x.json());
+    if(ir.ok && ir.requests){
+      const pendingInd = ir.requests.filter(r => !r.status || r.status !== 'granted').length;
+      if(pendingInd>0){const nb=document.getElementById('nb-ind');nb.textContent=pendingInd;nb.style.display='inline';}
+      else document.getElementById('nb-ind').style.display='none';
+      renderIndividual(ir.requests);
+    }
+  }catch{}
+  
   buildCharts(); renderCourses(D.courses); renderPending(D.courses); renderLogs(D.recentBot,D.recentWeb);
   // populate notify selects
   const populateSelects = () => {
@@ -582,6 +601,37 @@ function renderPending(cs){
         <button class="btn btn-r" onclick="reject('${c.id}',${b.id})">❌</button>
       </td>
     </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
+}
+
+function renderIndividual(requests){
+  const rows = requests || [];
+  document.getElementById('individual-tb').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.name||'—'}</td>
+      <td>${r.username?'@'+r.username:'—'}</td>
+      <td><code>${r.id}</code></td>
+      <td>${r.receiptFileId?`<a href="/api/individual/requests/${r.id}/receipt" class="btn btn-go" style="text-decoration:none;font-size:.7rem" target="_blank">📎 Завантажити</a>`:'<span style="color:var(--muted);font-size:.75rem">Немає</span>'}</td>
+      <td>${r.requestedAt?new Date(r.requestedAt).toLocaleString('uk'):'—'}</td>
+      <td>${r.status === 'granted' ? '<span class="btn btn-g" style="padding:.15rem .5rem;font-size:.7rem">✅ Підтверджено</span>' : '<span style="color:var(--gold);font-size:.75rem">⏳ Очікує</span>'}</td>
+      <td style="display:flex;gap:.4rem">
+        ${r.status !== 'granted' ? `<button class="btn btn-g" onclick="confirmIndividual(${r.id})">✅</button>` : ''}
+        <button class="btn btn-r" onclick="rejectIndividual(${r.id})">❌</button>
+      </td>
+    </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
+}
+
+async function confirmIndividual(uid){
+  if(!confirm('Підтвердити заявку на індивідуальний розбір?'))return;
+  await fetch(`/api/individual/confirm/${uid}`,{method:'POST'});
+  toast('✅ Заявку підтверджено');
+  load();
+}
+
+async function rejectIndividual(uid){
+  if(!confirm('Відхилити заявку?'))return;
+  await fetch(`/api/individual/reject/${uid}`,{method:'POST'});
+  toast('❌ Заявку відхилено');
+  load();
 }
 
 function renderLogs(bot,web){
