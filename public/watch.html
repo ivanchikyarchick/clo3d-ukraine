@@ -123,10 +123,16 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 .mat-btn-dl:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.35)}
 .mat-btn-skip{width:100%;padding:.55rem;background:transparent;border:none;font-size:.78rem;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;transition:.2s}
 .mat-btn-skip:hover{color:var(--txt)}
+#access-countdown{position:fixed;top:1rem;left:1rem;z-index:9999;background:rgba(17,8,8,.92);border:1px solid var(--brd);border-radius:12px;padding:.55rem 1rem;font-size:.78rem;font-family:'Syne',sans-serif;font-weight:600;color:var(--txt);backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.4);display:none;align-items:center;gap:.45rem}
+#access-countdown .cd-icon{font-size:1rem}
+#access-countdown strong{font-weight:800}
+#access-countdown.warn{border-color:rgba(251,191,36,.4);color:var(--gold)}
+#access-countdown.urgent{border-color:rgba(248,113,113,.4);color:var(--red)}
 </style>
 </head>
 <body>
 <div id="gate"><div class="gbox"><div class="gt">Vitaliia 3D Fashion Lab</div><div class="gb">Навчальна платформа</div><p class="gs">Введіть ваш <strong>Telegram ID</strong> для доступу до куплених курсів</p><input type="number" id="tid" placeholder="Ваш Telegram ID" autocomplete="off"><button class="gbtn" onclick="login()">Увійти →</button><div class="gerr" id="gerr"></div><div class="gnote">Ваш ID: напишіть <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@Clo3dua_bot</a> в Telegram<br>Немає доступу? <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">@Clo3dua_bot</a></div></div></div>
+<div id="access-countdown"><span class="cd-icon">⏳</span><span class="cd-text">Доступ: — дн.</span></div>
 <div id="app"><header><div class="hdr-brand"><div class="hdr-logo">Vitaliia 3D Fashion Lab</div><div class="hdr-sub">Навчальна платформа</div></div><div class="hdr-r"><span id="uname">—</span><button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button><button class="hdr-btn" onclick="logout()">Вийти</button></div></header><div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div><div class="ctabs" id="ctabs" style="display:none"></div><div class="layout" id="layout"><aside class="sidebar"><div class="sb-head"><div class="sb-title">Уроки курсу</div><div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div><div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div></div><div class="sb-list" id="llist"></div></aside><main class="va" id="va"><div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div></main></div></div>
 <a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
 <div id="toast"></div><div id="resume-toast"></div>
@@ -134,7 +140,7 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 
 <script>
 let myCourses=[], curCourse=null, vids=[], curIdx=-1, progress={watched:[],lastIdx:0,completed:false};
-let isFreeMode = false, currentHls = null;
+let isFreeMode = false, currentHls = null, accessGrantedAt = null;
 const LS = 'vfl_last', LS_FREE_PREFIX = 'vfl_free_prog_', LS_VID_POS = 'vfl_vidpos_';
 
 document.addEventListener('contextmenu', e => { if(!['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault(); });
@@ -171,6 +177,9 @@ function showApp(name,courses){
   document.getElementById('gate').style.display='none';
   const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
   document.getElementById('uname').textContent=name; myCourses=courses||[];
+  const grants = courses.filter(c=>c.grantedAt).map(c=>c.grantedAt);
+  accessGrantedAt = grants.length ? Math.min(...grants) : null;
+  updateAccessCountdown();
   if(myCourses.length>1){
     const ct=document.getElementById('ctabs'); ct.style.display='flex';
     ct.innerHTML='<span class="ctabs-label">Курс:</span>'+myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title}</button>`).join('');
@@ -291,6 +300,31 @@ let _matPopupIdx = -1;
 function showMatPopup(idx){ _matPopupIdx = idx; document.getElementById('mat-overlay').classList.add('show'); document.getElementById('mat-popup').classList.add('show'); }
 function closeMatPopup(){ document.getElementById('mat-overlay').classList.remove('show'); document.getElementById('mat-popup').classList.remove('show'); }
 function handleMatDownload(){ closeMatPopup(); if(_matPopupIdx >= 0) downloadMaterials(_matPopupIdx); }
+
+function updateAccessCountdown(){
+  const el = document.getElementById('access-countdown');
+  if(!accessGrantedAt || isFreeMode){ el.style.display='none'; return; }
+  const expiry = accessGrantedAt + 30*24*60*60*1000;
+  const remaining = expiry - Date.now();
+  el.style.display='flex';
+  el.className='';
+  if(remaining <= 0){
+    el.classList.add('urgent');
+    el.querySelector('.cd-text').textContent='Доступ закінчився!';
+    showToast('⛔ Термін доступу до курсу закінчився. Для продовження зверніться до адміністратора.');
+    return;
+  }
+  const days = Math.ceil(remaining / (24*60*60*1000));
+  const hours = Math.floor((remaining % (24*60*60*1000)) / (60*60*1000));
+  if(days <= 3) el.classList.add('urgent');
+  else if(days <= 7) el.classList.add('warn');
+  if(days <= 1){
+    el.querySelector('.cd-text').innerHTML='Доступ: <strong>'+hours+' год</strong>';
+  } else {
+    el.querySelector('.cd-text').innerHTML='Доступ: <strong>'+days+'</strong> дн.';
+  }
+}
+setInterval(updateAccessCountdown, 60000);
 
 checkMe();
 </script>
