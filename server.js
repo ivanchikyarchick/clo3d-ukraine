@@ -23,6 +23,17 @@ const PORT           = process.env.PORT || 3000;
 const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
+const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isAccessExpired(grantedAt) {
+  return grantedAt && (Date.now() - grantedAt > ACCESS_EXPIRY_MS);
+}
+
+function activeBuyerCourses(uid) {
+  return (db.get().courses || []).filter(c =>
+    c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt))
+  );
+}
 
 
 const app = express();
@@ -215,11 +226,14 @@ app.post('/api/admin/preview', adm, (req, res) => {
 app.post('/api/buyer/login', (req, res) => {
   const uid = parseInt(req.body.telegramId);
   if (!uid) { res.status(400).json({ ok: false, error: 'Невірний ID' }); return; }
-  const myCourses = (db.get().courses || []).filter(c => c.buyers?.some(b => b.id === uid));
-  if (!myCourses.length) { res.status(403).json({ ok: false, error: 'Доступ не знайдено.' }); return; }
+  const myCourses = activeBuyerCourses(uid);
+  if (!myCourses.length) { res.status(403).json({ ok: false, error: 'Доступ не знайдено або термін доступу закінчився.' }); return; }
   req.session.buyerId = uid;
-  req.session.buyerName = myCourses[0].buyers.find(b => b.id === uid)?.name || 'Учень';
-  res.json({ ok: true, name: req.session.buyerName, courses: myCourses.map(c => ({ id: c.id, slug: c.slug, title: c.title, color: c.color })) });
+  req.session.buyerName = myCourses[0].buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt))?.name || 'Учень';
+  res.json({ ok: true, name: req.session.buyerName, courses: myCourses.map(c => {
+    const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
+    return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
+  }) });
 });
 
 app.post('/api/buyer/logout', (req, res) => { req.session.buyerId = null; res.json({ ok: true }); });
@@ -231,8 +245,11 @@ app.get('/api/buyer/me', (req, res) => {
   }
   const uid = req.session.buyerId;
   if (!uid) { res.json({ ok: false }); return; }
-  const myCourses = (db.get().courses || []).filter(c => c.buyers?.some(b => b.id === uid));
-  res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => ({ id: c.id, slug: c.slug, title: c.title, color: c.color })) });
+  const myCourses = activeBuyerCourses(uid);
+  res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => {
+    const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
+    return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
+  }) });
 });
 
 
@@ -274,7 +291,8 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
     const uid = req.session.buyerId;
     if (!uid) { res.status(403).end(); return; }
     const c = db.get().courses.find(x => x.id === req.params.cid);
-    if (!c?.buyers?.some(b => b.id === uid)) { res.status(403).end(); return; }
+    const buyer = c?.buyers?.find(b => b.id === uid);
+    if (!buyer || isAccessExpired(buyer.grantedAt)) { res.status(403).end(); return; }
   }
   const c = db.get().courses.find(x => x.id === req.params.cid);
   const v = c?.videos?.[parseInt(req.params.idx)];
@@ -539,7 +557,9 @@ app.get('/api/course/:cid/videos/:idx/materials', (req, res) => {
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).json({ ok: false }); return; }
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
-  if (!isAdm && !c.buyers?.some(b => b.id === uid) && !c.freeAccess) { res.status(403).json({ ok: false }); return; }
+  const buyer = c.buyers?.find(b => b.id === uid);
+  if (!isAdm && !buyer && !c.freeAccess) { res.status(403).json({ ok: false }); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { res.status(403).json({ ok: false, error: 'Термін доступу закінчився' }); return; }
   res.json((c.videos?.[parseInt(req.params.idx)]?.materials || []).map(m => ({ id: m.id, name: m.name, size: m.size })));
 });
 
@@ -547,7 +567,9 @@ app.get('/api/course/:cid/videos/:idx/materials/:mid/download', async (req, res)
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).end(); return; }
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
-  if (!isAdm && !c.buyers?.some(b => b.id === uid) && !c.freeAccess) { res.status(403).end(); return; }
+  const buyer = c.buyers?.find(b => b.id === uid);
+  if (!isAdm && !buyer && !c.freeAccess) { res.status(403).end(); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { res.status(403).end(); return; }
   const mat = (c.videos?.[parseInt(req.params.idx)]?.materials || []).find(m => m.id === req.params.mid);
   if (!mat) { res.status(404).end(); return; }
 
@@ -590,7 +612,9 @@ app.post('/api/progress/:cid/:idx', (req, res) => {
   const uid = req.session.buyerId;
   if (!uid) { res.status(403).json({ ok: false }); return; }
   const cid = req.params.cid;
-  if (!db.get().courses.find(c => c.id === cid)?.buyers?.some(b => b.id === uid)) { res.status(403).json({ ok: false }); return; }
+  const c = db.get().courses.find(c => c.id === cid);
+  const buyer = c?.buyers?.find(b => b.id === uid);
+  if (!buyer || isAccessExpired(buyer.grantedAt)) { res.status(403).json({ ok: false }); return; }
   res.json({ ok: true, ...db.markWatched(uid, cid, parseInt(req.params.idx)) });
 });
 
