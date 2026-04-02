@@ -669,6 +669,22 @@ app.delete('/api/courses/:cid/pending/:uid', adm, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/courses/:cid/pending/:uid/receipt', adm, async (req, res) => {
+  const c = db.get().courses.find(x => x.id === req.params.cid);
+  const p = c?.pending?.find(b => b.id === parseInt(req.params.uid));
+  if (!p?.receiptFileId) { res.status(404).json({ ok: false, error: 'Квитанція не знайдена' }); return; }
+  try {
+    const file = await getTgFileUrl(p.receiptFileId);
+    const mod = file.url.startsWith('https') ? https : http;
+    res.setHeader('Content-Disposition', `attachment; filename="receipt_${req.params.uid}.jpg"`);
+    res.setHeader('Content-Type', 'image/jpeg');
+    const r = mod.get(file.url, up => { up.pipe(res); });
+    r.on('error', () => { if (!res.headersSent) res.status(502).end(); });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Broadcast
 app.post('/api/broadcast', adm, async (req, res) => {
   const { message, cid } = req.body;
