@@ -185,13 +185,21 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
     <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">Telegram</a>
   </div>
 </footer>
-
+  </body>
+</html>
 <script>
 const slug = location.pathname.split('/course/')[1];
+if (!slug) { document.getElementById('ch-title').textContent = 'Курс не знайдено'; document.getElementById('pl').classList.add('out'); }
+let currentCourseData = null;
 
 async function load() {
+  if (!slug) return;
   try {
-    const c = await fetch(`/api/course/${slug}/public`).then(r=>r.json());
+    console.log('[course] Loading course:', slug);
+    const resp = await fetch(`/api/course/${slug}/public`);
+    console.log('[course] Response status:', resp.status);
+    const c = await resp.json();
+    console.log('[course] Course data:', c);
     if (!c || c.ok === false) {
       document.getElementById('ch-title').textContent = 'Курс не знайдено';
       document.getElementById('pl').classList.add('out');
@@ -259,7 +267,12 @@ async function load() {
         </div>`).join('');
 
     // Video list
-    const vids = await fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[]);
+    console.log('[course] Loading videos for course:', c.id);
+    const vids = await Promise.race([
+      fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(() => []),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+    ]).catch(e => { console.error('[course] Videos fetch error:', e); return []; });
+    console.log('[course] Videos loaded:', vids?.length || 0);
     const show = Math.min(vids.length, 12);
     const listEl = document.getElementById('vl-list');
     if (!vids.length) {
@@ -282,9 +295,10 @@ async function load() {
   } catch(e) {
     console.error(e);
     document.getElementById('ch-title').textContent = 'Помилка завантаження';
+  } finally {
+    document.getElementById('pl').classList.add('out');
   }
-
-  document.getElementById('pl').classList.add('out');
+  
   const obs = new IntersectionObserver(
     e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('on'); }),
     { threshold: .1 }
@@ -292,10 +306,9 @@ async function load() {
   document.querySelectorAll('.rv').forEach(el => obs.observe(el));
 }
 
-load();
+load().catch(e => { console.error('[course] Load error:', e); document.getElementById('ch-title').textContent = 'Помилка завантаження'; document.getElementById('pl').classList.add('out'); });
 
 // Monobank Payment
-let currentCourseData = null;
 
 function initiatePayment() {
   const priceEl = document.getElementById('ch-price');
@@ -342,5 +355,3 @@ function initiatePayment() {
     if (btnBottom) btnBottom.disabled = false;
   });
 }
-</body>
-</html>
