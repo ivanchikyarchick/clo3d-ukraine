@@ -181,8 +181,14 @@ async function webLogin(){
   const btn=document.querySelector('#login-web .gbtn'); 
   isProcessingAuth = true;
   btn.disabled=true; btn.textContent='Зачекайте...'; 
-  const d=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); 
-  if(d.ok) showApp(d.name,d.courses||[]); else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;} 
+  try {
+    const d=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); 
+    if(d.ok) {
+      const me = await fetch('/api/buyer/me').then(r=>r.json());
+      if(me.ok) showApp(me.name,me.courses||[]);
+      else showApp(d.name,[]);
+    } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;} 
+  } catch(e) {document.getElementById('gerr').textContent='❌ Помилка з\'єднання'; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;}
 }
 async function doRegister(){ 
   if (isProcessingAuth) return;
@@ -194,7 +200,14 @@ async function doRegister(){
   isProcessingAuth = true;
   btn.disabled=true; btn.textContent='Зачекайте...'; 
   const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); 
-  if(d.ok) showApp(d.name,[]); else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;} 
+  if(d.ok) {
+    try {
+      const me = await fetch('/api/buyer/me').then(r=>r.json());
+      showApp(me.name || d.name, me.courses || []);
+    } catch(e) {
+      showApp(d.name, []);
+    }
+  } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;} 
 }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
 function showLoginTab(t){ document.getElementById('login-web').style.display=t==='web'?'block':'none'; document.getElementById('login-reg').style.display=t==='reg'?'block':'none'; document.getElementById('tab-web').classList.toggle('on',t==='web'); document.getElementById('tab-reg').classList.toggle('on',t==='reg'); }
