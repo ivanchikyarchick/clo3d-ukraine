@@ -185,8 +185,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
     <a href="https://t.me/Clo3dua_bot" target="_blank" rel="noopener">Telegram</a>
   </div>
 </footer>
-  </body>
-</html>
+
 <script>
 const slug = location.pathname.split('/course/')[1];
 if (!slug) { document.getElementById('ch-title').textContent = 'Курс не знайдено'; document.getElementById('pl').classList.add('out'); }
@@ -198,6 +197,12 @@ async function load() {
     console.log('[course] Loading course:', slug);
     const resp = await fetch(`/api/course/${slug}/public`);
     console.log('[course] Response status:', resp.status);
+    if (!resp.ok) {
+      console.error('[course] HTTP error:', resp.status, resp.statusText);
+      document.getElementById('ch-title').textContent = 'Помилка сервера: ' + resp.status;
+      document.getElementById('pl').classList.add('out');
+      return;
+    }
     const c = await resp.json();
     console.log('[course] Course data:', c);
     if (!c || c.ok === false) {
@@ -355,3 +360,6 @@ function initiatePayment() {
     if (btnBottom) btnBottom.disabled = false;
   });
 }
+</script>
+</body>
+</html>
