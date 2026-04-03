@@ -359,7 +359,7 @@ async function load() {
     }
 
     currentCourseData = c;
-    isFree = c.freeAccess || false;
+    isFree = c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно';
     document.title = `${c.title} — Vitalia 3D Fashion Lab`;
     document.getElementById('pd').content  = c.description || `Курс CLO 3D: ${c.title}`;
     document.getElementById('pc').href     = `/course/${c.slug}`;
@@ -428,7 +428,7 @@ async function load() {
     console.log('[course] Videos loaded:', vids?.length || 0);
 
     // Check if user already has access
-    if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) || c.freeAccess) {
+    if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) || isFree) {
       const btn = document.getElementById('btn-pay');
       const btnBottom = document.getElementById('btn-pay-bottom');
       if (btn) {
@@ -462,7 +462,7 @@ async function load() {
     }
 
     // Update for free courses
-    if (c.freeAccess) {
+    if (isFree) {
       updatePaymentButtons();
     }
     const show = Math.min(vids.length, 12);
