@@ -32,9 +32,12 @@ function isAccessExpired(grantedAt) {
 }
 
 function activeBuyerCourses(uid) {
-  return (db.get().courses || []).filter(c =>
+  const courses = db.get().courses || [];
+  const activeCourses = courses.filter(c =>
     c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt))
   );
+  console.log('[activeBuyerCourses] user', uid, 'has', activeCourses.length, 'active courses');
+  return activeCourses;
 }
 
 
@@ -110,16 +113,22 @@ webhookRouter.post('/payment/webhook', express.raw({ type: 'application/json' })
     console.log('[monobank] Payment SUCCESS:', payment.invoiceId, payment.amount);
     const d = db.get();
     const pending = d.pendingPayments?.find(p => p.invoiceId === payment.invoiceId);
+    console.log('[monobank] Pending payment found:', !!pending, 'buyerId:', pending?.buyerId, 'courseId:', pending?.courseId);
     if (pending && pending.buyerId && pending.courseId) {
       db.set(d => {
         const c = d.courses.find(x => x.id === pending.courseId);
+        console.log('[monobank] Course found:', !!c, 'course id:', pending.courseId);
         if (c && !c.buyers?.some(b => b.id === pending.buyerId)) {
           if (!c.buyers) c.buyers = [];
           c.buyers.push({ id: pending.buyerId, name: '—', grantedAt: Date.now() });
-          console.log('[monobank] Access granted to buyer:', pending.buyerId, 'course:', pending.courseId);
+          console.log('[monobank] Access granted to buyer:', pending.buyerId, 'course:', pending.courseId, 'total buyers now:', c.buyers.length);
+        } else {
+          console.log('[monobank] Buyer already has access or course not found');
         }
         d.pendingPayments = (d.pendingPayments || []).filter(p => p.invoiceId !== payment.invoiceId);
       });
+    } else {
+      console.log('[monobank] No pending payment found for invoice:', payment.invoiceId);
     }
   } else if (payment.status === 'failure') {
     console.log('[monobank] Payment FAILED:', payment.invoiceId, payment.failureReason);
@@ -393,12 +402,13 @@ app.get('/api/dashboard', adm, (req, res) => {
       botByDay.push(bEvt.filter(e => e.ts >= start && e.ts < end).length);
       webByDay.push(wEvt.filter(e => e.ts >= start && e.ts < end).length);
     }
-    const cs = d.courses || [], t = s.totals || {}, evTypes = {};
+    const cs = d.courses || [], t = s.totals || {}, evTypes = {}, webAccounts = (d.buyerAccounts || []).length;
     bEvt.forEach(e => { evTypes[e.type] = (evTypes[e.type] || 0) + 1; });
     return {
       summary: {
         courses: cs.length,
         buyers: cs.reduce((s, c) => s + (c.buyers?.length || 0), 0),
+        webAccounts: webAccounts,
         pending: cs.reduce((s, c) => s + (c.pending?.length || 0), 0),
         videos: cs.reduce((s, c) => s + (c.videos?.length || 0), 0),
         buyRequests: t.buyRequests || 0, videoViews: t.videoViews || 0,
@@ -481,8 +491,10 @@ app.get('/api/buyer/me', (req, res) => {
     res.json({ ok: true, name: 'Адмін', courses }); return;
   }
   const uid = req.session.buyerId;
+  console.log('[buyer/me] session buyerId:', uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
   const myCourses = activeBuyerCourses(uid);
+  console.log('[buyer/me] active courses for user', uid, ':', myCourses.length);
   res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => {
     const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
     return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
@@ -499,6 +511,7 @@ app.post('/api/buyer/register', (req, res) => {
   if (!username || username.trim().length < 3) { res.status(400).json({ ok: false, error: 'Юзернейм мінімум 3 символи' }); return; }
   if (!password || password.length < 4) { res.status(400).json({ ok: false, error: 'Пароль мінімум 4 символи' }); return; }
   const nameClean = username.trim().slice(0, 30).toLowerCase();
+  console.log('[register] username:', nameClean, 'hash:', hashPassword(password));
   const d = db.get();
   let buyer = _buyerUsers.get(nameClean);
   if (buyer) { res.status(400).json({ ok: false, error: 'Такий юзернейм вже є' }); return; }
@@ -509,6 +522,8 @@ app.post('/api/buyer/register', (req, res) => {
     if (!d.buyerAccounts) d.buyerAccounts = [];
     d.buyerAccounts.push({ id: newUid, username: nameClean, password: newHash, createdAt: Date.now() });
   });
+  // Force immediate save to ensure data is available across restarts
+  db.flushSync();
   req.session.buyerId = newUid;
   req.session.buyerName = nameClean;
   res.json({ ok: true, id: newUid, name: nameClean });
@@ -517,14 +532,20 @@ app.post('/api/buyer/register', (req, res) => {
 app.post('/api/buyer/login-web', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) { res.status(400).json({ ok: false, error: 'Введіть юзернейм та пароль' }); return; }
-  const nameClean = username.trim().toLowerCase();
+  const nameClean = username.trim().slice(0, 30).toLowerCase();
+  console.log('[login-web] attempting:', nameClean, 'pwd hash:', hashPassword(password));
   let buyer = _buyerUsers.get(nameClean);
   if (!buyer) {
     const d = db.get();
-    const acc = d.buyerAccounts?.find(a => a.username === nameClean);
-    if (acc) { buyer = acc; _buyerUsers.set(nameClean, acc); }
+    console.log('[login-web] checking db.buyerAccounts:', d.buyerAccounts);
+    // Case-insensitive search
+    const acc = d.buyerAccounts?.find(a => a.username?.toLowerCase() === nameClean);
+    if (acc) { buyer = acc; _buyerUsers.set(nameClean, acc); console.log('[login-web] found in db:', acc); }
   }
-  if (!buyer || !verifyPassword(password, buyer.password)) { res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
+  if (!buyer) { console.log('[login-web] buyer not found'); res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
+  const pwdMatch = verifyPassword(password, buyer.password);
+  console.log('[login-web] pwd match:', pwdMatch, 'input hash:', hashPassword(password), 'stored hash:', buyer.password);
+  if (!pwdMatch) { res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
   req.session.buyerId = buyer.id;
   req.session.buyerName = nameClean;
   res.json({ ok: true, id: buyer.id, name: nameClean });
