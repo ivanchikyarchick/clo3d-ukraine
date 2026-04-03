@@ -108,6 +108,19 @@ webhookRouter.post('/payment/webhook', express.raw({ type: 'application/json' })
   
   if (payment.status === 'success') {
     console.log('[monobank] Payment SUCCESS:', payment.invoiceId, payment.amount);
+    const d = db.get();
+    const pending = d.pendingPayments?.find(p => p.invoiceId === payment.invoiceId);
+    if (pending && pending.buyerId && pending.courseId) {
+      db.set(d => {
+        const c = d.courses.find(x => x.id === pending.courseId);
+        if (c && !c.buyers?.some(b => b.id === pending.buyerId)) {
+          if (!c.buyers) c.buyers = [];
+          c.buyers.push({ id: pending.buyerId, name: '—', grantedAt: Date.now() });
+          console.log('[monobank] Access granted to buyer:', pending.buyerId, 'course:', pending.courseId);
+        }
+        d.pendingPayments = (d.pendingPayments || []).filter(p => p.invoiceId !== payment.invoiceId);
+      });
+    }
   } else if (payment.status === 'failure') {
     console.log('[monobank] Payment FAILED:', payment.invoiceId, payment.failureReason);
   }
@@ -222,7 +235,7 @@ function getMonoToken() {
 app.post('/api/payment/create', async (req, res) => {
   const token = getMonoToken();
   if (!token) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
-  const { amount, description, courseId, redirectUrl } = req.body;
+  const { amount, description, courseId, buyerId, redirectUrl } = req.body;
   if (!amount || amount < 100) { res.status(400).json({ ok: false, error: 'Invalid amount' }); return; }
   
   const invoiceData = {
@@ -253,6 +266,13 @@ app.post('/api/payment/create', async (req, res) => {
       console.error('[monobank] create error:', result);
       res.status(response.status).json({ ok: false, error: result.errCode || result.message || 'Payment creation failed' });
       return;
+    }
+    
+    if (buyerId && courseId) {
+      db.set(d => {
+        if (!d.pendingPayments) d.pendingPayments = [];
+        d.pendingPayments.push({ invoiceId: result.invoiceId, buyerId: parseInt(buyerId), courseId, createdAt: Date.now() });
+      });
     }
     
     res.json({ ok: true, invoiceId: result.invoiceId, pageUrl: result.pageUrl });
@@ -467,6 +487,47 @@ app.get('/api/buyer/me', (req, res) => {
     const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
     return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
   }) });
+});
+
+// Buyer web registration with username + password
+const _buyerUsers = new Map();
+function hashPassword(pwd) { return 'x:' + pwd.split('').reverse().join(''); }
+function verifyPassword(pwd, hash) { return hashPassword(pwd) === hash; }
+
+app.post('/api/buyer/register', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || username.trim().length < 3) { res.status(400).json({ ok: false, error: 'Юзернейм мінімум 3 символи' }); return; }
+  if (!password || password.length < 4) { res.status(400).json({ ok: false, error: 'Пароль мінімум 4 символи' }); return; }
+  const nameClean = username.trim().slice(0, 30).toLowerCase();
+  const d = db.get();
+  let buyer = _buyerUsers.get(nameClean);
+  if (buyer) { res.status(400).json({ ok: false, error: 'Такий юзернейм вже є' }); return; }
+  const newUid = Date.now();
+  const newHash = hashPassword(password);
+  _buyerUsers.set(nameClean, { id: newUid, password: newHash });
+  db.set(d => {
+    if (!d.buyerAccounts) d.buyerAccounts = [];
+    d.buyerAccounts.push({ id: newUid, username: nameClean, password: newHash, createdAt: Date.now() });
+  });
+  req.session.buyerId = newUid;
+  req.session.buyerName = nameClean;
+  res.json({ ok: true, id: newUid, name: nameClean });
+});
+
+app.post('/api/buyer/login-web', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) { res.status(400).json({ ok: false, error: 'Введіть юзернейм та пароль' }); return; }
+  const nameClean = username.trim().toLowerCase();
+  let buyer = _buyerUsers.get(nameClean);
+  if (!buyer) {
+    const d = db.get();
+    const acc = d.buyerAccounts?.find(a => a.username === nameClean);
+    if (acc) { buyer = acc; _buyerUsers.set(nameClean, acc); }
+  }
+  if (!buyer || !verifyPassword(password, buyer.password)) { res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
+  req.session.buyerId = buyer.id;
+  req.session.buyerName = nameClean;
+  res.json({ ok: true, id: buyer.id, name: nameClean });
 });
 
 
