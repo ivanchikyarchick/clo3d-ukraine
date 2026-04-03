@@ -47,15 +47,21 @@ function autoGrantAccess(uid) {
 }
 
 function activeBuyerCourses(uid) {
-  const courses = db.get().courses || [];
+  const d = db.get();
+  const courses = d.courses || [];
+  // Debug: log all courses
+  console.log('[activeBuyerCourses] user', uid, 'checking', courses.length, 'courses');
+  console.log('[activeBuyerCourses] Course IDs:', courses.map(c => ({ id: c.id, title: c.title })));
+  for (const c of courses) {
+    const buyer = c.buyers?.find(b => b.id === uid);
+    console.log('[activeBuyerCourses]   -', c.title, '(id:', c.id, ') buyers:', c.buyers?.map(b => b.id), 'looking for:', uid);
+  }
+  
   const activeCourses = courses.filter(c => {
-    const hasAccess = c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt));
-    if (hasAccess) {
-      console.log('[activeBuyerCourses] user', uid, 'has access to course:', c.title, 'buyers:', c.buyers?.length);
-    }
-    return hasAccess;
+    const buyer = c.buyers?.find(b => b.id === uid);
+    return !!buyer;
   });
-  console.log('[activeBuyerCourses] user', uid, 'has', activeCourses.length, 'active courses');
+  console.log('[activeBuyerCourses] user', uid, 'active courses:', activeCourses.map(c => c.title));
   return activeCourses;
 }
 
@@ -610,8 +616,14 @@ app.get('/api/buyer/me', (req, res) => {
   console.log('[buyer/me] session buyerId:', uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
 
-  // Check and process pending payments
+  // Debug: log all courses and their buyers
   const d = db.get();
+  console.log('[buyer/me] Total courses in DB:', d.courses?.length);
+  for (const c of (d.courses || [])) {
+    console.log('[buyer/me] Course:', c.title, 'buyers:', c.buyers?.length, c.buyers?.map(b => ({ id: b.id, expired: isAccessExpired(b.grantedAt) })));
+  }
+
+  // Check and process pending payments
   const pendingForUser = d.pendingPayments?.filter(p => p.buyerId === uid);
   if (pendingForUser?.length) {
     console.log('[buyer/me] Processing pending payments for user:', uid, pendingForUser.length);
