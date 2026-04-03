@@ -525,7 +525,6 @@ function initiatePayment() {
   // ALWAYS show login modal before payment
   openLoginModal();
   return;
-}
 
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
@@ -578,6 +577,7 @@ function initiatePayment() {
     if (btnBottom) btnBottom.disabled = false;
     isProcessingPayment = false;
   });
+}
 </script>
 </body>
 </html>
