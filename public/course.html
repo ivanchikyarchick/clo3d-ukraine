@@ -259,6 +259,8 @@ async function doLogin(){
     if(r.ok){
       currentBuyer=r;
       isProcessingAuth=false;
+      btn.disabled=false;
+      btn.textContent='Увійти';
       closeLoginModal();
       updatePaymentButtons();
       // After login, proceed to payment
@@ -283,6 +285,8 @@ async function doRegister(){
     if(r.ok){
       currentBuyer=r;
       isProcessingAuth=false;
+      btn.disabled=false;
+      btn.textContent='Зареєструватись';
       closeLoginModal();
       updatePaymentButtons();
       // After registration, proceed to payment
