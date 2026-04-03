@@ -358,8 +358,10 @@ async function loadCourses() {
     if (!cs.length) {
       grid.innerHTML = `<div class="courses-empty">Курси незабаром з'являться.<br>Слідкуйте у <a href="https://t.me/Clo3dua_bot" style="color:var(--acc2)">Telegram</a></div>`;
     } else {
-      grid.innerHTML = cs.map(c => `
-        <a href="/watch?course=${c.slug}" class="course-card" style="--card-acc:${c.color||'#C8302A'}">
+      grid.innerHTML = cs.map(c => {
+        const link = c.freeAccess ? `/watch?course=${c.slug}` : `/course/${c.slug}`;
+        return `
+        <a href="${link}" class="course-card" style="--card-acc:${c.color||'#C8302A'}">
           <div class="cc-accent"></div>
           <div class="cc-body">
             ${c.freeAccess ? `<span class="cc-badge" style="background:rgba(52,211,153,.12);color:#34d399;border-color:rgba(52,211,153,.25)">🆓 Безкоштовно</span>` : (c.badge ? `<span class="cc-badge">${c.badge}</span>` : '')}
@@ -373,7 +375,8 @@ async function loadCourses() {
               <div class="cc-arr"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
             </div>
           </div>
-        </a>`).join('');
+        </a>`;
+      }).join('');
     }
   } catch(e) {
     document.getElementById('courses-grid').innerHTML='<div class="courses-empty">Помилка завантаження</div>';
