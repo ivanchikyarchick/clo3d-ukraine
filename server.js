@@ -184,7 +184,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'vfl_secret_2025',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: { maxAge: null } // сесія закінчується при закритті браузера
 }));
 
 // ═══ Security headers ═══
@@ -599,11 +599,23 @@ app.get('/api/buyer/me', (req, res) => {
   console.log('[buyer/me] session buyerId:', uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
 
-  // Also check if there are any pending payments that should be processed
+  // Check and process pending payments
   const d = db.get();
   const pendingForUser = d.pendingPayments?.filter(p => p.buyerId === uid);
   if (pendingForUser?.length) {
-    console.log('[buyer/me] Found pending payments for user:', uid, pendingForUser.length);
+    console.log('[buyer/me] Processing pending payments for user:', uid, pendingForUser.length);
+    db.set(d => {
+      const pending = d.pendingPayments?.filter(p => p.buyerId === uid) || [];
+      for (const p of pending) {
+        const c = d.courses.find(x => x.id === p.courseId);
+        if (c && !c.buyers?.some(b => b.id === p.buyerId)) {
+          if (!c.buyers) c.buyers = [];
+          c.buyers.push({ id: p.buyerId, name: '—', grantedAt: Date.now() });
+          console.log('[buyer/me] Access granted from pending payment:', p.buyerId, 'course:', p.courseId);
+        }
+      }
+      d.pendingPayments = (d.pendingPayments || []).filter(p => p.buyerId !== uid);
+    });
   }
 
   const myCourses = activeBuyerCourses(uid);
