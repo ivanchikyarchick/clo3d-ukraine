@@ -189,21 +189,38 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 <div id="login-modal" class="mbg" style="display:none">
   <div class="mbox">
     <button class="mc" onclick="closeLoginModal()">✕</button>
-    <h3>Вхід для покупки</h3>
-    <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Увійдіть або зареєструйтесь, щоб придбати курс</p>
-    <div class="fg"><label>Юзернейм *</label><input id="reg-username" placeholder="username"></div>
-    <div class="fg"><label>Пароль *</label><input id="reg-password" type="password" placeholder="Пароль"></div>
-    <div class="fg"><label>Повторіть пароль *</label><input id="reg-password2" type="password" placeholder="Повторіть пароль"></div>
-    <button class="btn-g" onclick="doRegister()" id="reg-btn">Зареєструватись</button>
-    <p class="gerr" id="reg-error" style="margin-top:1rem"></p>
-    <p style="margin-top:1rem;font-size:.8rem"><a href="#" onclick="showLoginOnly(event)" style="color:var(--acc)">Вже є акаунт? Увійти</a></p>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')" id="tab-login">Вхід</button>
+      <button class="tab" onclick="switchTab('register')" id="tab-register">Реєстрація</button>
+    </div>
+    
+    <div id="login-form">
+      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Увійдіть, щоб придбати курс</p>
+      <div class="fg"><label>Юзернейм</label><input id="login-username" placeholder="username"></div>
+      <div class="fg"><label>Пароль</label><input id="login-password" type="password" placeholder="Пароль"></div>
+      <button class="btn-g" onclick="doLogin()" id="login-btn">Увійти</button>
+      <p class="gerr" id="login-error" style="margin-top:1rem"></p>
+      <p style="margin-top:1rem;font-size:.8rem;color:var(--muted)">Немає акаунту? <a href="#" onclick="switchTab('register');return false;" style="color:var(--acc)">Зареєструватись</a></p>
+    </div>
+    
+    <div id="register-form" style="display:none">
+      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Створіть акаунт для покупки</p>
+      <div class="fg"><label>Юзернейм *</label><input id="reg-username" placeholder="username"></div>
+      <div class="fg"><label>Пароль *</label><input id="reg-password" type="password" placeholder="Мінімум 4 символи"></div>
+      <div class="fg"><label>Повторіть пароль *</label><input id="reg-password2" type="password" placeholder="Повторіть пароль"></div>
+      <button class="btn-g" onclick="doRegister()" id="reg-btn">Зареєструватись</button>
+      <p class="gerr" id="reg-error" style="margin-top:1rem"></p>
+      <p style="margin-top:1rem;font-size:.8rem;color:var(--muted)">Вже є акаунт? <a href="#" onclick="switchTab('login');return false;" style="color:var(--acc)">Увійти</a></p>
+    </div>
   </div>
 </div>
 <style>
 .mbg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
 .mbox{background:var(--s2);border:1px solid var(--brd);border-radius:16px;padding:2rem;max-width:340px;width:100%;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.4)}
 .mc{position:absolute;top:.5rem;right:.5rem;background:none;border:none;color:var(--muted);font-size:1.25rem;cursor:pointer}
-.mbox h3{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:700;margin-bottom:.5rem}
+.tabs{display:flex;gap:.5rem;margin-bottom:1.5rem}
+.tab{flex:1;padding:.6rem;background:transparent;border:1px solid var(--brd);border-radius:8px;color:var(--muted);font-size:.8rem;font-weight:500;cursor:pointer;transition:.2s;font-family:'Syne',sans-serif}
+.tab.active{background:var(--acc);border-color:var(--acc);color:#fff}
 .fg{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.85rem}
 .fg label{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .fg input{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:.8rem;font-size:.95rem;color:var(--txt)}
@@ -216,25 +233,58 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 </style>
 
 <script>
-function openLoginModal(){ document.getElementById('login-modal').style.display='flex'; }
-function closeLoginModal(){ document.getElementById('login-modal').style.display='none'; }
+let currentBuyer = null;
+let isProcessingPayment = false;
+let isProcessingAuth = false;
+
+function switchTab(tab) {
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('reg-error').textContent = '';
+}
+function openLoginModal(){ document.getElementById('login-modal').style.display='flex'; switchTab('register'); }
+function closeLoginModal(){ document.getElementById('login-modal').style.display='none'; isProcessingAuth = false; }
+async function doLogin(){
+  if (isProcessingAuth) return;
+  const username=document.getElementById('login-username').value.trim();
+  const pwd=document.getElementById('login-password').value;
+  const btn=document.getElementById('login-btn');
+  if(!username||!pwd){document.getElementById('login-error').textContent='Введіть юзернейм та пароль';return;}
+  isProcessingAuth = true;
+  btn.disabled=true; btn.textContent='Зачекайте...';
+  try{
+    const r=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
+    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();initiatePayment();}
+    else{document.getElementById('login-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
+  }catch(e){document.getElementById('login-error').textContent=e.message;btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
+}
 async function doRegister(){
+  if (isProcessingAuth) return;
   const username=document.getElementById('reg-username').value.trim();
   const pwd=document.getElementById('reg-password').value;
   const pwd2=document.getElementById('reg-password2').value;
+  const btn=document.getElementById('reg-btn');
   if(!username){document.getElementById('reg-error').textContent='Введіть юзернейм';return;}
   if(pwd.length<4){document.getElementById('reg-error').textContent='Пароль мінімум 4 символи';return;}
   if(pwd!==pwd2){document.getElementById('reg-error').textContent='Паролі не співпадають';return;}
-  document.getElementById('reg-btn').disabled=true; document.getElementById('reg-btn').textContent='Зачекайте...';
+  isProcessingAuth = true;
+  btn.disabled=true; btn.textContent='Зачекайте...';
   try{
     const r=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
-    if(r.ok){currentBuyer=r;closeLoginModal();initiatePayment();}
-    else{document.getElementById('reg-error').textContent=r.error||'Помилка';document.getElementById('reg-btn').disabled=false;document.getElementById('reg-btn').textContent='Зареєструватись';}
-  }catch(e){document.getElementById('reg-error').textContent=e.message;document.getElementById('reg-btn').disabled=false;document.getElementById('reg-btn').textContent='Зареєструватись';}
+    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();initiatePayment();}
+    else{document.getElementById('reg-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
+  }catch(e){document.getElementById('reg-error').textContent=e.message;btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
 }
-async function showLoginOnly(e){ if(e)e.preventDefault(); const username=prompt('Юзернейм:'); if(!username)return; const pwd=prompt('Пароль:'); if(!pwd)return; try{ const r=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json()); if(r.ok){currentBuyer=r;closeLoginModal();initiatePayment();}else{alert(r.error||'Помилка');} }catch(e){alert(e.message);} }
-let currentBuyer = null;
 async function initMe(){ try{ const r=await fetch('/api/buyer/me').then(x=>x.json()); if(r.ok){currentBuyer=r;return r;} }catch{} return null; }
+
+document.getElementById('login-username').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('login-password').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('reg-username').addEventListener('keydown', e=>{if(e.key==='Enter')doRegister();});
+document.getElementById('reg-password').addEventListener('keydown', e=>{if(e.key==='Enter')doRegister();});
+document.getElementById('reg-password2').addEventListener('keydown', e=>{if(e.key==='Enter')doRegister();});
 
 const slug = location.pathname.split('/course/')[1];
 if (!slug) { document.getElementById('ch-title').textContent = 'Курс не знайдено'; document.getElementById('pl').classList.add('out'); }
@@ -366,6 +416,8 @@ load().catch(e => { console.error('[course] Load error:', e); document.getElemen
 // Monobank Payment
 
 function initiatePayment() {
+  if (isProcessingPayment) return;
+  
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
   
@@ -378,6 +430,7 @@ function initiatePayment() {
   
   if (!currentBuyer || !currentBuyer.ok) { openLoginModal(); return; }
   
+  isProcessingPayment = true;
   const btn = document.getElementById('btn-pay');
   const btnBottom = document.getElementById('btn-pay-bottom');
   const originalText = btn.textContent;
@@ -407,6 +460,7 @@ function initiatePayment() {
       btn.textContent = originalText;
       btn.disabled = false;
       if (btnBottom) btnBottom.disabled = false;
+      isProcessingPayment = false;
     }
   })
   .catch(e => {
@@ -414,6 +468,7 @@ function initiatePayment() {
     btn.textContent = originalText;
     btn.disabled = false;
     if (btnBottom) btnBottom.disabled = false;
+    isProcessingPayment = false;
   });
 }
 </script>
