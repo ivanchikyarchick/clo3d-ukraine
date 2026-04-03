@@ -386,7 +386,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="fg"><label>Опис</label><textarea id="mnc-desc" style="min-height:80px" placeholder="Про що цей курс..."></textarea></div>
     <div class="row">
       <div class="fg"><label>Ціна (для сайту)</label><input id="mnc-price" placeholder="299 грн"></div>
-      <div class="fg"><label>Сума для оплати</label><input id="mnc-price-amount" placeholder="100 (число для Monobank)"></div>
+      <div class="fg"><label>Сума для оплати (в копійках)</label><input id="mnc-price-amount" placeholder="29900 = 299 грн (для Monobank)"></div>
     </div>
     <div class="fg"><label>Колір акценту</label>
       <div class="swatches" id="swatches"></div>
@@ -867,7 +867,9 @@ async function saveCourse(){
     const sep = line.indexOf('|');
     return sep>-1 ? {title:line.slice(0,sep).trim(), desc:line.slice(sep+1).trim()} : {title:line,desc:''};
   });
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:document.getElementById('mnc-price-amount').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
+  let pAmt = document.getElementById('mnc-price-amount').value.replace(/[^\d]/g, '');
+  if(pAmt && parseInt(pAmt) < 10000) pAmt = String(parseInt(pAmt) * 100);
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
