@@ -186,7 +186,51 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
   </div>
 </footer>
 
+<div id="login-modal" class="mbg" style="display:none">
+  <div class="mbox">
+    <button class="mc" onclick="closeLoginModal()">✕</button>
+    <h3>Вхід для покупки</h3>
+    <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Увійдіть або зареєструйтесь, щоб придбати курс</p>
+    <div class="fg"><label>Юзернейм *</label><input id="reg-username" placeholder="username"></div>
+    <div class="fg"><label>Пароль *</label><input id="reg-password" type="password" placeholder="Пароль"></div>
+    <div class="fg"><label>Повторіть пароль *</label><input id="reg-password2" type="password" placeholder="Повторіть пароль"></div>
+    <button class="btn-g" onclick="doRegister()" id="reg-btn">Зареєструватись</button>
+    <p class="gerr" id="reg-error" style="margin-top:1rem"></p>
+    <p style="margin-top:1rem;font-size:.8rem"><a href="#" onclick="showLoginOnly(event)" style="color:var(--acc)">Вже є акаунт? Увійти</a></p>
+  </div>
+</div>
+<style>
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.mbox{background:var(--s2);border:1px solid var(--brd);border-radius:16px;padding:2rem;max-width:360px;width:100%;position:relative}
+.mc{position:absolute;top:.5rem;right:.5rem;background:none;border:none;color:var(--muted);font-size:1.25rem;cursor:pointer}
+.fg{display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem}
+.fg label{font-size:.75rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.fg input{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:.75rem;font-size:.95rem;color:var(--txt)}
+.fg input:focus{outline:none;border-color:var(--acc)}
+.gerr{color:var(--acc);font-size:.85rem}
+</style>
+
 <script>
+function openLoginModal(){ document.getElementById('login-modal').style.display='flex'; }
+function closeLoginModal(){ document.getElementById('login-modal').style.display='none'; }
+async function doRegister(){
+  const username=document.getElementById('reg-username').value.trim();
+  const pwd=document.getElementById('reg-password').value;
+  const pwd2=document.getElementById('reg-password2').value;
+  if(!username){document.getElementById('reg-error').textContent='Введіть юзернейм';return;}
+  if(pwd.length<4){document.getElementById('reg-error').textContent='Пароль мінімум 4 символи';return;}
+  if(pwd!==pwd2){document.getElementById('reg-error').textContent='Паролі не співпадають';return;}
+  document.getElementById('reg-btn').disabled=true; document.getElementById('reg-btn').textContent='Зачекайте...';
+  try{
+    const r=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
+    if(r.ok){closeLoginModal();initiatePayment();}
+    else{document.getElementById('reg-error').textContent=r.error||'Помилка';document.getElementById('reg-btn').disabled=false;document.getElementById('reg-btn').textContent='Зареєструватись';}
+  }catch(e){document.getElementById('reg-error').textContent=e.message;document.getElementById('reg-btn').disabled=false;document.getElementById('reg-btn').textContent='Зареєструватись';}
+}
+async function showLoginOnly(e){ if(e)e.preventDefault(); const username=prompt('Юзернейм:'); if(!username)return; const pwd=prompt('Пароль:'); if(!pwd)return; try{ const r=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json()); if(r.ok){currentBuyer=r;closeLoginModal();initiatePayment();}else{alert(r.error||'Помилка');} }catch(e){alert(e.message);} }
+let currentBuyer = null;
+async function initMe(){ try{ const r=await fetch('/api/buyer/me').then(x=>x.json()); if(r.ok){currentBuyer=r;return r;} }catch{} return null; }
+
 const slug = location.pathname.split('/course/')[1];
 if (!slug) { document.getElementById('ch-title').textContent = 'Курс не знайдено'; document.getElementById('pl').classList.add('out'); }
 let currentCourseData = null;
@@ -311,6 +355,7 @@ async function load() {
   document.querySelectorAll('.rv').forEach(el => obs.observe(el));
 }
 
+initMe().then(r => { currentBuyer = r; }).catch(() => {});
 load().catch(e => { console.error('[course] Load error:', e); document.getElementById('ch-title').textContent = 'Помилка завантаження'; document.getElementById('pl').classList.add('out'); });
 
 // Monobank Payment
@@ -319,11 +364,14 @@ function initiatePayment() {
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
   
-  const amount = (currentCourseData?.priceAmount || currentCourseData?.price || '100').replace(/[^\d]/g, '');
-  const finalAmount = parseInt(amount) * 100;
+  const rawAmount = (currentCourseData?.priceAmount || currentCourseData?.price || '100').replace(/[^\d]/g, '');
+  let finalAmount = parseInt(rawAmount);
+  if (finalAmount < 10000) finalAmount = finalAmount * 100;
   console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount:', finalAmount);
   
   const description = titleEl.textContent || 'Тестова оплата';
+  
+  if (!currentBuyer || !currentBuyer.ok) { openLoginModal(); return; }
   
   const btn = document.getElementById('btn-pay');
   const btnBottom = document.getElementById('btn-pay-bottom');
@@ -339,6 +387,7 @@ function initiatePayment() {
       amount: amount,
       description: description,
       courseId: currentCourseData?.id || 'unknown',
+      buyerId: currentBuyer?.id,
       redirectUrl: window.location.origin + '/payment-result'
     })
   })
