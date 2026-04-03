@@ -200,14 +200,19 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
   </div>
 </div>
 <style>
-.mbg{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
-.mbox{background:var(--s2);border:1px solid var(--brd);border-radius:16px;padding:2rem;max-width:360px;width:100%;position:relative}
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.mbox{background:var(--s2);border:1px solid var(--brd);border-radius:16px;padding:2rem;max-width:340px;width:100%;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.4)}
 .mc{position:absolute;top:.5rem;right:.5rem;background:none;border:none;color:var(--muted);font-size:1.25rem;cursor:pointer}
-.fg{display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem}
-.fg label{font-size:.75rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
-.fg input{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:.75rem;font-size:.95rem;color:var(--txt)}
+.mbox h3{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:700;margin-bottom:.5rem}
+.fg{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.85rem}
+.fg label{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.fg input{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:.8rem;font-size:.95rem;color:var(--txt)}
 .fg input:focus{outline:none;border-color:var(--acc)}
-.gerr{color:var(--acc);font-size:.85rem}
+.fg input::placeholder{color:var(--muted);opacity:.5}
+.mbox .btn-g{width:100%;padding:.85rem;background:var(--acc);border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s}
+.mbox .btn-g:hover{background:#a01e1e}
+.mbox .btn-g:disabled{opacity:.6;cursor:not-allowed}
+.gerr{color:var(--acc);font-size:.85rem;min-height:1.2rem}
 </style>
 
 <script>
@@ -223,7 +228,7 @@ async function doRegister(){
   document.getElementById('reg-btn').disabled=true; document.getElementById('reg-btn').textContent='Зачекайте...';
   try{
     const r=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
-    if(r.ok){closeLoginModal();initiatePayment();}
+    if(r.ok){currentBuyer=r;closeLoginModal();initiatePayment();}
     else{document.getElementById('reg-error').textContent=r.error||'Помилка';document.getElementById('reg-btn').disabled=false;document.getElementById('reg-btn').textContent='Зареєструватись';}
   }catch(e){document.getElementById('reg-error').textContent=e.message;document.getElementById('reg-btn').disabled=false;document.getElementById('reg-btn').textContent='Зареєструватись';}
 }
@@ -366,7 +371,7 @@ function initiatePayment() {
   
   const rawAmount = (currentCourseData?.priceAmount || currentCourseData?.price || '100').replace(/[^\d]/g, '');
   let finalAmount = parseInt(rawAmount);
-  if (finalAmount < 10000) finalAmount = finalAmount * 100;
+  if (finalAmount < 10000 && finalAmount > 0) finalAmount = finalAmount * 100;
   console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount:', finalAmount);
   
   const description = titleEl.textContent || 'Тестова оплата';
@@ -384,7 +389,7 @@ function initiatePayment() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      amount: amount,
+      amount: finalAmount,
       description: description,
       courseId: currentCourseData?.id || 'unknown',
       buyerId: currentBuyer?.id,
