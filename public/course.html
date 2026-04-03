@@ -256,7 +256,14 @@ async function doLogin(){
   btn.disabled=true; btn.textContent='Зачекайте...';
   try{
     const r=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
-    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();updatePaymentButtons();}
+    if(r.ok){
+      currentBuyer=r;
+      isProcessingAuth=false;
+      closeLoginModal();
+      updatePaymentButtons();
+      // After login, proceed to payment
+      setTimeout(initiatePayment, 300);
+    }
     else{document.getElementById('login-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
   }catch(e){document.getElementById('login-error').textContent=e.message;btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
 }
@@ -273,7 +280,14 @@ async function doRegister(){
   btn.disabled=true; btn.textContent='Зачекайте...';
   try{
     const r=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
-    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();updatePaymentButtons();}
+    if(r.ok){
+      currentBuyer=r;
+      isProcessingAuth=false;
+      closeLoginModal();
+      updatePaymentButtons();
+      // After registration, proceed to payment
+      setTimeout(initiatePayment, 300);
+    }
     else{document.getElementById('reg-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
   }catch(e){document.getElementById('reg-error').textContent=e.message;btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
 }
@@ -508,11 +522,10 @@ function initiatePayment() {
     return;
   }
 
-  // If not logged in, show login modal
-  if (!currentBuyer || !currentBuyer.ok) {
-    openLoginModal();
-    return;
-  }
+  // ALWAYS show login modal before payment
+  openLoginModal();
+  return;
+}
 
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
@@ -565,7 +578,6 @@ function initiatePayment() {
     if (btnBottom) btnBottom.disabled = false;
     isProcessingPayment = false;
   });
-}
 </script>
 </body>
 </html>
