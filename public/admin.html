@@ -161,6 +161,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <div class="sg">
         <div class="sc"><div class="sl">Курсів</div><div class="sv b" id="s-c">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Веб акаунтів</div><div class="sv a" id="s-wa">—</div><div class="ss">зареєстровані</div></div>
         <div class="sc"><div class="sl">Заявок</div><div class="sv go" id="s-p">—</div><div class="ss">очікують</div></div>
         <div class="sc"><div class="sl">Відео</div><div class="sv b" id="s-v">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Запитів купити</div><div class="sv a" id="s-br">—</div><div class="ss">всього</div></div>
@@ -524,9 +525,10 @@ async function load(){
   if(r.status===401){window.location='/login';return;}
   D=await r.json();
   const s=D.summary;
-  document.getElementById('s-c').textContent =s.courses;
-  document.getElementById('s-b').textContent =s.buyers;
-  document.getElementById('s-p').textContent =s.pending;
+   document.getElementById('s-c').textContent =s.courses;
+   document.getElementById('s-b').textContent =s.buyers;
+   document.getElementById('s-wa').textContent =s.webAccounts;
+   document.getElementById('s-p').textContent =s.pending;
   document.getElementById('s-v').textContent =s.videos;
   document.getElementById('s-br').textContent=s.buyRequests||0;
   document.getElementById('s-vv').textContent=s.videoViews||0;
