@@ -499,6 +499,8 @@ function initiatePayment() {
 
   const description = titleEl.textContent || 'Тестова оплата';
 
+  console.log('[payment] Sending payment request with buyerId:', currentBuyer?.id, 'courseId:', currentCourseData?.id);
+
   isProcessingPayment = true;
   const btn = document.getElementById('btn-pay');
   const originalText = btn.innerHTML;
