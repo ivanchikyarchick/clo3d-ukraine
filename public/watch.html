@@ -155,7 +155,7 @@ async function checkMe(){
   const courseSlug = params.get('course');
   if(courseSlug){
     const c = await fetch(`/api/course/${courseSlug}/public`).then(r=>r.json()).catch(()=>null);
-    if(c && c.freeAccess){ await openFreeCourse(c); return; }
+    if(c && (c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно')){ await openFreeCourse(c); return; }
   }
   const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
   if(d.ok) showApp(d.name,d.courses);
