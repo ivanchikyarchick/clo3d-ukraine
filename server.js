@@ -303,6 +303,13 @@ app.post('/api/payment/create', async (req, res) => {
       db.set(d => {
         if (!d.pendingPayments) d.pendingPayments = [];
         d.pendingPayments.push({ invoiceId: result.invoiceId, buyerId: parseInt(buyerId), courseId, createdAt: Date.now() });
+        // For testing/development: grant access immediately
+        const c = d.courses.find(x => x.id === courseId);
+        if (c && !c.buyers?.some(b => b.id === parseInt(buyerId))) {
+          if (!c.buyers) c.buyers = [];
+          c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now() });
+          console.log('[payment/create] Access granted immediately to buyer:', buyerId, 'course:', courseId);
+        }
       });
     }
     
