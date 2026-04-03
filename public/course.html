@@ -257,7 +257,7 @@ async function doLogin(){
   btn.disabled=true; btn.textContent='Зачекайте...';
   try{
     const r=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
-    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();initiatePayment();}
+    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();updatePaymentButtons();}
     else{document.getElementById('login-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
   }catch(e){document.getElementById('login-error').textContent=e.message;btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
 }
@@ -274,11 +274,39 @@ async function doRegister(){
   btn.disabled=true; btn.textContent='Зачекайте...';
   try{
     const r=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
-    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();initiatePayment();}
+    if(r.ok){currentBuyer=r;isProcessingAuth=false;closeLoginModal();updatePaymentButtons();}
     else{document.getElementById('reg-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
   }catch(e){document.getElementById('reg-error').textContent=e.message;btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
 }
-async function initMe(){ try{ const r=await fetch('/api/buyer/me').then(x=>x.json()); if(r.ok){currentBuyer=r;return r;} }catch{} return null; }
+async function initMe(){ try{ const r=await fetch('/api/buyer/me').then(x=>x.json()); if(r.ok){currentBuyer=r;updatePaymentButtons();return r;} }catch{} return null; }
+
+function updatePaymentButtons() {
+  if (!currentCourseData) return;
+
+  const hasAccess = currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData.id);
+  const btn = document.getElementById('btn-pay');
+  const btnBottom = document.getElementById('btn-pay-bottom');
+
+  if (hasAccess) {
+    if (btn) {
+      btn.textContent = 'Перейти до курсу →';
+      btn.onclick = () => window.location.href = `/watch?course=${currentCourseData.slug}`;
+    }
+    if (btnBottom) {
+      btnBottom.textContent = 'Перейти до курсу →';
+      btnBottom.onclick = () => window.location.href = `/watch?course=${currentCourseData.slug}`;
+    }
+  } else {
+    if (btn) {
+      btn.textContent = 'Придбати доступ →';
+      btn.onclick = initiatePayment;
+    }
+    if (btnBottom) {
+      btnBottom.textContent = 'Придбати доступ →';
+      btnBottom.onclick = initiatePayment;
+    }
+  }
+}
 
 document.getElementById('login-username').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('login-password').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
@@ -377,6 +405,20 @@ async function load() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
     ]).catch(e => { console.error('[course] Videos fetch error:', e); return []; });
     console.log('[course] Videos loaded:', vids?.length || 0);
+
+    // Check if user already has access
+    if (currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) {
+      const btn = document.getElementById('btn-pay');
+      const btnBottom = document.getElementById('btn-pay-bottom');
+      if (btn) {
+        btn.textContent = 'Перейти до курсу →';
+        btn.onclick = () => window.location.href = `/watch?course=${c.slug}`;
+      }
+      if (btnBottom) {
+        btnBottom.textContent = 'Перейти до курсу →';
+        btnBottom.onclick = () => window.location.href = `/watch?course=${c.slug}`;
+      }
+    }
     const show = Math.min(vids.length, 12);
     const listEl = document.getElementById('vl-list');
     if (!vids.length) {
@@ -411,23 +453,30 @@ async function load() {
 }
 
 initMe().then(r => { currentBuyer = r; }).catch(() => {});
-load().catch(e => { console.error('[course] Load error:', e); document.getElementById('ch-title').textContent = 'Помилка завантаження'; document.getElementById('pl').classList.add('out'); });
+load().then(() => updatePaymentButtons()).catch(e => { console.error('[course] Load error:', e); document.getElementById('ch-title').textContent = 'Помилка завантаження'; document.getElementById('pl').classList.add('out'); });
 
 // Monobank Payment
 
 function initiatePayment() {
   if (isProcessingPayment) return;
-  
+
+  // Check if user already has access to this course
+  if (currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData?.id)) {
+    console.log('[payment] User already has access to this course, redirecting to watch');
+    window.location.href = `/watch?course=${currentCourseData.slug}`;
+    return;
+  }
+
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
-  
+
   const rawAmount = (currentCourseData?.priceAmount || currentCourseData?.price || '100').replace(/[^\d]/g, '');
   let finalAmount = parseInt(rawAmount);
   if (finalAmount < 10000 && finalAmount > 0) finalAmount = finalAmount * 100;
   console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount:', finalAmount);
-  
+
   const description = titleEl.textContent || 'Тестова оплата';
-  
+
   if (!currentBuyer || !currentBuyer.ok) { openLoginModal(); return; }
   
   isProcessingPayment = true;
