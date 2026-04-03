@@ -17,7 +17,7 @@ const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
 const r2         = require('./r2');
-const { initMonopay } = require('./monopay');
+const { mountMonopayWebhook, mountMonopayApi } = require('./monopay');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 console.log('[server] Starting with ADMIN_PASSWORD:', ADMIN_PASSWORD);
@@ -67,8 +67,8 @@ const uploadMaterial = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 200 *
 // Webhook route - handle raw body only for webhook path
 const webhookRouter = express.Router();
 
-// Initialize monopay module
-initMonopay(app, webhookRouter);
+// Вебхук Monobank (raw JSON) — ДО express.json(), інакше body порожній
+mountMonopayWebhook(webhookRouter);
 
 // Mount webhook router before other middleware
 app.use('/api', webhookRouter);
@@ -96,6 +96,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: { maxAge: null } // сесія закінчується при закритті браузера
 }));
+
+// Створення платежу / статус — ПІСЛЯ JSON + session (інакше req.body порожній)
+mountMonopayApi(app);
 
 // ═══ Security headers ═══
 app.use((req, res, next) => {
