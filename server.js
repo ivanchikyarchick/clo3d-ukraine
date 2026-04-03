@@ -267,6 +267,7 @@ app.post('/api/payment/create', async (req, res) => {
   const token = getMonoToken();
   if (!token) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
   const { amount, description, courseId, buyerId, redirectUrl } = req.body;
+  console.log('[payment/create] Request received:', { amount, description, courseId, buyerId, redirectUrl });
   if (!amount || amount < 100) { res.status(400).json({ ok: false, error: 'Invalid amount' }); return; }
   
   const invoiceData = {
@@ -305,12 +306,15 @@ app.post('/api/payment/create', async (req, res) => {
         d.pendingPayments.push({ invoiceId: result.invoiceId, buyerId: parseInt(buyerId), courseId, createdAt: Date.now() });
         // For testing/development: grant access immediately
         const c = d.courses.find(x => x.id === courseId);
+        console.log('[payment/create] Course found:', !!c, 'courseId:', courseId, 'buyerId:', buyerId);
+        console.log('[payment/create] Existing buyers:', c?.buyers);
         if (c && !c.buyers?.some(b => b.id === parseInt(buyerId))) {
           if (!c.buyers) c.buyers = [];
           c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now() });
-          console.log('[payment/create] Access granted immediately to buyer:', buyerId, 'course:', courseId);
+          console.log('[payment/create] Access granted immediately to buyer:', buyerId, 'course:', c.title);
         }
       });
+      db.flushSync();
     }
     
     res.json({ ok: true, invoiceId: result.invoiceId, pageUrl: result.pageUrl });
@@ -633,7 +637,25 @@ app.get('/api/buyer/me', (req, res) => {
   }) });
 });
 
-// Buyer web registration with username + password
+app.get('/api/debug/buyer/:id', (req, res) => {
+  const uid = parseInt(req.params.id);
+  const d = db.get();
+  const courses = d.courses || [];
+  const buyerCourses = courses.filter(c => c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt)));
+  const pending = d.pendingPayments?.filter(p => p.buyerId === uid) || [];
+  const account = d.buyerAccounts?.find(a => a.id === uid);
+  res.json({ 
+    buyerId: uid, 
+    account: account ? { id: account.id, username: account.username } : null,
+    buyerCourses: buyerCourses.map(c => ({ id: c.id, title: c.title })),
+    pendingPayments: pending,
+    courseBuyers: courses.map(c => ({ 
+      id: c.id, 
+      title: c.title, 
+      buyers: c.buyers?.map(b => ({ id: b.id, grantedAt: b.grantedAt, expired: isAccessExpired(b.grantedAt) }))
+    }))
+  });
+});
 const _buyerUsers = new Map();
 function hashPassword(pwd) { return 'x:' + pwd.split('').reverse().join(''); }
 function verifyPassword(pwd, hash) { return hashPassword(pwd) === hash; }
