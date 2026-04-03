@@ -26,9 +26,24 @@ const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
 const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || 'mn1v7bplqru').split(',').map(s => s.trim()).filter(Boolean);
 
 function isAccessExpired(grantedAt) {
   return grantedAt && (Date.now() - grantedAt > ACCESS_EXPIRY_MS);
+}
+
+function autoGrantAccess(uid) {
+  if (AUTO_GRANT_COURSES.length === 0) return;
+  db.set(d => {
+    for (const cid of AUTO_GRANT_COURSES) {
+      const c = d.courses.find(x => x.id === cid);
+      if (c && !c.buyers?.some(b => b.id === uid)) {
+        if (!c.buyers) c.buyers = [];
+        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now() });
+        console.log('[autoGrant] Access granted to user', uid, 'for course:', c.title);
+      }
+    }
+  });
 }
 
 function activeBuyerCourses(uid) {
@@ -532,6 +547,31 @@ app.post('/api/debug/grant-access', adm, (req, res) => {
   });
 });
 
+// Grant access to ALL users (all buyerAccounts)
+app.post('/api/debug/grant-all', adm, (req, res) => {
+  const { courseId } = req.body;
+  if (!courseId) {
+    res.status(400).json({ ok: false, error: 'courseId required' });
+    return;
+  }
+
+  db.set(d => {
+    const c = d.courses.find(x => x.id === courseId);
+    if (!c) { res.json({ ok: false, error: 'Course not found' }); return; }
+    if (!c.buyers) c.buyers = [];
+    const accounts = d.buyerAccounts || [];
+    let added = 0;
+    for (const acc of accounts) {
+      if (!c.buyers.some(b => b.id === acc.id)) {
+        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now() });
+        added++;
+      }
+    }
+    console.log('[debug] Access granted to', added, 'users for course:', courseId);
+    res.json({ ok: true, message: `Access granted to ${added} users`, count: added });
+  });
+});
+
 // Debug endpoint to check database state
 app.get('/api/debug/db-state', adm, (req, res) => {
   const d = db.get();
@@ -601,6 +641,7 @@ app.post('/api/buyer/register', (req, res) => {
   req.session.buyerId = newUid;
   req.session.buyerName = nameClean;
   console.log('[register] Session set for buyer:', newUid, nameClean);
+  autoGrantAccess(newUid);
   res.json({ ok: true, id: newUid, name: nameClean });
 });
 
@@ -624,6 +665,7 @@ app.post('/api/buyer/login-web', (req, res) => {
   req.session.buyerId = buyer.id;
   req.session.buyerName = nameClean;
   console.log('[login-web] Session set for buyer:', buyer.id, nameClean);
+  autoGrantAccess(buyer.id);
   res.json({ ok: true, id: buyer.id, name: nameClean });
 });
 
@@ -1327,5 +1369,31 @@ app.get('/api/system', adm, (_, res) => {
     r2: { configured: r2.configured },
   });
 });
+
+// ═══ Auto-grant access to existing users every day (synced with login)
+function syncAutoGrant() {
+  if (AUTO_GRANT_COURSES.length === 0) return;
+  db.set(d => {
+    const accounts = d.buyerAccounts || [];
+    for (const cid of AUTO_GRANT_COURSES) {
+      const c = d.courses.find(x => x.id === cid);
+      if (!c) continue;
+      if (!c.buyers) c.buyers = [];
+      let added = 0;
+      for (const acc of accounts) {
+        if (!c.buyers.some(b => b.id === acc.id)) {
+          c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now() });
+          added++;
+        }
+      }
+      if (added > 0) console.log('[autoGrant-sync] Added access for', added, 'users to course:', c.title);
+    }
+  });
+}
+
+// Run sync every 24 hours
+setInterval(syncAutoGrant, 24 * 60 * 60 * 1000);
+// Also run once on startup after 10 seconds (give server time to start)
+setTimeout(syncAutoGrant, 10000);
 
 module.exports = { app, PORT };
