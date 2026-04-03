@@ -344,6 +344,7 @@ function initiatePayment() {
   })
   .then(r => r.json())
   .then(data => {
+    console.log('[payment] Response:', data);
     if (data.ok && data.pageUrl) {
       window.location.href = data.pageUrl;
     } else {
