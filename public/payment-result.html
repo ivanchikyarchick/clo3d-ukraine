@@ -95,6 +95,9 @@ async function checkStatus() {
           icon.textContent = '✓';
           title.textContent = 'Оплата успішна!';
           desc.textContent = 'Дякуємо за оплату. Тепер ви маєте доступ до курсу.';
+          // Fetch fresh user data to ensure session has updated course access
+          const me = await fetch('/api/buyer/me').then(r => r.json());
+          console.log('[payment-result] User data after payment:', me);
           // Get course slug from session and redirect
           const courseSlug = sessionStorage.getItem('pendingCourseSlug');
           const goToCoursesBtn = document.createElement('a');
