@@ -482,13 +482,40 @@ function initiatePayment() {
     return;
   }
 
-  // Show login modal if not logged in
+  // If not logged in - register automatically and then pay
   if (!currentBuyer) {
-    openLoginModal();
+    const randomUsername = 'user' + Date.now();
+    const randomPassword = Math.random().toString(36).slice(-8);
+    
+    fetch('/api/buyer/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: randomUsername, password: randomPassword})
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        // Get fresh user data
+        fetch('/api/buyer/me').then(r => r.json()).then(me => {
+          if (me.ok) {
+            currentBuyer = me;
+            proceedToPayment();
+          }
+        });
+      } else {
+        alert('Помилка реєстрації: ' + (data.error || 'Невідома помилка'));
+      }
+    })
+    .catch(e => {
+      alert('Помилка: ' + e.message);
+    });
     return;
   }
 
-  // User is logged in, proceed with payment
+  proceedToPayment();
+}
+
+function proceedToPayment() {
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
 
