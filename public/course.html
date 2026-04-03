@@ -239,6 +239,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 let currentBuyer = null;
 let isProcessingPayment = false;
 let isProcessingAuth = false;
+let isFree = false;
 
 function switchTab(tab) {
   document.getElementById('tab-login').classList.toggle('active', tab === 'login');
@@ -286,7 +287,7 @@ async function initMe(){ try{ const r=await fetch('/api/buyer/me').then(x=>x.jso
 function updatePaymentButtons() {
   if (!currentCourseData) return;
 
-  const hasAccess = currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData.id);
+  const hasAccess = (currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData.id)) || isFree;
   const btn = document.getElementById('btn-pay');
   const btnBottom = document.getElementById('btn-pay-bottom');
 
@@ -318,6 +319,12 @@ function updatePaymentButtons() {
       btnBottom.className = 'btn-watch rv';
       btnBottom.style.background = 'var(--acc)'; btnBottom.style.color = 'white'; btnBottom.style.border = 'none';
     }
+  }
+
+  // Update continue button href
+  const continueBtn = document.querySelector('a[href="/watch"]');
+  if (continueBtn && currentCourseData) {
+    continueBtn.href = `/watch?course=${currentCourseData.slug}`;
   }
 }
 
@@ -352,6 +359,7 @@ async function load() {
     }
 
     currentCourseData = c;
+    isFree = c.freeAccess || false;
     document.title = `${c.title} — Vitalia 3D Fashion Lab`;
     document.getElementById('pd').content  = c.description || `Курс CLO 3D: ${c.title}`;
     document.getElementById('pc').href     = `/course/${c.slug}`;
@@ -420,7 +428,7 @@ async function load() {
     console.log('[course] Videos loaded:', vids?.length || 0);
 
     // Check if user already has access
-    if (currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) {
+    if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) || c.freeAccess) {
       const btn = document.getElementById('btn-pay');
       const btnBottom = document.getElementById('btn-pay-bottom');
       if (btn) {
@@ -451,6 +459,11 @@ async function load() {
         btnBottom.className = 'btn-watch rv';
         btnBottom.style.background = 'var(--acc)'; btnBottom.style.color = 'white'; btnBottom.style.border = 'none';
       }
+    }
+
+    // Update for free courses
+    if (c.freeAccess) {
+      updatePaymentButtons();
     }
     const show = Math.min(vids.length, 12);
     const listEl = document.getElementById('vl-list');
@@ -494,8 +507,8 @@ function initiatePayment() {
   if (isProcessingPayment) return;
 
   // Check if user already has access to this course
-  if (currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData?.id)) {
-    console.log('[payment] User already has access to this course, redirecting to watch');
+  if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData?.id)) || isFree) {
+    console.log('[payment] User has access to this course, redirecting to watch');
     window.location.href = `/watch?course=${currentCourseData.slug}`;
     return;
   }
