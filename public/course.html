@@ -319,9 +319,9 @@ function initiatePayment() {
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
   
-  const priceText = priceEl.textContent;
-  const match = priceText.match(/(\d+)/);
-  const amount = match ? parseInt(match[1]) * 100 : 10000;
+  const priceText = priceEl.textContent.replace(/[^\d]/g, '');
+  const amount = priceText ? parseInt(priceText) * 100 : 10000;
+  console.log('[payment] Price text:', priceText, 'Amount:', amount);
   
   const description = titleEl.textContent || 'Тестова оплата';
   
@@ -346,6 +346,7 @@ function initiatePayment() {
   .then(data => {
     console.log('[payment] Response:', data);
     if (data.ok && data.pageUrl) {
+      sessionStorage.setItem('pendingInvoiceId', data.invoiceId);
       window.location.href = data.pageUrl;
     } else {
       alert('Помилка: ' + (data.error || 'Не вдалося створити платіж'));
