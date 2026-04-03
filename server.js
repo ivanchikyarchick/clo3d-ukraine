@@ -44,6 +44,80 @@ const uploadImport   = multer({ dest: '/tmp/vfl_tmp/' });
 const uploadVideo    = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
 const uploadMaterial = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 200 * 1024 * 1024 } });
 
+// Webhook route MUST come before express.json middleware
+const webhookRouter = express.Router();
+webhookRouter.use(express.raw({ type: 'application/json' }));
+
+webhookRouter.post('/payment/webhook', async (req, res) => {
+  console.log('[monobank] Webhook received');
+  
+  const signature = req.headers['x-sign'];
+  if (!signature) {
+    console.error('[monobank] No signature');
+    res.status(400).json({ error: 'No signature' });
+    return;
+  }
+  
+  const body = req.body.toString();
+  const pubKey = await getMonoPubKey();
+  
+  if (!pubKey) {
+    console.error('[monobank] No pubkey');
+    res.status(500).json({ error: 'No pubkey' });
+    return;
+  }
+  
+  const isValid = verifyMonoSignature(pubKey, body, signature);
+  console.log('[monobank] Signature valid:', isValid);
+  
+  if (!isValid) {
+    res.status(403).json({ error: 'Invalid signature' });
+    return;
+  }
+  
+  let payment;
+  try {
+    payment = JSON.parse(body);
+  } catch (e) {
+    console.error('[monobank] Parse error:', e.message);
+    res.status(400).json({ error: 'Invalid JSON' });
+    return;
+  }
+  
+  console.log('[monobank] Webhook data:', { invoiceId: payment.invoiceId, status: payment.status, amount: payment.amount });
+  
+  db.set(d => {
+    if (!d.payments) d.payments = [];
+    const idx = d.payments.findIndex(p => p.invoiceId === payment.invoiceId);
+    const paymentData = {
+      invoiceId: payment.invoiceId,
+      status: payment.status,
+      amount: payment.amount,
+      ccy: payment.ccy,
+      finalAmount: payment.finalAmount,
+      reference: payment.reference,
+      destination: payment.destination,
+      createdDate: payment.createdDate,
+      modifiedDate: payment.modifiedDate,
+      paymentInfo: payment.paymentInfo,
+      webhookReceivedAt: Date.now()
+    };
+    if (idx >= 0) d.payments[idx] = paymentData;
+    else d.payments.push(paymentData);
+  });
+  
+  if (payment.status === 'success') {
+    console.log('[monobank] Payment SUCCESS:', payment.invoiceId, payment.amount);
+  } else if (payment.status === 'failure') {
+    console.log('[monobank] Payment FAILED:', payment.invoiceId, payment.failureReason);
+  }
+  
+  res.status(200).json({ ok: true });
+});
+
+// Mount webhook router before other middleware
+app.use('/api', webhookRouter);
+
 // ═══════════════════════════════════════════════════════════
 // ОПТИМІЗАЦІЯ 1: gzip compression — зменшує трафік на 60-80%
 // ═══════════════════════════════════════════════════════════
@@ -126,18 +200,27 @@ function invalidateCache() {
 }
 
 // Settings
-app.get('/api/settings', adm, (_, res) => res.json({ fop: db.get().settings?.fop || '' }));
+app.get('/api/settings', adm, (_, res) => res.json({ fop: db.get().settings?.fop || '', monoToken: db.get().settings?.monoToken ? '***set***' : '' }));
 app.post('/api/settings', adm, (req, res) => {
-  const { fop } = req.body;
-  db.set(d => { if (!d.settings) d.settings = {}; if (fop !== undefined) d.settings.fop = fop; });
+  const { fop, monoToken } = req.body;
+  db.set(d => { 
+    if (!d.settings) d.settings = {}; 
+    if (fop !== undefined) d.settings.fop = fop; 
+    if (monoToken !== undefined) d.settings.monoToken = monoToken;
+  });
   invalidateCache();
   res.json({ ok: true });
 });
 app.get('/api/settings/public', (_, res) => res.json({ fop: db.get().settings?.fop || '' }));
 
 // Monobank Payment API
+function getMonoToken() {
+  return MONOBANK_TOKEN || db.get().settings?.monoToken || '';
+}
+
 app.post('/api/payment/create', async (req, res) => {
-  if (!MONOBANK_TOKEN) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
+  const token = getMonoToken();
+  if (!token) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
   const { amount, description, courseId, redirectUrl } = req.body;
   if (!amount || amount < 100) { res.status(400).json({ ok: false, error: 'Invalid amount' }); return; }
   
@@ -149,6 +232,7 @@ app.post('/api/payment/create', async (req, res) => {
       destination: description || 'Оплата курсу',
     },
     redirectUrl: redirectUrl || `${SITE_URL}/payment-result`,
+    webHookUrl: `${SITE_URL}/api/payment/webhook`,
     validity: 3600,
   };
   
@@ -157,7 +241,7 @@ app.post('/api/payment/create', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Token': MONOBANK_TOKEN,
+        'X-Token': token,
       },
       body: JSON.stringify(invoiceData),
     });
@@ -178,13 +262,14 @@ app.post('/api/payment/create', async (req, res) => {
 });
 
 app.get('/api/payment/status', async (req, res) => {
-  if (!MONOBANK_TOKEN) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
+  const token = getMonoToken();
+  if (!token) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
   const { invoiceId } = req.query;
   if (!invoiceId) { res.status(400).json({ ok: false, error: 'No invoiceId' }); return; }
   
   try {
     const response = await fetch(`https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${invoiceId}`, {
-      headers: { 'X-Token': MONOBANK_TOKEN },
+      headers: { 'X-Token': token },
     });
     
     const result = await response.json();
@@ -200,6 +285,52 @@ app.get('/api/payment/status', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// ═══ Monobank Webhook ═══
+let _monoPubKey = null;
+let _monoPubKeyTs = 0;
+const MONO_PUBKEY_TTL = 24 * 60 * 60 * 1000;
+
+async function getMonoPubKey() {
+  const token = getMonoToken();
+  if (!token) return null;
+  if (_monoPubKey && Date.now() - _monoPubKeyTs < MONO_PUBKEY_TTL) return _monoPubKey;
+  
+  try {
+    const response = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
+      headers: { 'X-Token': token }
+    });
+    const data = await response.json();
+    if (data.key) {
+      _monoPubKey = data.key;
+      _monoPubKeyTs = Date.now();
+      console.log('[monobank] Public key refreshed');
+    }
+  } catch (e) {
+    console.error('[monobank] pubkey fetch error:', e.message);
+  }
+  return _monoPubKey;
+}
+
+function verifyMonoSignature(pubKeyBase64, body, signatureBase64) {
+  try {
+    const crypto = require('crypto');
+    const crypto$1 = require('crypto');
+    
+    const bodyHash = crypto.createHash('sha256').update(body).digest();
+    const signature = Buffer.from(signatureBase64, 'base64');
+    
+    const pemKey = `-----BEGIN PUBLIC KEY-----\n${pubKeyBase64}\n-----END PUBLIC KEY-----`;
+    
+    const verifier = crypto.createVerify('ECDSA-SHA256');
+    verifier.update(body);
+    
+    return verifier.verify(pemKey, signature);
+  } catch (e) {
+    console.error('[monobank] verify error:', e.message);
+    return false;
+  }
+}
 
 // Auth
 app.post('/api/login', (req, res) => {
@@ -260,7 +391,7 @@ app.get('/api/course/:slug/public', (req, res) => {
   const data = cachedResponse('course_' + req.params.slug, 30000, () => {
     const c = (db.get().courses || []).find(x => x.slug === req.params.slug && x.published);
     if (!c) return null;
-    return { id: c.id, slug: c.slug, title: c.title, description: c.description, price: c.price, badge: c.badge, color: c.color, videoCount: c.videos?.length || 0, includes: c.includes || [], features: c.features || [], freeAccess: !!c.freeAccess };
+    return { id: c.id, slug: c.slug, title: c.title, description: c.description, price: c.price, priceAmount: c.priceAmount || c.price, badge: c.badge, color: c.color, videoCount: c.videos?.length || 0, includes: c.includes || [], features: c.features || [], freeAccess: !!c.freeAccess };
   });
   if (!data) { res.status(404).json({ ok: false }); return; }
   res.json(data);
@@ -451,10 +582,10 @@ function proxyStream(url, res, h = {}) {
 app.get('/api/courses', adm, (req, res) => res.json(db.get().courses || []));
 
 app.post('/api/courses', adm, (req, res) => {
-  const { title, description, price, badge, color, published, includes, features, freeAccess } = req.body;
+  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess } = req.body;
   if (!title) { res.status(400).json({ ok: false, error: 'Потрібна назва' }); return; }
   const id = db.newId(), slug = db.slugify(title);
-  db.set(d => { d.courses.push({ id, slug, title, description: description || '', price: price || '', badge: badge || '', color: color || '#C8302A', published: !!published, freeAccess: !!freeAccess, createdAt: Date.now(), videos: [], buyers: [], pending: [], includes: includes || [], features: features || [] }); });
+  db.set(d => { d.courses.push({ id, slug, title, description: description || '', price: price || '', priceAmount: priceAmount || price || '', badge: badge || '', color: color || '#C8302A', published: !!published, freeAccess: !!freeAccess, createdAt: Date.now(), videos: [], buyers: [], pending: [], includes: includes || [], features: features || [] }); });
   invalidateCache();
   res.json({ ok: true, id, slug });
 });
@@ -462,9 +593,9 @@ app.post('/api/courses', adm, (req, res) => {
 app.patch('/api/courses/:id', adm, (req, res) => {
   db.set(d => {
     const c = d.courses.find(x => x.id === req.params.id); if (!c) return;
-    const { title, description, price, badge, color, published, includes, features, freeAccess } = req.body;
+    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess } = req.body;
     if (title !== undefined) { c.title = title; c.slug = db.slugify(title); }
-    if (description !== undefined) c.description = description; if (price !== undefined) c.price = price;
+    if (description !== undefined) c.description = description; if (price !== undefined) c.price = price; if (priceAmount !== undefined) c.priceAmount = priceAmount;
     if (badge !== undefined) c.badge = badge; if (color !== undefined) c.color = color;
     if (published !== undefined) c.published = !!published; if (includes !== undefined) c.includes = includes;
     if (features !== undefined) c.features = features; if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
