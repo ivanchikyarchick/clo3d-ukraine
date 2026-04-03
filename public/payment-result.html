@@ -48,6 +48,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const invoiceId = urlParams.get('invoiceId');
 const status = urlParams.get('status');
 
+console.log('[payment-result] invoiceId:', invoiceId, 'status:', status);
+
 const icon = document.getElementById('icon');
 const title = document.getElementById('title');
 const desc = document.getElementById('desc');
@@ -56,32 +58,14 @@ const actions = document.getElementById('actions');
 
 document.getElementById('invoice-id').textContent = invoiceId || '-';
 
-if (status) {
-  if (status === 'success') {
-    icon.className = 'icon success';
-    icon.textContent = '✓';
-    title.textContent = 'Оплата успішна!';
-    desc.textContent = 'Дякуємо за оплату. Тепер ви маєте доступ до курсу.';
-    detailsBox.classList.remove('hidden');
-    actions.classList.remove('hidden');
-  } else if (status === 'failure') {
-    icon.className = 'icon error';
-    icon.textContent = '✕';
-    title.textContent = 'Оплата невдала';
-    desc.textContent = 'Сталася помилка при оплаті. Спробуйте ще раз або зверніться до підтримки.';
-    detailsBox.classList.remove('hidden');
-    actions.classList.remove('hidden');
-  } else if (status === 'expired') {
-    icon.className = 'icon error';
-    icon.textContent = '⏰';
-    title.textContent = 'Час оплати минув';
-    desc.textContent = 'Термін дії рахунку закінчився. Створіть новий платіж.';
-    actions.classList.remove('hidden');
-  } else {
-    checkStatus();
-  }
-} else if (invoiceId) {
+if (invoiceId) {
   checkStatus();
+} else if (status === 'success' || status === 'failure' || status === 'expired') {
+  icon.className = 'icon error';
+  icon.textContent = '?';
+  title.textContent = 'Невідомий статус: ' + status;
+  desc.textContent = 'Спробуйте перевірити оплату пізніше.';
+  actions.classList.remove('hidden');
 } else {
   icon.className = 'icon error';
   icon.textContent = '?';
