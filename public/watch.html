@@ -14,16 +14,18 @@
 body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;-webkit-user-select:none;-moz-user-select:none;user-select:none}
 input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
 #gate{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
-.gbox{background:var(--s1);border:1px solid var(--brd);border-radius:24px;padding:3rem 2.5rem;width:100%;max-width:420px;text-align:center}
-.gbox .gt{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:.3rem}
-.gbox .gb{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2);margin-bottom:1.5rem}
-.gbox .gs{color:var(--muted);font-size:.85rem;margin-bottom:1.75rem;line-height:1.55}
-.gbox input{width:100%;background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.85rem 1rem;color:var(--txt);font-size:1rem;font-family:'Inter',sans-serif;outline:none;text-align:center;transition:.2s;margin-bottom:.85rem;-webkit-user-select:text;user-select:text}
-.gbox input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(200,48,42,.13)}
-.gbtn{width:100%;padding:.88rem;background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s}
-.gbtn:hover{opacity:.88}
-.gtab{background:none;border:none;color:var(--muted);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:.25rem .5rem}
-.gtab.on{color:var(--acc)}
+.gbox{background:var(--s1);border:1px solid var(--brd);border-radius:24px;padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.gbox .gt{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:.5rem}
+.gbox .gb{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2);margin-bottom:1.75rem}
+.gbox .gs{color:var(--muted);font-size:.9rem;margin-bottom:1.25rem;line-height:1.5}
+.gbox input{width:100%;background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:.9rem 1.1rem;color:var(--txt);font-size:.95rem;font-family:'Inter',sans-serif;outline:none;text-align:center;transition:.2s;margin-bottom:.75rem}
+.gbox input:focus{border-color:var(--acc)}
+.gbox input::placeholder{color:var(--muted);opacity:.6}
+.gbtn{width:100%;padding:.85rem;background:var(--acc);border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s}
+.gbtn:hover{background:#a01e1e}
+.gbtn:disabled{opacity:.6;cursor:not-allowed}
+.gtab{background:none;border:none;color:var(--muted);font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:.4rem .75rem;border-bottom:2px solid transparent;margin-bottom:-1px}
+.gtab.on{color:var(--txt);border-bottom-color:var(--acc)}
 .gerr{color:var(--red);font-size:.8rem;margin-top:.6rem}
 .gnote{font-size:.73rem;color:var(--muted);margin-top:1.1rem;line-height:1.6}
 .gnote a{color:var(--acc2);text-decoration:none}
@@ -171,8 +173,8 @@ async function openFreeCourse(c){
 }
 
 async function login(){ const id=document.getElementById('tid').value.trim(); if(!id)return; const d=await fetch('/api/buyer/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegramId:id})}).then(r=>r.json()); if(d.ok) showApp(d.name,d.courses); else document.getElementById('gerr').textContent='❌ '+d.error; }
-async function webLogin(){ const username=document.getElementById('web-username').value.trim(); const pwd=document.getElementById('web-password').value; if(!username||!pwd){document.getElementById('gerr').textContent='Введіть юзернейм та пароль';return;} const d=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); if(d.ok) showApp(d.name,d.courses||[]); else document.getElementById('gerr').textContent='❌ '+d.error; }
-async function doRegister(){ const username=document.getElementById('reg-username').value.trim(); const pwd=document.getElementById('reg-password').value; const pwd2=document.getElementById('reg-password2').value; if(!username||username.length<3){document.getElementById('gerr').textContent='Юзернейм мінімум 3 символи';return;} if(pwd.length<4){document.getElementById('gerr').textContent='Пароль мінімум 4 символи';return;} if(pwd!==pwd2){document.getElementById('gerr').textContent='Паролі не співпадають';return;} const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); if(d.ok) showApp(d.name,[]); else document.getElementById('gerr').textContent='❌ '+d.error; }
+async function webLogin(){ const username=document.getElementById('web-username').value.trim(); const pwd=document.getElementById('web-password').value; if(!username||!pwd){document.getElementById('gerr').textContent='Введіть юзернейм та пароль';return;} const btn=document.querySelector('#login-web .gbtn'); btn.disabled=true; btn.textContent='Зачекайте...'; const d=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); if(d.ok) showApp(d.name,d.courses||[]); else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Увійти →';} }
+async function doRegister(){ const username=document.getElementById('reg-username').value.trim(); const pwd=document.getElementById('reg-password').value; const pwd2=document.getElementById('reg-password2').value; if(!username||username.length<3){document.getElementById('gerr').textContent='Юзернейм мінімум 3 символи';return;} if(pwd.length<4){document.getElementById('gerr').textContent='Пароль мінімум 4 символи';return;} if(pwd!==pwd2){document.getElementById('gerr').textContent='Паролі не співпадають';return;} const btn=document.querySelector('#login-reg .gbtn'); btn.disabled=true; btn.textContent='Зачекайте...'; const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); if(d.ok) showApp(d.name,[]); else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись';} }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
 function showLoginTab(t){ document.getElementById('login-web').style.display=t==='web'?'block':'none'; document.getElementById('login-reg').style.display=t==='reg'?'block':'none'; document.getElementById('tab-web').classList.toggle('on',t==='web'); document.getElementById('tab-reg').classList.toggle('on',t==='reg'); }
 document.getElementById('tid').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
