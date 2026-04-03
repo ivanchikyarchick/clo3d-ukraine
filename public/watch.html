@@ -208,24 +208,26 @@ async function webLogin(){
     } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;} 
   } catch(e) {document.getElementById('gerr').textContent='❌ Помилка з\'єднання'; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;}
 }
-async function doRegister(){ 
+async function doRegister(){
   if (isProcessingAuth) return;
-  const username=document.getElementById('reg-username').value.trim(); const pwd=document.getElementById('reg-password').value; const pwd2=document.getElementById('reg-password2').value; 
-  if(!username||username.length<3){document.getElementById('gerr').textContent='Юзернейм мінімум 3 символи';return;} 
-  if(pwd.length<4){document.getElementById('gerr').textContent='Пароль мінімум 4 символи';return;} 
-  if(pwd!==pwd2){document.getElementById('gerr').textContent='Паролі не співпадають';return;} 
-  const btn=document.querySelector('#login-reg .gbtn'); 
+  const username=document.getElementById('reg-username').value.trim(); const pwd=document.getElementById('reg-password').value; const pwd2=document.getElementById('reg-password2').value;
+  const btn=document.querySelector('#login-reg .gbtn');
   isProcessingAuth = true;
-  btn.disabled=true; btn.textContent='Зачекайте...'; 
-  const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); 
+  btn.disabled=true; btn.textContent='Зачекайте...';
+  const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
   if(d.ok) {
+    // Grant free course
+    const freeCourse = await fetch('/api/course/mn1v7bplqru/public').then(res=>res.json()).catch(()=>null);
+    if(freeCourse){
+      await fetch('/api/buyer/grant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({courseId:freeCourse.id})}).catch(()=>{});
+    }
     try {
       const me = await fetch('/api/buyer/me').then(r=>r.json());
       showApp(me.name || d.name, me.courses || []);
     } catch(e) {
       showApp(d.name, []);
     }
-  } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;} 
+  } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;}
 }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
 function showLoginTab(t){ document.getElementById('login-web').style.display=t==='web'?'block':'none'; document.getElementById('login-reg').style.display=t==='reg'?'block':'none'; document.getElementById('tab-web').classList.toggle('on',t==='web'); document.getElementById('tab-reg').classList.toggle('on',t==='reg'); }
