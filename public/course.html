@@ -482,33 +482,8 @@ function initiatePayment() {
     return;
   }
 
-  // If not logged in - register automatically and then pay
-  if (!currentBuyer) {
-    const randomUsername = 'user' + Date.now();
-    const randomPassword = Math.random().toString(36).slice(-8);
-    
-    fetch('/api/buyer/register', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username: randomUsername, password: randomPassword})
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.ok) {
-        // Get fresh user data
-        fetch('/api/buyer/me').then(r => r.json()).then(me => {
-          if (me.ok) {
-            currentBuyer = me;
-            proceedToPayment();
-          }
-        });
-      } else {
-        alert('Помилка реєстрації: ' + (data.error || 'Невідома помилка'));
-      }
-    })
-    .catch(e => {
-      alert('Помилка: ' + e.message);
-    });
+  if (!currentBuyer || !currentBuyer.id) {
+    openLoginModal();
     return;
   }
 
@@ -526,7 +501,13 @@ function proceedToPayment() {
 
   const description = titleEl.textContent || 'Тестова оплата';
 
-  console.log('[payment] Sending payment request with buyerId:', currentBuyer?.id, 'courseId:', currentCourseData?.id);
+  const buyerId = currentBuyer?.id;
+  if (!buyerId || !currentCourseData?.id) {
+    alert('Увійдіть у акаунт і спробуйте ще раз.');
+    openLoginModal();
+    return;
+  }
+  console.log('[payment] Sending payment request with buyerId:', buyerId, 'courseId:', currentCourseData?.id);
 
   isProcessingPayment = true;
   const btn = document.getElementById('btn-pay');
@@ -540,8 +521,8 @@ function proceedToPayment() {
     body: JSON.stringify({
       amount: finalAmount,
       description: description,
-      courseId: currentCourseData?.id || 'unknown',
-      buyerId: currentBuyer?.id,
+      courseId: currentCourseData.id,
+      buyerId: buyerId,
       redirectUrl: window.location.origin + '/payment-result'
     })
   })
