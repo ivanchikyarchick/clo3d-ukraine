@@ -319,9 +319,9 @@ function initiatePayment() {
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
   
-  const priceText = priceEl.textContent.replace(/[^\d]/g, '');
-  const amount = priceText ? parseInt(priceText) * 100 : 10000;
-  console.log('[payment] Price text:', priceText, 'Amount:', amount);
+  const amount = (currentCourseData?.priceAmount || currentCourseData?.price || '100').replace(/[^\d]/g, '');
+  const finalAmount = parseInt(amount) * 100;
+  console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount:', finalAmount);
   
   const description = titleEl.textContent || 'Тестова оплата';
   
