@@ -1101,6 +1101,20 @@ app.post('/api/individual/reject/:uid', adm, (req, res) => {
   res.json({ ok: true });
 });
 
+// Delete buyer account
+app.delete('/api/buyer-accounts/:id', adm, (req, res) => {
+  const id = parseInt(req.params.id);
+  db.set(d => {
+    if (d.buyerAccounts) d.buyerAccounts = d.buyerAccounts.filter(a => a.id !== id);
+    // Also revoke from all courses
+    d.courses.forEach(c => {
+      if (c.buyers) c.buyers = c.buyers.filter(b => b.id !== id);
+    });
+  });
+  invalidateCache();
+  res.json({ ok: true });
+});
+
 // Broadcast
 app.post('/api/broadcast', adm, async (req, res) => {
   const { message, cid } = req.body;
