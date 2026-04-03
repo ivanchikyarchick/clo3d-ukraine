@@ -19,7 +19,7 @@ const db         = require('./db');
 const r2         = require('./r2');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
-console.log('[server] ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? 'from env' : 'default');
+console.log('[server] Starting with ADMIN_PASSWORD:', ADMIN_PASSWORD);
 const PORT           = process.env.PORT || 3000;
 const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
@@ -335,17 +335,26 @@ function verifyMonoSignature(pubKeyBase64, body, signatureBase64) {
 
 // Auth
 app.post('/api/login', (req, res) => {
-  console.log('[login] Request body:', req.body);
-  console.log('[login] ADMIN_PASSWORD:', ADMIN_PASSWORD);
-  if (req.body && req.body.password === ADMIN_PASSWORD) { 
+  const inputPwd = req.body?.password?.trim() || '';
+  const expectedPwd = ADMIN_PASSWORD.trim();
+  console.log('[login] Attempt with password:', JSON.stringify(inputPwd));
+  console.log('[login] Expected:', JSON.stringify(expectedPwd));
+  console.log('[login] Match:', inputPwd === expectedPwd);
+  if (inputPwd === expectedPwd) { 
     req.session.isAdmin = true; 
     console.log('[login] SUCCESS');
     res.json({ ok: true }); 
   }
   else { 
-    console.log('[login] FAILED - password mismatch');
+    console.log('[login] FAILED');
     res.status(401).json({ ok: false, error: 'Невірний пароль' }); 
   }
+});
+
+// Test endpoint
+app.post('/api/test', (req, res) => {
+  console.log('[test] body:', req.body);
+  res.json({ body: req.body });
 });
 app.post('/api/logout', (req, res) => { req.session.destroy(); res.json({ ok: true }); });
 
