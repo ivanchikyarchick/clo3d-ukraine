@@ -203,8 +203,9 @@ async function webLogin(){
     const d=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json()); 
     if(d.ok) {
       const me = await fetch('/api/buyer/me').then(r=>r.json());
-      if(me.ok) showApp(me.name,me.courses||[]);
-      else showApp(d.name,[]);
+      if(me.ok) await showApp(me.name,me.courses||[]);
+      else await showApp(d.name,[]);
+      btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;
     } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;} 
   } catch(e) {document.getElementById('gerr').textContent='❌ Помилка з\'єднання'; btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;}
 }
@@ -216,22 +217,18 @@ async function doRegister(){
   btn.disabled=true; btn.textContent='Зачекайте...';
   const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
   if(d.ok) {
-    // Grant free course
-    const freeCourse = await fetch('/api/course/mn1v7bplqru/public').then(res=>res.json()).catch(()=>null);
-    if(freeCourse){
-      await fetch('/api/buyer/grant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({courseId:freeCourse.id})}).catch(()=>{});
-    }
     try {
       const me = await fetch('/api/buyer/me').then(r=>r.json());
-      showApp(me.name || d.name, me.courses || []);
+      await showApp(me.name || d.name, me.courses || []);
     } catch(e) {
-      showApp(d.name, []);
+      await showApp(d.name, []);
     }
+    btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;
   } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;}
 }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
 function showLoginTab(t){ document.getElementById('login-web').style.display=t==='web'?'block':'none'; document.getElementById('login-reg').style.display=t==='reg'?'block':'none'; document.getElementById('tab-web').classList.toggle('on',t==='web'); document.getElementById('tab-reg').classList.toggle('on',t==='reg'); }
-document.getElementById('tid').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
+const _tid = document.getElementById('tid'); if (_tid) _tid.addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
 
 async function showApp(name,courses){
   document.getElementById('gate').style.display='none';
