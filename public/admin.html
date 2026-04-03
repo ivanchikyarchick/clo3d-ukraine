@@ -834,7 +834,12 @@ function openModal(id){ document.getElementById(id).classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
 function editCourse(cid){
+  console.log('editCourse called with cid:', cid, 'D.courses?', !!D?.courses);
+  const priceEl = document.getElementById('mnc-price');
+  console.log('mnc-price element:', priceEl);
+  if(!priceEl){ alert('Modal not found! Refresh page.'); return; }
   const c=D.courses.find(x=>x.id===cid);
+  if(!c){ console.error('Course not found:', cid); return; }
   document.getElementById('mnc-title').textContent='✏️ Редагувати курс';
   document.getElementById('mnc-id').value=cid;
   document.getElementById('mnc-name').value=c.title||'';
