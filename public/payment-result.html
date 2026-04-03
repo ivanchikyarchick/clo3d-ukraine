@@ -45,8 +45,14 @@ p{color:var(--muted);font-size:.95rem;line-height:1.6;margin-bottom:1.5rem}
 
 <script>
 const urlParams = new URLSearchParams(window.location.search);
-const invoiceId = urlParams.get('invoiceId');
+let invoiceId = urlParams.get('invoiceId');
 const status = urlParams.get('status');
+
+if (!invoiceId) {
+  invoiceId = sessionStorage.getItem('pendingInvoiceId');
+  console.log('[payment-result] Using stored invoiceId:', invoiceId);
+  sessionStorage.removeItem('pendingInvoiceId');
+}
 
 console.log('[payment-result] invoiceId:', invoiceId, 'status:', status);
 
