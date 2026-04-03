@@ -534,11 +534,9 @@ function initiatePayment() {
     return;
   }
 
-  // Check if user is logged in
-  if (!currentBuyer || !currentBuyer.ok) {
-    openLoginModal();
-    return;
-  }
+  // ALWAYS show login modal before payment (even if already logged in)
+  openLoginModal();
+  return;
 
   // User is logged in, proceed with payment
   const priceEl = document.getElementById('ch-price');
