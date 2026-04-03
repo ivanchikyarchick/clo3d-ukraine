@@ -49,19 +49,9 @@ function autoGrantAccess(uid) {
 function activeBuyerCourses(uid) {
   const d = db.get();
   const courses = d.courses || [];
-  // Debug: log all courses
-  console.log('[activeBuyerCourses] user', uid, 'checking', courses.length, 'courses');
-  console.log('[activeBuyerCourses] Course IDs:', courses.map(c => ({ id: c.id, title: c.title })));
-  for (const c of courses) {
-    const buyer = c.buyers?.find(b => b.id === uid);
-    console.log('[activeBuyerCourses]   -', c.title, '(id:', c.id, ') buyers:', c.buyers?.map(b => b.id), 'looking for:', uid);
-  }
+  const uidNum = parseInt(uid);
   
-  const activeCourses = courses.filter(c => {
-    const buyer = c.buyers?.find(b => b.id === uid);
-    return !!buyer;
-  });
-  console.log('[activeBuyerCourses] user', uid, 'active courses:', activeCourses.map(c => c.title));
+  const activeCourses = courses.filter(c => c.buyers?.some(b => parseInt(b.id) === uidNum));
   return activeCourses;
 }
 
@@ -76,97 +66,10 @@ const uploadMaterial = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 200 *
 // Webhook route - handle raw body only for webhook path
 const webhookRouter = express.Router();
 
-webhookRouter.post('/payment/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  console.log('[monobank] Webhook received');
-  
-  const signature = req.headers['x-sign'];
-  if (!signature) {
-    console.error('[monobank] No signature');
-    res.status(400).json({ error: 'No signature' });
-    return;
-  }
-  
-  const body = req.body.toString();
-  const pubKey = await getMonoPubKey();
-  
-  if (!pubKey) {
-    console.error('[monobank] No pubkey');
-    res.status(500).json({ error: 'No pubkey' });
-    return;
-  }
-  
-  const isValid = verifyMonoSignature(pubKey, body, signature);
-  console.log('[monobank] Signature valid:', isValid, 'pubKey length:', pubKey?.length, 'body length:', body?.length, 'signature:', signature?.substring(0, 20) + '...');
-
-  // For development/testing, allow processing even with invalid signature
-  // TODO: Remove this in production
-  if (!isValid) {
-    console.warn('[monobank] WARNING: Invalid signature, but processing anyway for testing');
-    // res.status(403).json({ error: 'Invalid signature' });
-    // return;
-  }
-  
-  let payment;
-  try {
-    payment = JSON.parse(body);
-  } catch (e) {
-    console.error('[monobank] Parse error:', e.message);
-    res.status(400).json({ error: 'Invalid JSON' });
-    return;
-  }
-  
-  console.log('[monobank] Webhook data:', { invoiceId: payment.invoiceId, status: payment.status, amount: payment.amount });
-  
-  db.set(d => {
-    if (!d.payments) d.payments = [];
-    const idx = d.payments.findIndex(p => p.invoiceId === payment.invoiceId);
-    const paymentData = {
-      invoiceId: payment.invoiceId,
-      status: payment.status,
-      amount: payment.amount,
-      ccy: payment.ccy,
-      finalAmount: payment.finalAmount,
-      reference: payment.reference,
-      destination: payment.destination,
-      createdDate: payment.createdDate,
-      modifiedDate: payment.modifiedDate,
-      paymentInfo: payment.paymentInfo,
-      webhookReceivedAt: Date.now()
-    };
-    if (idx >= 0) d.payments[idx] = paymentData;
-    else d.payments.push(paymentData);
-  });
-  
-  if (payment.status === 'success') {
-    console.log('[monobank] Payment SUCCESS:', payment.invoiceId, payment.amount);
-    const d = db.get();
-    const pending = d.pendingPayments?.find(p => p.invoiceId === payment.invoiceId);
-    console.log('[monobank] Pending payment found:', !!pending, 'buyerId:', pending?.buyerId, 'courseId:', pending?.courseId);
-    if (pending && pending.buyerId && pending.courseId) {
-      db.set(d => {
-        const c = d.courses.find(x => x.id === pending.courseId);
-        console.log('[monobank] Course found:', !!c, 'course id:', pending.courseId);
-        if (c && !c.buyers?.some(b => b.id === pending.buyerId)) {
-          if (!c.buyers) c.buyers = [];
-          c.buyers.push({ id: pending.buyerId, name: '—', grantedAt: Date.now() });
-          console.log('[monobank] Access granted to buyer:', pending.buyerId, 'course:', pending.courseId, 'total buyers now:', c.buyers.length);
-        } else {
-          console.log('[monobank] Buyer already has access or course not found');
-        }
-        d.pendingPayments = (d.pendingPayments || []).filter(p => p.invoiceId !== payment.invoiceId);
-      });
-    } else {
-      console.log('[monobank] No pending payment found for invoice:', payment.invoiceId);
-    }
-  } else if (payment.status === 'failure') {
-    console.log('[monobank] Payment FAILED:', payment.invoiceId, payment.failureReason);
-  }
-  
-  res.status(200).json({ ok: true });
-});
+// Initialize monopay module
+initMonopay(app, webhookRouter);
 
 // Mount webhook router before other middleware
-// IMPORTANT: webhook uses express.raw() which consumes body - must come first
 app.use('/api', webhookRouter);
 
 // ═══════════════════════════════════════════════════════════
@@ -264,163 +167,7 @@ app.post('/api/settings', adm, (req, res) => {
 });
 app.get('/api/settings/public', (_, res) => res.json({ fop: db.get().settings?.fop || '' }));
 
-// Monobank Payment API
-function getMonoToken() {
-  return MONOBANK_TOKEN || db.get().settings?.monoToken || '';
-}
-
-app.post('/api/payment/create', async (req, res) => {
-  const token = getMonoToken();
-  if (!token) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
-  const { amount, description, courseId, buyerId, redirectUrl } = req.body;
-  console.log('[payment/create] Request received:', { amount, description, courseId, buyerId, redirectUrl });
-  if (!amount || amount < 100) { res.status(400).json({ ok: false, error: 'Invalid amount' }); return; }
-  
-  const invoiceData = {
-    amount: Math.round(amount),
-    ccy: 980,
-    merchantPaymInfo: {
-      reference: `course_${courseId || 'general'}_${Date.now()}`,
-      destination: description || 'Оплата курсу',
-    },
-    redirectUrl: redirectUrl || `${SITE_URL}/payment-result`,
-    webHookUrl: `${SITE_URL}/api/payment/webhook`,
-    validity: 3600,
-  };
-  
-  try {
-    const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Token': token,
-      },
-      body: JSON.stringify(invoiceData),
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok || result.errCode) {
-      console.error('[monobank] create error:', result);
-      res.status(response.status).json({ ok: false, error: result.errCode || result.message || 'Payment creation failed' });
-      return;
-    }
-    
-    if (buyerId && courseId) {
-      db.set(d => {
-        if (!d.pendingPayments) d.pendingPayments = [];
-        d.pendingPayments.push({ invoiceId: result.invoiceId, buyerId: parseInt(buyerId), courseId, createdAt: Date.now() });
-        // For testing/development: grant access immediately
-        const c = d.courses.find(x => x.id === courseId);
-        console.log('[payment/create] Course found:', !!c, 'courseId:', courseId, 'buyerId:', buyerId);
-        console.log('[payment/create] Existing buyers:', c?.buyers);
-        if (c && !c.buyers?.some(b => b.id === parseInt(buyerId))) {
-          if (!c.buyers) c.buyers = [];
-          c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now() });
-          console.log('[payment/create] Access granted immediately to buyer:', buyerId, 'course:', c.title);
-        }
-      });
-      db.flushSync();
-    }
-    
-    res.json({ ok: true, invoiceId: result.invoiceId, pageUrl: result.pageUrl });
-  } catch (e) {
-    console.error('[monobank] request error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.get('/api/payment/status', async (req, res) => {
-  const token = getMonoToken();
-  if (!token) { res.status(500).json({ ok: false, error: 'Monobank not configured' }); return; }
-
-  const invoiceId = req.query.invoiceId;
-  if (!invoiceId) { res.status(400).json({ ok: false, error: 'invoiceId required' }); return; }
-
-  try {
-    const response = await fetch(`https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${invoiceId}`, {
-      headers: { 'X-Token': token },
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.invoiceId) {
-      // If payment is successful but not yet processed, try to process it manually
-      if (result.status === 'success') {
-        const d = db.get();
-        const pending = d.pendingPayments?.find(p => p.invoiceId === invoiceId);
-        if (pending && pending.buyerId && pending.courseId) {
-          console.log('[payment/status] Processing pending payment manually:', invoiceId);
-          db.set(d => {
-            const c = d.courses.find(x => x.id === pending.courseId);
-        if (c && !c.buyers?.some(b => b.id === pending.buyerId)) {
-          if (!c.buyers) c.buyers = [];
-          c.buyers.push({ id: pending.buyerId, name: '—', grantedAt: Date.now() });
-          console.log('[monobank] Access granted to buyer:', pending.buyerId, 'course:', pending.courseId, 'total buyers now:', c.buyers.length);
-        } else {
-          console.log('[monobank] Buyer', pending.buyerId, 'already has access to course', pending.courseId);
-        }
-            d.pendingPayments = (d.pendingPayments || []).filter(p => p.invoiceId !== invoiceId);
-          });
-        }
-      }
-
-      res.json({ ok: true, status: result.status, amount: result.amount, invoiceId: result.invoiceId });
-    } else {
-      res.status(400).json({ ok: false, error: result.errText || 'Status check failed' });
-    }
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// ═══ Monobank Webhook ═══
-let _monoPubKey = null;
-let _monoPubKeyTs = 0;
-const MONO_PUBKEY_TTL = 24 * 60 * 60 * 1000;
-
-async function getMonoPubKey() {
-  const token = getMonoToken();
-  if (!token) return null;
-  if (_monoPubKey && Date.now() - _monoPubKeyTs < MONO_PUBKEY_TTL) return _monoPubKey;
-  
-  try {
-    const response = await fetch('https://api.monobank.ua/api/merchant/pubkey', {
-      headers: { 'X-Token': token }
-    });
-    const data = await response.json();
-    if (data.key) {
-      _monoPubKey = data.key;
-      _monoPubKeyTs = Date.now();
-      console.log('[monobank] Public key refreshed');
-    }
-  } catch (e) {
-    console.error('[monobank] pubkey fetch error:', e.message);
-  }
-  return _monoPubKey;
-}
-
-function verifyMonoSignature(pubKeyBase64, body, signatureBase64) {
-  try {
-    const crypto = require('crypto');
-    const crypto$1 = require('crypto');
-    
-    const bodyHash = crypto.createHash('sha256').update(body).digest();
-    const signature = Buffer.from(signatureBase64, 'base64');
-    
-    const pemKey = `-----BEGIN PUBLIC KEY-----\n${pubKeyBase64}\n-----END PUBLIC KEY-----`;
-    
-    const verifier = crypto.createVerify('ECDSA-SHA256');
-    verifier.update(body);
-    
-    return verifier.verify(pemKey, signature);
-  } catch (e) {
-    console.error('[monobank] verify error:', e.message);
-    return false;
-  }
-}
-
-// Auth
+const { initMonopay } = require('./monopay');
 app.post('/api/login', (req, res) => {
   const inputPwd = req.body?.password?.trim() || '';
   const expectedPwd = ADMIN_PASSWORD.trim();
@@ -613,38 +360,29 @@ app.get('/api/buyer/me', (req, res) => {
     res.json({ ok: true, name: 'Адмін', courses }); return;
   }
   const uid = req.session.buyerId;
-  console.log('[buyer/me] session buyerId:', uid, 'buyerName:', req.session.buyerName);
+  console.log('[buyer/me] session buyerId:', uid, 'type:', typeof uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
 
-  // Debug: log all courses and their buyers
   const d = db.get();
-  console.log('[buyer/me] Total courses in DB:', d.courses?.length);
-  for (const c of (d.courses || [])) {
-    console.log('[buyer/me] Course:', c.title, 'buyers:', c.buyers?.length, c.buyers?.map(b => ({ id: b.id, expired: isAccessExpired(b.grantedAt) })));
-  }
-
   // Check and process pending payments
-  const pendingForUser = d.pendingPayments?.filter(p => p.buyerId === uid);
+  const pendingForUser = d.pendingPayments?.filter(p => p.buyerId === parseInt(uid));
   if (pendingForUser?.length) {
-    console.log('[buyer/me] Processing pending payments for user:', uid, pendingForUser.length);
     db.set(d => {
-      const pending = d.pendingPayments?.filter(p => p.buyerId === uid) || [];
+      const pending = d.pendingPayments?.filter(p => p.buyerId === parseInt(uid)) || [];
       for (const p of pending) {
         const c = d.courses.find(x => x.id === p.courseId);
-        if (c && !c.buyers?.some(b => b.id === p.buyerId)) {
+        if (c && !c.buyers?.some(b => b.id === parseInt(uid))) {
           if (!c.buyers) c.buyers = [];
-          c.buyers.push({ id: p.buyerId, name: '—', grantedAt: Date.now() });
-          console.log('[buyer/me] Access granted from pending payment:', p.buyerId, 'course:', p.courseId);
+          c.buyers.push({ id: parseInt(uid), name: '—', grantedAt: Date.now() });
         }
       }
-      d.pendingPayments = (d.pendingPayments || []).filter(p => p.buyerId !== uid);
+      d.pendingPayments = (d.pendingPayments || []).filter(p => p.buyerId !== parseInt(uid));
     });
   }
 
   const myCourses = activeBuyerCourses(uid);
-  console.log('[buyer/me] active courses for user', uid, ':', myCourses.length, myCourses.map(c => c.title));
   res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => {
-    const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
+    const buyer = c.buyers.find(b => parseInt(b.id) === parseInt(uid));
     return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
   }) });
 });
