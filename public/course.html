@@ -244,7 +244,7 @@ function switchTab(tab) {
   document.getElementById('login-error').textContent = '';
   document.getElementById('reg-error').textContent = '';
 }
-function openLoginModal(){ document.getElementById('login-modal').style.display='flex'; switchTab('register'); }
+function openLoginModal(){ document.getElementById('login-modal').style.display='flex'; switchTab('login'); }
 function closeLoginModal(){ document.getElementById('login-modal').style.display='none'; isProcessingAuth = false; }
 async function doLogin(){
   if (isProcessingAuth) return;
