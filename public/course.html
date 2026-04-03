@@ -310,7 +310,6 @@ function updatePaymentButtons() {
 
   const hasAccess = (currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData.id)) || isFree;
   const btn = document.getElementById('btn-pay');
-  const btnBottom = document.getElementById('btn-pay-bottom');
 
   if (hasAccess) {
     if (btn) {
@@ -319,26 +318,12 @@ function updatePaymentButtons() {
       btn.className = 'btn-watch';
       btn.style.background = 'var(--acc)'; btn.style.color = 'white'; btn.style.border = 'none';
     }
-    if (btnBottom) {
-      const telegramIcon = btnBottom.querySelector('svg');
-      btnBottom.innerHTML = (telegramIcon ? telegramIcon.outerHTML : '') + 'Перейти до курсу<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
-      btnBottom.onclick = () => window.location.href = `/watch?course=${currentCourseData.slug}`;
-      btnBottom.className = 'btn-watch rv';
-      btnBottom.style.background = 'var(--acc)'; btnBottom.style.color = 'white'; btnBottom.style.border = 'none';
-    }
   } else {
     if (btn) {
       btn.innerHTML = 'Придбати доступ<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
       btn.onclick = initiatePayment;
       btn.className = 'btn-watch';
       btn.style.background = 'var(--acc)'; btn.style.color = 'white'; btn.style.border = 'none';
-    }
-    if (btnBottom) {
-      const telegramIcon = btnBottom.querySelector('svg');
-      btnBottom.innerHTML = (telegramIcon ? telegramIcon.outerHTML : '') + 'Оплатити зараз<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
-      btnBottom.onclick = initiatePayment;
-      btnBottom.className = 'btn-watch rv';
-      btnBottom.style.background = 'var(--acc)'; btnBottom.style.color = 'white'; btnBottom.style.border = 'none';
     }
   }
 
@@ -448,44 +433,7 @@ async function load() {
     ]).catch(e => { console.error('[course] Videos fetch error:', e); return []; });
     console.log('[course] Videos loaded:', vids?.length || 0);
 
-    // Check if user already has access
-    if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) || c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно' || c.price === '0') {
-      const btn = document.getElementById('btn-pay');
-      const btnBottom = document.getElementById('btn-pay-bottom');
-      if (btn) {
-        btn.innerHTML = 'Перейти до курсу →<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
-        btn.onclick = () => window.location.href = `/watch?course=${c.slug}`;
-        btn.className = 'btn-watch';
-        btn.style.background = 'var(--acc)'; btn.style.color = 'white'; btn.style.border = 'none';
-      }
-      if (btnBottom) {
-        const telegramIcon = btnBottom.querySelector('svg');
-        btnBottom.innerHTML = (telegramIcon ? telegramIcon.outerHTML : '') + 'Перейти до курсу<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
-        btnBottom.onclick = () => window.location.href = `/watch?course=${c.slug}`;
-        btnBottom.className = 'btn-watch rv';
-        btnBottom.style.background = 'var(--acc)'; btnBottom.style.color = 'white'; btnBottom.style.border = 'none';
-      }
-    } else {
-      // Set default payment button with icons
-      const btn = document.getElementById('btn-pay');
-      const btnBottom = document.getElementById('btn-pay-bottom');
-      if (btn && !btn.querySelector('.payment-icons')) {
-        btn.innerHTML = 'Придбати доступ<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
-        btn.className = 'btn-watch';
-        btn.style.background = 'var(--acc)'; btn.style.color = 'white'; btn.style.border = 'none';
-      }
-      if (btnBottom && !btnBottom.querySelector('.payment-icons')) {
-        const telegramIcon = btnBottom.querySelector('svg');
-        btnBottom.innerHTML = (telegramIcon ? telegramIcon.outerHTML : '') + 'Оплатити зараз<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
-        btnBottom.className = 'btn-watch rv';
-        btnBottom.style.background = 'var(--acc)'; btnBottom.style.color = 'white'; btnBottom.style.border = 'none';
-      }
-    }
-
-    // Update for free courses
-    if (isFree) {
-      updatePaymentButtons();
-    }
+    // Payment buttons will be updated by updatePaymentButtons() called at the end
     const show = Math.min(vids.length, 12);
     const listEl = document.getElementById('vl-list');
     if (!vids.length) {
@@ -534,9 +482,11 @@ function initiatePayment() {
     return;
   }
 
-  // ALWAYS show login modal before payment (even if already logged in)
-  openLoginModal();
-  return;
+  // Show login modal if not logged in
+  if (!currentBuyer) {
+    openLoginModal();
+    return;
+  }
 
   // User is logged in, proceed with payment
   const priceEl = document.getElementById('ch-price');
@@ -548,15 +498,13 @@ function initiatePayment() {
   console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount:', finalAmount);
 
   const description = titleEl.textContent || 'Тестова оплата';
-  
+
   isProcessingPayment = true;
   const btn = document.getElementById('btn-pay');
-  const btnBottom = document.getElementById('btn-pay-bottom');
-  const originalText = btn.textContent;
-  btn.textContent = 'Створюю платіж...';
+  const originalText = btn.innerHTML;
+  btn.innerHTML = 'Створюю платіж...<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
   btn.disabled = true;
-  if (btnBottom) { btnBottom.disabled = true; }
-  
+
   fetch('/api/payment/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -577,17 +525,15 @@ function initiatePayment() {
       window.location.href = data.pageUrl;
     } else {
       alert('Помилка: ' + (data.error || 'Не вдалося створити платіж'));
-      btn.textContent = originalText;
+      btn.innerHTML = originalText;
       btn.disabled = false;
-      if (btnBottom) btnBottom.disabled = false;
       isProcessingPayment = false;
     }
   })
   .catch(e => {
     alert('Помилка з\'єднання: ' + e.message);
-    btn.textContent = originalText;
+    btn.innerHTML = originalText;
     btn.disabled = false;
-    if (btnBottom) btnBottom.disabled = false;
     isProcessingPayment = false;
   });
 }
