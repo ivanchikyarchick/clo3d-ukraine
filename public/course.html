@@ -495,9 +495,13 @@ function proceedToPayment() {
   const titleEl = document.getElementById('ch-title');
 
   const rawAmount = (currentCourseData?.priceAmount || currentCourseData?.price || '100').replace(/[^\d]/g, '');
-  let finalAmount = parseInt(rawAmount);
+  let finalAmount = parseInt(rawAmount, 10);
   if (finalAmount < 10000 && finalAmount > 0) finalAmount = finalAmount * 100;
-  console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount:', finalAmount);
+  if (!Number.isFinite(finalAmount) || finalAmount < 100) {
+    alert('Невалідна ціна курсу (потрібно мінімум 1 грн). Перевірте priceAmount в адмінці.');
+    return;
+  }
+  console.log('[payment] priceAmount:', currentCourseData?.priceAmount, 'Amount (kop):', finalAmount);
 
   const description = titleEl.textContent || 'Тестова оплата';
 
@@ -517,6 +521,7 @@ function proceedToPayment() {
 
   fetch('/api/payment/create', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       amount: finalAmount,
