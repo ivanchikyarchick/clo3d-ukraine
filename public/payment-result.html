@@ -90,12 +90,19 @@ async function checkStatus() {
     if (data.ok) {
       document.getElementById('amount').textContent = (data.amount / 100).toFixed(2);
       
-      if (data.status === 'success') {
-        icon.className = 'icon success';
-        icon.textContent = '✓';
-        title.textContent = 'Оплата успішна!';
-        desc.textContent = 'Дякуємо за оплату. Тепер ви маєте доступ до курсу.';
-      } else if (data.status === 'failure') {
+       if (data.status === 'success') {
+         icon.className = 'icon success';
+         icon.textContent = '✓';
+         title.textContent = 'Оплата успішна!';
+         desc.textContent = 'Дякуємо за оплату. Тепер ви маєте доступ до курсу.';
+         // Add button to go to courses
+         const goToCoursesBtn = document.createElement('a');
+         goToCoursesBtn.href = '/watch';
+         goToCoursesBtn.className = 'btn';
+         goToCoursesBtn.style.marginLeft = '1rem';
+         goToCoursesBtn.innerHTML = 'Перейти до курсів →';
+         actions.appendChild(goToCoursesBtn);
+       } else if (data.status === 'failure') {
         icon.className = 'icon error';
         icon.textContent = '✕';
         title.textContent = 'Оплата невдала';
