@@ -233,10 +233,16 @@ async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); locat
 function showLoginTab(t){ document.getElementById('login-web').style.display=t==='web'?'block':'none'; document.getElementById('login-reg').style.display=t==='reg'?'block':'none'; document.getElementById('tab-web').classList.toggle('on',t==='web'); document.getElementById('tab-reg').classList.toggle('on',t==='reg'); }
 document.getElementById('tid').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
 
-function showApp(name,courses){
+async function showApp(name,courses){
   document.getElementById('gate').style.display='none';
   const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
-  document.getElementById('uname').textContent=name; myCourses=courses||[];
+  document.getElementById('uname').textContent=name; courses=courses||[];
+  // Add free course if not present
+  const freeCourse = await fetch('/api/course/mn1v7bplqru/public').then(r=>r.json()).catch(()=>null);
+  if(freeCourse && !courses.some(c => c.id === freeCourse.id)){
+    courses.push(freeCourse);
+  }
+  myCourses=courses;
   courseGrantedAt = {};
   courses.forEach(c => { if(c.grantedAt) courseGrantedAt[c.id] = c.grantedAt; });
   if(myCourses.length>1){
