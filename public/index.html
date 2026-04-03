@@ -359,7 +359,7 @@ async function loadCourses() {
       grid.innerHTML = `<div class="courses-empty">Курси незабаром з'являться.<br>Слідкуйте у <a href="https://t.me/Clo3dua_bot" style="color:var(--acc2)">Telegram</a></div>`;
     } else {
       grid.innerHTML = cs.map(c => `
-        <a href="${c.freeAccess ? `/watch?course=${c.slug}` : `/course/${c.slug}`}" class="course-card" style="--card-acc:${c.color||'#C8302A'}">
+        <a href="/watch?course=${c.slug}" class="course-card" style="--card-acc:${c.color||'#C8302A'}">
           <div class="cc-accent"></div>
           <div class="cc-body">
             ${c.freeAccess ? `<span class="cc-badge" style="background:rgba(52,211,153,.12);color:#34d399;border-color:rgba(52,211,153,.25)">🆓 Безкоштовно</span>` : (c.badge ? `<span class="cc-badge">${c.badge}</span>` : '')}
