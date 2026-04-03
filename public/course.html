@@ -262,9 +262,13 @@ async function doLogin(){
       btn.disabled=false;
       btn.textContent='Увійти';
       closeLoginModal();
-      updatePaymentButtons();
-      // After login, proceed to payment
-      setTimeout(initiatePayment, 300);
+      // After login, get full user data including courses
+      initMe().then(user => {
+        currentBuyer = user || currentBuyer;
+        updatePaymentButtons();
+        // After login, proceed to payment
+        setTimeout(initiatePayment, 300);
+      });
     }
     else{document.getElementById('login-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
   }catch(e){document.getElementById('login-error').textContent=e.message;btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
@@ -288,9 +292,13 @@ async function doRegister(){
       btn.disabled=false;
       btn.textContent='Зареєструватись';
       closeLoginModal();
-      updatePaymentButtons();
-      // After registration, proceed to payment
-      setTimeout(initiatePayment, 300);
+      // After registration, get full user data including courses
+      initMe().then(user => {
+        currentBuyer = user || currentBuyer;
+        updatePaymentButtons();
+        // After registration, proceed to payment
+        setTimeout(initiatePayment, 300);
+      });
     }
     else{document.getElementById('reg-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
   }catch(e){document.getElementById('reg-error').textContent=e.message;btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
@@ -526,10 +534,13 @@ function initiatePayment() {
     return;
   }
 
-  // ALWAYS show login modal before payment
-  openLoginModal();
-  return;
+  // Check if user is logged in
+  if (!currentBuyer || !currentBuyer.ok) {
+    openLoginModal();
+    return;
+  }
 
+  // User is logged in, proceed with payment
   const priceEl = document.getElementById('ch-price');
   const titleEl = document.getElementById('ch-title');
 
