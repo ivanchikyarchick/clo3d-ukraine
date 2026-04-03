@@ -359,7 +359,7 @@ async function load() {
     }
 
     currentCourseData = c;
-    isFree = c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно';
+    isFree = c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно' || c.price === '0';
     document.title = `${c.title} — Vitalia 3D Fashion Lab`;
     document.getElementById('pd').content  = c.description || `Курс CLO 3D: ${c.title}`;
     document.getElementById('pc').href     = `/course/${c.slug}`;
@@ -428,7 +428,7 @@ async function load() {
     console.log('[course] Videos loaded:', vids?.length || 0);
 
     // Check if user already has access
-    if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) || isFree) {
+    if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(course => course.id === c.id)) || c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно' || c.price === '0') {
       const btn = document.getElementById('btn-pay');
       const btnBottom = document.getElementById('btn-pay-bottom');
       if (btn) {
@@ -507,7 +507,7 @@ function initiatePayment() {
   if (isProcessingPayment) return;
 
   // Check if user already has access to this course
-  if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData?.id)) || isFree) {
+  if ((currentBuyer && currentBuyer.courses && currentBuyer.courses.some(c => c.id === currentCourseData?.id)) || currentCourseData?.freeAccess || currentCourseData?.priceAmount === 0 || currentCourseData?.price === 'Безкоштовно' || currentCourseData?.price === '0') {
     console.log('[payment] User has access to this course, redirecting to watch');
     window.location.href = `/watch?course=${currentCourseData.slug}`;
     return;
