@@ -18,7 +18,7 @@ const os         = require('os');
 const db         = require('./db');
 const r2         = require('./r2');
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyreCL34tyre';
 const PORT           = process.env.PORT || 3000;
 const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
