@@ -148,6 +148,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
   <div class="ni" onclick="go('stats')"><span class="ic">📈</span> Статистика</div>
   <div class="ni" onclick="go('export')"><span class="ic">💾</span> Експорт / Імпорт</div>
+  <div class="ni" onclick="go('debug')"><span class="ic">🔧</span> Діагностика</div>
   <div class="ni" onclick="go('settings')"><span class="ic">⚙️</span> Налаштування</div>
   <div class="sb-bot"><button class="lo" onclick="logout()">🚪 Вийти</button></div>
 </nav>
@@ -371,6 +372,27 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       </div>
     </div>
 
+    <!-- DEBUG -->
+    <div class="tab" id="tab-debug">
+      <div class="sh"><div><h2>Діагностика</h2></div></div>
+      <div class="card-form">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">🔍 Стан бази даних</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem">Перевірте стан курсів, покупців та платежів</p>
+        <button class="btn btn-p" onclick="checkDbState()">📊 Перевірити стан</button>
+        <div id="db-state" style="margin-top:1rem;font-size:.8rem;max-height:400px;overflow-y:auto;background:var(--s1);padding:1rem;border-radius:8px;border:1px solid var(--brd)"></div>
+      </div>
+      <div class="card-form" style="margin-top:1.5rem">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">🔧 Ручний доступ</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem">Додайте доступ до курсу вручну</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;margin-bottom:1rem">
+          <input id="grant-buyer-id" placeholder="Buyer ID" style="padding:.6rem;border:1px solid var(--brd);border-radius:6px;background:var(--bg);color:var(--txt)">
+          <input id="grant-course-id" placeholder="Course ID" style="padding:.6rem;border:1px solid var(--brd);border-radius:6px;background:var(--bg);color:var(--txt)">
+          <button class="btn btn-g" onclick="grantAccess()">✅ Надати доступ</button>
+        </div>
+        <div id="grant-result" style="font-size:.8rem"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -499,8 +521,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
 <script>
 let D=null, charts={}, curCourseId=null, uplFile=null, impFile=null;
-const TABS=['dash','courses','pending','individual','notify','stats','export','settings'];
-const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',individual:'Індивідуальні розбори',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',settings:'Налаштування'};
+const TABS=['dash','courses','pending','individual','notify','stats','export','debug','settings'];
+const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',individual:'Індивідуальні розбори',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',debug:'Діагностика',settings:'Налаштування'};
 const EI={start:'🚀',buy_request:'🛒',granted:'✅',video_view:'▶️',visit:'🌐',login_fail:'🔑',broadcast:'📢'};
 const COLORS=['#C8302A','#E8D8D5','#34d399','#fbbf24','#f472b6','#60a5fa','#f87171','#fb923c','#a3e635'];
 
@@ -879,6 +901,60 @@ async function saveCourse(){
 }
 
 async function delCourse(id,name){ if(!confirm(`Видалити курс "${name}" і всі його відео?`))return; await fetch(`/api/courses/${id}`,{method:'DELETE'}); toast('🗑 Курс видалено'); await load(); }
+
+async function checkDbState(){
+  try {
+    console.log('[debug] Fetching db state...');
+    const r = await fetch('/api/debug/db-state');
+    console.log('[debug] Response status:', r.status);
+    if (r.status === 401) { window.location = '/login'; return; }
+    const data = await r.json();
+    console.log('[debug] Data received:', data);
+    document.getElementById('db-state').innerHTML = `
+      <h4 style="margin-bottom:.8rem;color:var(--txt)">Курси (${data.courses.length}):</h4>
+      ${data.courses.map(c => `<div style="margin-bottom:.5rem;padding:.5rem;background:var(--s2);border-radius:4px">
+        <strong>${c.title}</strong> (ID: ${c.id}) - ${c.buyers} покупців<br>
+        <small style="color:var(--muted)">Покупці: ${c.buyerList.map(b => b.id).join(', ') || 'немає'}</small>
+      </div>`).join('')}
+      <h4 style="margin:1rem 0 .8rem;color:var(--txt)">Веб-акаунти (${data.buyerAccounts}):</h4>
+      ${data.buyerAccountsList.map(a => `<div style="margin-bottom:.3rem"><code>${a.id}</code> - ${a.username} (${new Date(a.createdAt).toLocaleString('uk')})</div>`).join('') || '<small style="color:var(--muted)">Немає акаунтів</small>'}
+      <h4 style="margin:1rem 0 .8rem;color:var(--txt)">Очікувані платежі (${data.pendingPayments}):</h4>
+      ${data.pendingPaymentsList.map(p => `<div style="margin-bottom:.3rem"><code>${p.invoiceId}</code> - Buyer: ${p.buyerId}, Course: ${p.courseId}</div>`).join('') || '<small style="color:var(--muted)">Немає очікуваних платежів</small>'}
+    `;
+  } catch(e) {
+    document.getElementById('db-state').innerHTML = '<span style="color:var(--red)">Помилка: ' + e.message + '</span>';
+  }
+}
+
+async function grantAccess(){
+  const buyerId = document.getElementById('grant-buyer-id').value.trim();
+  const courseId = document.getElementById('grant-course-id').value.trim();
+  console.log('[debug] Grant access:', buyerId, courseId);
+  if (!buyerId || !courseId) {
+    document.getElementById('grant-result').innerHTML = '<span style="color:var(--red)">Введіть Buyer ID та Course ID</span>';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/debug/grant-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buyerId: parseInt(buyerId), courseId })
+    });
+    const data = await r.json();
+    console.log('[debug] Grant response:', data);
+    if (data.ok) {
+      document.getElementById('grant-result').innerHTML = '<span style="color:var(--grn)">✅ Доступ надано</span>';
+      toast('✅ Доступ надано');
+      await load();
+    } else {
+      document.getElementById('grant-result').innerHTML = '<span style="color:var(--red)">❌ ' + data.error + '</span>';
+    }
+  } catch(e) {
+    console.log('[debug] Grant error:', e);
+    document.getElementById('grant-result').innerHTML = '<span style="color:var(--red)">Помилка: ' + e.message + '</span>';
+  }
+}
 
 // ── BROADCAST ─────────────────────────────────────────────
 async function doBroadcast(){
