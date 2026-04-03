@@ -17,6 +17,7 @@ const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
 const r2         = require('./r2');
+const { initMonopay } = require('./monopay');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 console.log('[server] Starting with ADMIN_PASSWORD:', ADMIN_PASSWORD);
@@ -167,7 +168,6 @@ app.post('/api/settings', adm, (req, res) => {
 });
 app.get('/api/settings/public', (_, res) => res.json({ fop: db.get().settings?.fop || '' }));
 
-const { initMonopay } = require('./monopay');
 app.post('/api/login', (req, res) => {
   const inputPwd = req.body?.password?.trim() || '';
   const expectedPwd = ADMIN_PASSWORD.trim();
@@ -381,10 +381,16 @@ app.get('/api/buyer/me', (req, res) => {
   }
 
   const myCourses = activeBuyerCourses(uid);
-  res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => {
-    const buyer = c.buyers.find(b => parseInt(b.id) === parseInt(uid));
-    return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
-  }) });
+  const uidNum = parseInt(uid, 10);
+  res.json({
+    ok: true,
+    id: uidNum,
+    name: req.session.buyerName,
+    courses: myCourses.map(c => {
+      const buyer = c.buyers.find(b => parseInt(b.id, 10) === uidNum);
+      return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
+    }),
+  });
 });
 
 app.get('/api/debug/buyer/:id', (req, res) => {
