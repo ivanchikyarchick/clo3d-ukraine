@@ -336,6 +336,18 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
           <div id="s-res" style="font-size:.78rem"></div>
         </div>
       </div>
+
+      <div class="card-form" style="max-width:500px;margin-top:1.5rem">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">🏦 Monobank токен</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Токен для прийому платежів через Monobank Acquiring. Отримати на <a href="https://api.monobank.ua/" target="_blank" rel="noopener" style="color:var(--acc2)">api.monobank.ua</a> (тестовий) або в <a href="https://web.monobank.ua/" target="_blank" rel="noopener" style="color:var(--acc2)">web.monobank.ua</a> (продакшн).</p>
+        <div class="fg"><label>Токен мерчанта</label>
+          <input type="text" id="s-mono-token" placeholder="Введіть токен Monobank">
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:center">
+          <button class="btn btn-p" onclick="saveSettings()" style="padding:.65rem 1.25rem">💾 Зберегти</button>
+          <div id="s-res" style="font-size:.78rem"></div>
+        </div>
+      </div>
     </div>
 
     <!-- EXPORT -->
@@ -373,8 +385,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="fg"><label>Назва курсу *</label><input id="mnc-name" placeholder="CLO3D Базовий курс"></div>
     <div class="fg"><label>Опис</label><textarea id="mnc-desc" style="min-height:80px" placeholder="Про що цей курс..."></textarea></div>
     <div class="row">
-      <div class="fg"><label>Ціна</label><input id="mnc-price" placeholder="1500 грн"></div>
-      <div class="fg"><label>Мітка (badge)</label><input id="mnc-badge" placeholder="🔥 Хіт продажів"></div>
+      <div class="fg"><label>Ціна (для сайту)</label><input id="mnc-price" placeholder="299 грн"></div>
+      <div class="fg"><label>Сума для оплати</label><input id="mnc-price-amount" placeholder="100 (число для Monobank)"></div>
     </div>
     <div class="fg"><label>Колір акценту</label>
       <div class="swatches" id="swatches"></div>
@@ -572,7 +584,7 @@ function renderCourses(cs){
         ${c.badge?`<span class="cc-badge">${c.badge}</span>`:''}
         <p class="cc-desc">${c.description||'<em style="color:var(--muted)">Без опису</em>'}</p>
         <div class="cc-meta">
-          <span>💳 ${c.price||'—'}</span>
+          <span>💳 ${c.price||'—'}${c.priceAmount && c.priceAmount !== c.price ? ` → ${c.priceAmount} грн` : ''}</span>
           <span>🎬 ${c.videos?.length||0} відео</span>
           <span>👥 ${c.buyers?.length||0} покупців</span>
         </div>
@@ -733,11 +745,13 @@ async function loadSettings(){
   try{
     const d=await fetch('/api/settings').then(r=>r.json());
     document.getElementById('s-fop').value=d.fop||'';
+    document.getElementById('s-mono-token').value=d.monoToken||'';
   }catch{}
 }
 async function saveSettings(){
   const fop=document.getElementById('s-fop').value.trim();
-  const d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fop})}).then(r=>r.json());
+  const monoToken=document.getElementById('s-mono-token').value.trim();
+  const d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fop,monoToken})}).then(r=>r.json());
   const el=document.getElementById('s-res');
   if(d.ok){el.style.color='var(--grn)';el.textContent='✅ Збережено';setTimeout(()=>el.textContent='',2500);}
   else{el.style.color='var(--red)';el.textContent='❌ Помилка';}
@@ -826,6 +840,7 @@ function editCourse(cid){
   document.getElementById('mnc-name').value=c.title||'';
   document.getElementById('mnc-desc').value=c.description||'';
   document.getElementById('mnc-price').value=c.price||'';
+  document.getElementById('mnc-price-amount').value=c.priceAmount||c.price||'';
   document.getElementById('mnc-badge').value=c.badge||'';
   document.getElementById('mnc-color').value=c.color||'#C8302A';
   document.getElementById('mnc-pub').checked=!!c.published;
@@ -846,7 +861,7 @@ async function saveCourse(){
     const sep = line.indexOf('|');
     return sep>-1 ? {title:line.slice(0,sep).trim(), desc:line.slice(sep+1).trim()} : {title:line,desc:''};
   });
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:document.getElementById('mnc-price-amount').value,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
