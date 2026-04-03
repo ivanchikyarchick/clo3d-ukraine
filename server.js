@@ -23,6 +23,7 @@ const PORT           = process.env.PORT || 3000;
 const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
+const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
 const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
 function isAccessExpired(grantedAt) {
@@ -133,6 +134,72 @@ app.post('/api/settings', adm, (req, res) => {
   res.json({ ok: true });
 });
 app.get('/api/settings/public', (_, res) => res.json({ fop: db.get().settings?.fop || '' }));
+
+// Monobank Payment API
+app.post('/api/payment/create', async (req, res) => {
+  if (!MONOBANK_TOKEN) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
+  const { amount, description, courseId, redirectUrl } = req.body;
+  if (!amount || amount < 100) { res.status(400).json({ ok: false, error: 'Invalid amount' }); return; }
+  
+  const invoiceData = {
+    amount: Math.round(amount),
+    ccy: 980,
+    merchantPaymInfo: {
+      reference: `course_${courseId || 'general'}_${Date.now()}`,
+      destination: description || 'Оплата курсу',
+    },
+    redirectUrl: redirectUrl || `${SITE_URL}/payment-result`,
+    validity: 3600,
+  };
+  
+  try {
+    const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Token': MONOBANK_TOKEN,
+      },
+      body: JSON.stringify(invoiceData),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok || result.errCode) {
+      console.error('[monobank] create error:', result);
+      res.status(response.status).json({ ok: false, error: result.errCode || result.message || 'Payment creation failed' });
+      return;
+    }
+    
+    res.json({ ok: true, invoiceId: result.invoiceId, pageUrl: result.pageUrl });
+  } catch (e) {
+    console.error('[monobank] request error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/payment/status', async (req, res) => {
+  if (!MONOBANK_TOKEN) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
+  const { invoiceId } = req.query;
+  if (!invoiceId) { res.status(400).json({ ok: false, error: 'No invoiceId' }); return; }
+  
+  try {
+    const response = await fetch(`https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${invoiceId}`, {
+      headers: { 'X-Token': MONOBANK_TOKEN },
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      res.status(response.status).json({ ok: false, error: result.message || 'Status check failed' });
+      return;
+    }
+    
+    res.json({ ok: true, status: result.status, amount: result.amount, createdDate: result.createdDate, modifiedDate: result.modifiedDate, paymentInfo: result.paymentInfo });
+  } catch (e) {
+    console.error('[monobank] status error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // Auth
 app.post('/api/login', (req, res) => {
@@ -879,6 +946,7 @@ async function restoreDbFromTelegram() {
 
 setTimeout(restoreDbFromTelegram, 4000);
 
+app.get('/payment-result', (_, res) => res.sendFile(path.join(__dirname, 'public', 'payment-result.html')));
 // Pages
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/course/:slug', (_, res) => res.sendFile(path.join(__dirname, 'public', 'course.html')));
