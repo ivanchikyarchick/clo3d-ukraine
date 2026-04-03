@@ -156,6 +156,24 @@ async function checkMe(){
   if(courseSlug){
     const c = await fetch(`/api/course/${courseSlug}/public`).then(r=>r.json()).catch(()=>null);
     if(c && (c.freeAccess || c.priceAmount === 0 || c.price === 'Безкоштовно' || c.price === '0')){ await openFreeCourse(c); return; }
+    // For paid courses, check login
+    const d = await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
+    if(d.ok){
+      // Check if user has this course
+      if(d.courses && d.courses.some(course => course.slug === courseSlug)){
+        showApp(d.name, d.courses);
+        // Select the specific course
+        const courseId = d.courses.find(course => course.slug === courseSlug).id;
+        selectCourse(courseId);
+      } else {
+        // Not bought, redirect to course page
+        window.location.href = `/course/${courseSlug}`;
+      }
+    } else {
+      // Not logged in, redirect to course page
+      window.location.href = `/course/${courseSlug}`;
+    }
+    return;
   }
   const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
   if(d.ok) showApp(d.name,d.courses);
