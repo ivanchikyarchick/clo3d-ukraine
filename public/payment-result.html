@@ -95,17 +95,17 @@ async function checkStatus() {
           icon.textContent = '✓';
           title.textContent = 'Оплата успішна!';
           desc.textContent = 'Дякуємо за оплату. Тепер ви маєте доступ до курсу.';
-          // Fetch fresh user data to ensure session has updated course access
-          const me = await fetch('/api/buyer/me').then(r => r.json());
-          console.log('[payment-result] User data after payment:', me);
-          // Get course slug from session and redirect
+          await fetch('/api/buyer/me', { credentials: 'same-origin' }).then(r => r.json()).catch(() => ({}));
           const courseSlug = sessionStorage.getItem('pendingCourseSlug');
-          const goToCoursesBtn = document.createElement('a');
-          goToCoursesBtn.href = courseSlug ? `/watch?course=${courseSlug}` : '/watch';
-          goToCoursesBtn.className = 'btn';
-          goToCoursesBtn.style.marginLeft = '1rem';
-          goToCoursesBtn.innerHTML = 'Перейти до курсу →';
-          actions.appendChild(goToCoursesBtn);
+          if (!document.getElementById('pay-btn-watch')) {
+            const goToCoursesBtn = document.createElement('a');
+            goToCoursesBtn.id = 'pay-btn-watch';
+            goToCoursesBtn.href = courseSlug ? `/watch?course=${courseSlug}` : '/watch';
+            goToCoursesBtn.className = 'btn';
+            goToCoursesBtn.style.marginLeft = '1rem';
+            goToCoursesBtn.innerHTML = 'Перейти до курсу →';
+            actions.appendChild(goToCoursesBtn);
+          }
           sessionStorage.removeItem('pendingCourseSlug');
        } else if (data.status === 'failure') {
         icon.className = 'icon error';
