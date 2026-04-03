@@ -45,11 +45,10 @@ const uploadImport   = multer({ dest: '/tmp/vfl_tmp/' });
 const uploadVideo    = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
 const uploadMaterial = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 200 * 1024 * 1024 } });
 
-// Webhook route MUST come before express.json middleware
+// Webhook route - handle raw body only for webhook path
 const webhookRouter = express.Router();
-webhookRouter.use(express.raw({ type: 'application/json' }));
 
-webhookRouter.post('/payment/webhook', async (req, res) => {
+webhookRouter.post('/payment/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   console.log('[monobank] Webhook received');
   
   const signature = req.headers['x-sign'];
@@ -117,6 +116,7 @@ webhookRouter.post('/payment/webhook', async (req, res) => {
 });
 
 // Mount webhook router before other middleware
+// IMPORTANT: webhook uses express.raw() which consumes body - must come first
 app.use('/api', webhookRouter);
 
 // ═══════════════════════════════════════════════════════════
