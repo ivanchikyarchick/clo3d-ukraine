@@ -336,20 +336,6 @@ app.get('/api/payment/status', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      res.status(response.status).json({ ok: false, error: result.message || 'Status check failed' });
-      return;
-    }
-    
-    res.json({ ok: true, status: result.status, amount: result.amount, invoiceId: result.invoiceId });
-  } catch (e) {
-    console.error('[monobank] status error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
 
 // ═══ Monobank Webhook ═══
 let _monoPubKey = null;
