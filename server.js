@@ -33,9 +33,13 @@ function isAccessExpired(grantedAt) {
 
 function activeBuyerCourses(uid) {
   const courses = db.get().courses || [];
-  const activeCourses = courses.filter(c =>
-    c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt))
-  );
+  const activeCourses = courses.filter(c => {
+    const hasAccess = c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt));
+    if (hasAccess) {
+      console.log('[activeBuyerCourses] user', uid, 'has access to course:', c.title, 'buyers:', c.buyers?.length);
+    }
+    return hasAccess;
+  });
   console.log('[activeBuyerCourses] user', uid, 'has', activeCourses.length, 'active courses');
   return activeCourses;
 }
@@ -293,14 +297,45 @@ app.post('/api/payment/create', async (req, res) => {
 
 app.get('/api/payment/status', async (req, res) => {
   const token = getMonoToken();
-  if (!token) { res.status(500).json({ ok: false, error: 'Monobank token not configured' }); return; }
-  const { invoiceId } = req.query;
-  if (!invoiceId) { res.status(400).json({ ok: false, error: 'No invoiceId' }); return; }
-  
+  if (!token) { res.status(500).json({ ok: false, error: 'Monobank not configured' }); return; }
+
+  const invoiceId = req.query.invoiceId;
+  if (!invoiceId) { res.status(400).json({ ok: false, error: 'invoiceId required' }); return; }
+
   try {
     const response = await fetch(`https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${invoiceId}`, {
       headers: { 'X-Token': token },
     });
+
+    const result = await response.json();
+
+    if (response.ok && result.invoiceId) {
+      // If payment is successful but not yet processed, try to process it manually
+      if (result.status === 'success') {
+        const d = db.get();
+        const pending = d.pendingPayments?.find(p => p.invoiceId === invoiceId);
+        if (pending && pending.buyerId && pending.courseId) {
+          console.log('[payment/status] Processing pending payment manually:', invoiceId);
+          db.set(d => {
+            const c = d.courses.find(x => x.id === pending.courseId);
+            if (c && !c.buyers?.some(b => b.id === pending.buyerId)) {
+              if (!c.buyers) c.buyers = [];
+              c.buyers.push({ id: pending.buyerId, name: '—', grantedAt: Date.now() });
+              console.log('[payment/status] Access granted manually to buyer:', pending.buyerId, 'course:', pending.courseId);
+            }
+            d.pendingPayments = (d.pendingPayments || []).filter(p => p.invoiceId !== invoiceId);
+          });
+        }
+      }
+
+      res.json({ ok: true, status: result.status, amount: result.amount, invoiceId: result.invoiceId });
+    } else {
+      res.status(400).json({ ok: false, error: result.errText || 'Status check failed' });
+    }
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
     
     const result = await response.json();
     
@@ -309,7 +344,7 @@ app.get('/api/payment/status', async (req, res) => {
       return;
     }
     
-    res.json({ ok: true, status: result.status, amount: result.amount, createdDate: result.createdDate, modifiedDate: result.modifiedDate, paymentInfo: result.paymentInfo });
+    res.json({ ok: true, status: result.status, amount: result.amount, invoiceId: result.invoiceId });
   } catch (e) {
     console.error('[monobank] status error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -485,6 +520,45 @@ app.post('/api/buyer/login', (req, res) => {
 
 app.post('/api/buyer/logout', (req, res) => { req.session.buyerId = null; res.json({ ok: true }); });
 
+// Debug endpoint to manually grant access (for testing)
+app.post('/api/debug/grant-access', adm, (req, res) => {
+  const { buyerId, courseId } = req.body;
+  if (!buyerId || !courseId) {
+    res.status(400).json({ ok: false, error: 'buyerId and courseId required' });
+    return;
+  }
+
+  db.set(d => {
+    const c = d.courses.find(x => x.id === courseId);
+    if (c && !c.buyers?.some(b => b.id === buyerId)) {
+      if (!c.buyers) c.buyers = [];
+      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now() });
+      console.log('[debug] Access granted to buyer:', buyerId, 'course:', courseId);
+      res.json({ ok: true, message: 'Access granted' });
+    } else {
+      res.json({ ok: false, error: 'Already has access or course not found' });
+    }
+  });
+});
+
+// Debug endpoint to check database state
+app.get('/api/debug/db-state', adm, (req, res) => {
+  const d = db.get();
+  const result = {
+    courses: d.courses?.map(c => ({
+      id: c.id,
+      title: c.title,
+      buyers: c.buyers?.length || 0,
+      buyerList: c.buyers?.map(b => ({ id: b.id, grantedAt: b.grantedAt })) || []
+    })) || [],
+    buyerAccounts: d.buyerAccounts?.length || 0,
+    buyerAccountsList: d.buyerAccounts?.map(a => ({ id: a.id, username: a.username, createdAt: a.createdAt })) || [],
+    pendingPayments: d.pendingPayments?.length || 0,
+    pendingPaymentsList: d.pendingPayments || []
+  };
+  res.json(result);
+});
+
 app.get('/api/buyer/me', (req, res) => {
   if (req.session.isAdminPreview) {
     const courses = (db.get().courses || []).filter(c => c.videos?.length).map(c => ({ id: c.id, slug: c.slug, title: c.title, color: c.color }));
@@ -493,8 +567,16 @@ app.get('/api/buyer/me', (req, res) => {
   const uid = req.session.buyerId;
   console.log('[buyer/me] session buyerId:', uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
+
+  // Also check if there are any pending payments that should be processed
+  const d = db.get();
+  const pendingForUser = d.pendingPayments?.filter(p => p.buyerId === uid);
+  if (pendingForUser?.length) {
+    console.log('[buyer/me] Found pending payments for user:', uid, pendingForUser.length);
+  }
+
   const myCourses = activeBuyerCourses(uid);
-  console.log('[buyer/me] active courses for user', uid, ':', myCourses.length);
+  console.log('[buyer/me] active courses for user', uid, ':', myCourses.length, myCourses.map(c => c.title));
   res.json({ ok: !!myCourses.length, name: req.session.buyerName, courses: myCourses.map(c => {
     const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
     return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
@@ -521,11 +603,13 @@ app.post('/api/buyer/register', (req, res) => {
   db.set(d => {
     if (!d.buyerAccounts) d.buyerAccounts = [];
     d.buyerAccounts.push({ id: newUid, username: nameClean, password: newHash, createdAt: Date.now() });
+    console.log('[register] Added buyer account:', newUid, nameClean, 'total accounts:', d.buyerAccounts.length);
   });
   // Force immediate save to ensure data is available across restarts
   db.flushSync();
   req.session.buyerId = newUid;
   req.session.buyerName = nameClean;
+  console.log('[register] Session set for buyer:', newUid, nameClean);
   res.json({ ok: true, id: newUid, name: nameClean });
 });
 
@@ -537,10 +621,10 @@ app.post('/api/buyer/login-web', (req, res) => {
   let buyer = _buyerUsers.get(nameClean);
   if (!buyer) {
     const d = db.get();
-    console.log('[login-web] checking db.buyerAccounts:', d.buyerAccounts);
+    console.log('[login-web] checking db.buyerAccounts:', d.buyerAccounts?.length, 'accounts');
     // Case-insensitive search
     const acc = d.buyerAccounts?.find(a => a.username?.toLowerCase() === nameClean);
-    if (acc) { buyer = acc; _buyerUsers.set(nameClean, acc); console.log('[login-web] found in db:', acc); }
+    if (acc) { buyer = acc; _buyerUsers.set(nameClean, acc); console.log('[login-web] found in db:', acc.id, acc.username); }
   }
   if (!buyer) { console.log('[login-web] buyer not found'); res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
   const pwdMatch = verifyPassword(password, buyer.password);
@@ -548,6 +632,7 @@ app.post('/api/buyer/login-web', (req, res) => {
   if (!pwdMatch) { res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
   req.session.buyerId = buyer.id;
   req.session.buyerName = nameClean;
+  console.log('[login-web] Session set for buyer:', buyer.id, nameClean);
   res.json({ ok: true, id: buyer.id, name: nameClean });
 });
 
