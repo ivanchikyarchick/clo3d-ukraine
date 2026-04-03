@@ -1,5 +1,8 @@
 // Monobank Payment Module
+const express = require('express');
 const db = require('./db');
+
+const SITE_URL = process.env.SITE_URL || 'https://fashionlab.com.ua';
 
 function getMonoToken() {
   const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
