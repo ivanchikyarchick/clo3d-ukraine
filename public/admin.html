@@ -144,6 +144,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   <div class="ni on" onclick="go('dash')"><span class="ic">📊</span> Дашборд</div>
   <div class="ni" onclick="go('courses')"><span class="ic">📚</span> Курси</div>
   <div class="ni" onclick="go('pending')"><span class="ic">⏳</span> Заявки курсів <span class="nb" id="nb"></span></div>
+  <div class="ni" onclick="go('users')"><span class="ic">👥</span> Користувачі</div>
   <div class="ni" onclick="go('individual')"><span class="ic">🎯</span> Індивідуальні <span class="nb" id="nb-ind"></span></div>
   <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
   <div class="ni" onclick="go('stats')"><span class="ic">📈</span> Статистика</div>
@@ -232,6 +233,12 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="tab" id="tab-pending">
       <div class="sh"><div><h2>Заявки на курси</h2><p>Очікують підтвердження оплати</p></div></div>
       <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Квитанція</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="tab" id="tab-users">
+      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div></div>
+      <div class="tb-box"><table><thead><tr><th>Username</th><th>ID</th><th>Створено</th><th>Дії</th></tr></thead><tbody id="users-tb"></tbody></table></div>
     </div>
 
     <!-- INDIVIDUAL REQUESTS -->
@@ -521,8 +528,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
 <script>
 let D=null, charts={}, curCourseId=null, uplFile=null, impFile=null;
-const TABS=['dash','courses','pending','individual','notify','stats','export','debug','settings'];
-const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',individual:'Індивідуальні розбори',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',debug:'Діагностика',settings:'Налаштування'};
+const TABS=['dash','courses','pending','users','individual','notify','stats','export','debug','settings'];
+const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',users:'Користувачі',individual:'Індивідуальні розбори',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',debug:'Діагностика',settings:'Налаштування'};
 const EI={start:'🚀',buy_request:'🛒',granted:'✅',video_view:'▶️',visit:'🌐',login_fail:'🔑',broadcast:'📢'};
 const COLORS=['#C8302A','#E8D8D5','#34d399','#fbbf24','#f472b6','#60a5fa','#f87171','#fb923c','#a3e635'];
 
@@ -540,6 +547,7 @@ function go(name){
   document.getElementById('tab-'+name).classList.add('on');
   document.getElementById('tt').textContent=TTITLES[name]||name;
   document.querySelectorAll('.ni')[TABS.indexOf(name)]?.classList.add('on');
+  if(name === 'users') loadUsers();
 }
 
 async function load(){
@@ -655,6 +663,31 @@ function renderIndividual(requests){
         <button class="btn btn-r" onclick="rejectIndividual(${r.id})">❌</button>
       </td>
     </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
+}
+
+async function loadUsers(){
+  const r = await fetch('/api/debug/db-state');
+  if(r.ok){
+    const d = await r.json();
+    renderUsers(d.buyerAccountsList);
+  }
+}
+
+function renderUsers(accounts){
+  document.getElementById('users-tb').innerHTML = accounts.map(a => `
+    <tr>
+      <td>${a.username}</td>
+      <td><code>${a.id}</code></td>
+      <td>${new Date(a.createdAt).toLocaleString('uk')}</td>
+      <td><button class="btn btn-r" onclick="deleteUser(${a.id}, '${a.username}')">🗑 Видалити</button></td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem">Немає користувачів</td></tr>';
+}
+
+async function deleteUser(id, username){
+  if(!confirm(`Видалити користувача "${username}"? Це також відкличе доступ до всіх курсів.`)) return;
+  await fetch(`/api/buyer-accounts/${id}`, {method: 'DELETE'});
+  toast('🗑 Користувача видалено');
+  loadUsers();
 }
 
 async function confirmIndividual(uid){
