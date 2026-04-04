@@ -349,7 +349,7 @@ async function loadCourses() {
     document.getElementById('stat-c').textContent = cs.length || '0';
     const grid = document.getElementById('courses-grid');
     if (!cs.length) {
-      grid.innerHTML = `<div class="courses-empty">Курси незабаром з'являться.<br>Слідкуйте у <a href="https://t.me/Clo3dua_bot" style="color:var(--acc2)">Telegram</a></div>`;
+      grid.innerHTML = `<div class="courses-empty">Курси незабаром з'являться.<br>Слідкуйте у <a href="/contacts.html" style="color:var(--acc2)">контактах</a></div>`;
     } else {
       grid.innerHTML = cs.map(c => {
         const link = c.freeAccess ? `/watch?course=${c.slug}` : `/course/${c.slug}`;
