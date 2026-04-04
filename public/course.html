@@ -202,13 +202,27 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
     </div>
     
     <div id="register-form" style="display:none">
-      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Створіть акаунт для запису на курс. На вашу пошту прийде квитанція після успішної оплати.</p>
-      <div class="fg"><label>Email *</label><input id="reg-username" type="email" placeholder="your@email.com"></div>
-      <div class="fg"><label>Пароль *</label><input id="reg-password" type="password" placeholder="Мінімум 4 символи"></div>
-      <div class="fg"><label>Повторіть пароль *</label><input id="reg-password2" type="password" placeholder="Повторіть пароль"></div>
-      <button class="btn-g" onclick="doRegister()" id="reg-btn">Зареєструватись</button>
-      <p class="gerr" id="reg-error" style="margin-top:1rem"></p>
-      <p style="margin-top:1rem;font-size:.8rem;color:var(--muted)">Вже є акаунт? <a href="#" onclick="switchTab('login');return false;" style="color:var(--acc)">Увійти</a></p>
+      <div id="reg-step1">
+        <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Створіть акаунт для запису на курс. На вашу пошту прийде квитанція після успішної оплати.</p>
+        <div class="fg"><label>Email *</label><input id="reg-username" type="email" placeholder="your@email.com"></div>
+        <div class="fg"><label>Пароль *</label><input id="reg-password" type="password" placeholder="Мінімум 4 символи"></div>
+        <div class="fg"><label>Повторіть пароль *</label><input id="reg-password2" type="password" placeholder="Повторіть пароль"></div>
+        <div class="fg" style="flex-direction:row;align-items:center;gap:.5rem;margin-top:.5rem">
+          <input type="checkbox" id="reg-privacy" style="width:auto;margin:0">
+          <label for="reg-privacy" style="font-size:.8rem;text-transform:none;letter-spacing:0;color:var(--txt);cursor:pointer">Я приймаю <a href="/politics.html" target="_blank" style="color:var(--acc)">Політику Конфіденційності</a></label>
+        </div>
+        <button class="btn-g" onclick="doRegisterStep1()" id="reg-btn">Отримати код</button>
+        <p class="gerr" id="reg-error" style="margin-top:1rem"></p>
+        <p style="margin-top:1rem;font-size:.8rem;color:var(--muted)">Вже є акаунт? <a href="#" onclick="switchTab('login');return false;" style="color:var(--acc)">Увійти</a></p>
+      </div>
+      
+      <div id="reg-step2" style="display:none">
+        <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Введіть 4-значний код, який ми надіслали на <strong id="reg-email-display" style="color:var(--acc)"></strong></p>
+        <div class="fg"><label>Код підтвердження *</label><input id="reg-code" type="text" placeholder="0000" maxlength="4" pattern="[0-9]{4}"></div>
+        <button class="btn-g" onclick="doRegisterStep2()" id="reg-verify-btn">Підтвердити</button>
+        <p class="gerr" id="reg-verify-error" style="margin-top:1rem"></p>
+        <p style="margin-top:1rem;font-size:.8rem;color:var(--muted)"><a href="#" onclick="backToRegStep1();return false;" style="color:var(--acc)">← Назад</a> | <a href="#" onclick="resendCode();return false;" style="color:var(--acc)">Надіслати код ще раз</a></p>
+      </div>
     </div>
   </div>
 </div>
@@ -221,7 +235,8 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 .tab.active{background:var(--acc);border-color:var(--acc);color:#fff}
 .fg{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.85rem}
 .fg label{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
-.fg input{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:.8rem;font-size:.95rem;color:var(--txt)}
+.fg input[type="text"],.fg input[type="email"],.fg input[type="password"]{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:.8rem;font-size:.95rem;color:var(--txt)}
+.fg input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--acc)}
 .fg input:focus{outline:none;border-color:var(--acc)}
 .fg input::placeholder{color:var(--muted);opacity:.5}
 .mbox .btn-g{width:100%;padding:.85rem;background:var(--acc);border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s}
@@ -235,6 +250,7 @@ let currentBuyer = null;
 let isProcessingPayment = false;
 let isProcessingAuth = false;
 let isFree = false;
+let regTempData = null;
 
 function switchTab(tab) {
   document.getElementById('tab-login').classList.toggle('active', tab === 'login');
@@ -243,6 +259,11 @@ function switchTab(tab) {
   document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
   document.getElementById('login-error').textContent = '';
   document.getElementById('reg-error').textContent = '';
+  document.getElementById('reg-verify-error').textContent = '';
+  // Reset registration steps
+  document.getElementById('reg-step1').style.display = 'block';
+  document.getElementById('reg-step2').style.display = 'none';
+  regTempData = null;
 }
 function openLoginModal(){ document.getElementById('login-modal').style.display='flex'; switchTab('login'); }
 function closeLoginModal(){ document.getElementById('login-modal').style.display='none'; isProcessingAuth = false; }
@@ -273,24 +294,54 @@ async function doLogin(){
     else{document.getElementById('login-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
   }catch(e){document.getElementById('login-error').textContent=e.message;btn.disabled=false;btn.textContent='Увійти';isProcessingAuth=false;}
 }
-async function doRegister(){
+async function doRegisterStep1(){
   if (isProcessingAuth) return;
   const username=document.getElementById('reg-username').value.trim();
   const pwd=document.getElementById('reg-password').value;
   const pwd2=document.getElementById('reg-password2').value;
+  const privacyChecked=document.getElementById('reg-privacy').checked;
   const btn=document.getElementById('reg-btn');
+  
   if(!username){document.getElementById('reg-error').textContent='Введіть email';return;}
   if(pwd.length<4){document.getElementById('reg-error').textContent='Пароль мінімум 4 символи';return;}
   if(pwd!==pwd2){document.getElementById('reg-error').textContent='Паролі не співпадають';return;}
+  if(!privacyChecked){document.getElementById('reg-error').textContent='Прийміть Політику Конфіденційності';return;}
+  
   isProcessingAuth = true;
-  btn.disabled=true; btn.textContent='Зачекайте...';
+  btn.disabled=true; btn.textContent='Надсилаємо код...';
   try{
-    const r=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
+    const r=await fetch('/api/buyer/register-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
+    if(r.ok){
+      regTempData = {username, password: pwd};
+      document.getElementById('reg-email-display').textContent = username;
+      document.getElementById('reg-step1').style.display = 'none';
+      document.getElementById('reg-step2').style.display = 'block';
+      document.getElementById('reg-code').focus();
+      isProcessingAuth=false;
+      btn.disabled=false;
+      btn.textContent='Отримати код';
+    }
+    else{document.getElementById('reg-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Отримати код';isProcessingAuth=false;}
+  }catch(e){document.getElementById('reg-error').textContent=e.message;btn.disabled=false;btn.textContent='Отримати код';isProcessingAuth=false;}
+}
+
+async function doRegisterStep2(){
+  if (isProcessingAuth || !regTempData) return;
+  const code=document.getElementById('reg-code').value.trim();
+  const btn=document.getElementById('reg-verify-btn');
+  
+  if(!code || code.length !== 4){document.getElementById('reg-verify-error').textContent='Введіть 4-значний код';return;}
+  
+  isProcessingAuth = true;
+  btn.disabled=true; btn.textContent='Перевіряємо...';
+  try{
+    const r=await fetch('/api/buyer/register-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:regTempData.username,password:regTempData.password,code})}).then(x=>x.json());
     if(r.ok){
       currentBuyer=r;
       isProcessingAuth=false;
       btn.disabled=false;
-      btn.textContent='Зареєструватись';
+      btn.textContent='Підтвердити';
+      regTempData = null;
       closeLoginModal();
       // After registration, get full user data including courses
       initMe().then(user => {
@@ -300,8 +351,29 @@ async function doRegister(){
         setTimeout(initiatePayment, 300);
       });
     }
-    else{document.getElementById('reg-error').textContent=r.error||'Помилка';btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
-  }catch(e){document.getElementById('reg-error').textContent=e.message;btn.disabled=false;btn.textContent='Зареєструватись';isProcessingAuth=false;}
+    else{document.getElementById('reg-verify-error').textContent=r.error||'Невірний код';btn.disabled=false;btn.textContent='Підтвердити';isProcessingAuth=false;}
+  }catch(e){document.getElementById('reg-verify-error').textContent=e.message;btn.disabled=false;btn.textContent='Підтвердити';isProcessingAuth=false;}
+}
+
+function backToRegStep1(){
+  document.getElementById('reg-step1').style.display = 'block';
+  document.getElementById('reg-step2').style.display = 'none';
+  document.getElementById('reg-verify-error').textContent = '';
+  document.getElementById('reg-code').value = '';
+}
+
+async function resendCode(){
+  if (!regTempData) return;
+  try{
+    const r=await fetch('/api/buyer/register-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:regTempData.username,password:regTempData.password})}).then(x=>x.json());
+    if(r.ok){
+      document.getElementById('reg-verify-error').textContent='';
+      document.getElementById('reg-verify-error').style.color='#4CAF50';
+      document.getElementById('reg-verify-error').textContent='Код надіслано повторно';
+      setTimeout(()=>{document.getElementById('reg-verify-error').textContent='';document.getElementById('reg-verify-error').style.color='var(--acc)';},3000);
+    }
+    else{document.getElementById('reg-verify-error').textContent=r.error||'Помилка';}
+  }catch(e){document.getElementById('reg-verify-error').textContent=e.message;}
 }
 async function initMe(){ try{ const r=await fetch('/api/buyer/me').then(x=>x.json()); if(r.ok){currentBuyer=r;updatePaymentButtons();return r;} }catch{} return null; }
 
@@ -336,9 +408,10 @@ function updatePaymentButtons() {
 
 document.getElementById('login-username').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('login-password').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
-document.getElementById('reg-username').addEventListener('keydown', e=>{if(e.key==='Enter')doRegister();});
-document.getElementById('reg-password').addEventListener('keydown', e=>{if(e.key==='Enter')doRegister();});
-document.getElementById('reg-password2').addEventListener('keydown', e=>{if(e.key==='Enter')doRegister();});
+document.getElementById('reg-username').addEventListener('keydown', e=>{if(e.key==='Enter')doRegisterStep1();});
+document.getElementById('reg-password').addEventListener('keydown', e=>{if(e.key==='Enter')doRegisterStep1();});
+document.getElementById('reg-password2').addEventListener('keydown', e=>{if(e.key==='Enter')doRegisterStep1();});
+document.getElementById('reg-code').addEventListener('keydown', e=>{if(e.key==='Enter')doRegisterStep2();});
 
 const slug = location.pathname.split('/course/')[1];
 if (!slug) { document.getElementById('ch-title').textContent = 'Курс не знайдено'; document.getElementById('pl').classList.add('out'); }
