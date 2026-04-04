@@ -129,7 +129,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
       <div class="ch-pills">
         <span class="ch-pill">CLO 3D</span>
         <span class="ch-pill">🎬 <span id="ch-vc">0</span> уроків</span>
-        <span class="ch-pill">🔒Якісний контент</span>
+        <span class="ch-pill">🔒 Навчальна програма</span>
         <span class="ch-pill">Доступ 30 днів</span>
       </div>
     </div>
@@ -137,7 +137,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
       <div class="ch-price" id="ch-price"></div>
       <div class="ch-price-note" id="ch-price-note">Одноразова оплата</div>
       <ul class="ch-includes" id="ch-includes"></ul>
-      <button class="btn-watch" id="btn-pay" onclick="initiatePayment()" style="background:var(--acc);color:white;border:none">Оплатити навчання<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div></button>
+      <button class="btn-watch" id="btn-pay" onclick="initiatePayment()" style="background:var(--acc);color:white;border:none">Записатися на курс<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div></button>
       <a href="/watch" class="btn-watch" style="display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.75rem 1.75rem;margin-top:.75rem;border:1.5px solid var(--brd);border-radius:100px;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;color:var(--muted);text-decoration:none;transition:.2s;letter-spacing:.08em">
         ▶️ Продовжити перегляд
       </a>
@@ -148,7 +148,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 <!-- VIDEO LIST -->
 <section class="vl-sec">
   <div class="sec-inner">
-    <div class="sec-eyebrow rv">Програма</div>
+    <div class="sec-eyebrow rv">Навчальна програма</div>
     <div class="sec-title rv">Зміст курсу</div>
     <div class="vl-list rv" id="vl-list">
       <div style="padding:1.5rem;color:var(--muted)">Завантаження...</div>
@@ -170,7 +170,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
   <div class="sec-inner">
     <div class="buy-title rv">Розпочинайте навчання</div>
     <div class="buy-price rv" id="buy-price"></div>
-    <p class="buy-note rv">Одноразова оплата · Захищений контент</p>
+    <p class="buy-note rv">Одноразова оплата · Навчальна програма</p>
   </div>
 </section>
 
@@ -193,8 +193,8 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
     </div>
     
     <div id="login-form">
-      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Увійдіть, щоб придбати курс</p>
-      <div class="fg"><label>Юзернейм</label><input id="login-username" placeholder="username"></div>
+      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Увійдіть, щоб записатися на курс</p>
+      <div class="fg"><label>Email</label><input id="login-username" type="email" placeholder="your@email.com"></div>
       <div class="fg"><label>Пароль</label><input id="login-password" type="password" placeholder="Пароль"></div>
       <button class="btn-g" onclick="doLogin()" id="login-btn">Увійти</button>
       <p class="gerr" id="login-error" style="margin-top:1rem"></p>
@@ -202,8 +202,8 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
     </div>
     
     <div id="register-form" style="display:none">
-      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Створіть акаунт для покупки</p>
-      <div class="fg"><label>Юзернейм *</label><input id="reg-username" placeholder="username"></div>
+      <p style="color:var(--muted);font-size:.85rem;margin:.5rem 0 1.5rem">Створіть акаунт для запису на курс. На вашу пошту прийде квитанція після успішної оплати.</p>
+      <div class="fg"><label>Email *</label><input id="reg-username" type="email" placeholder="your@email.com"></div>
       <div class="fg"><label>Пароль *</label><input id="reg-password" type="password" placeholder="Мінімум 4 символи"></div>
       <div class="fg"><label>Повторіть пароль *</label><input id="reg-password2" type="password" placeholder="Повторіть пароль"></div>
       <button class="btn-g" onclick="doRegister()" id="reg-btn">Зареєструватись</button>
@@ -251,7 +251,7 @@ async function doLogin(){
   const username=document.getElementById('login-username').value.trim();
   const pwd=document.getElementById('login-password').value;
   const btn=document.getElementById('login-btn');
-  if(!username||!pwd){document.getElementById('login-error').textContent='Введіть юзернейм та пароль';return;}
+  if(!username||!pwd){document.getElementById('login-error').textContent='Введіть email та пароль';return;}
   isProcessingAuth = true;
   btn.disabled=true; btn.textContent='Зачекайте...';
   try{
@@ -279,7 +279,7 @@ async function doRegister(){
   const pwd=document.getElementById('reg-password').value;
   const pwd2=document.getElementById('reg-password2').value;
   const btn=document.getElementById('reg-btn');
-  if(!username){document.getElementById('reg-error').textContent='Введіть юзернейм';return;}
+  if(!username){document.getElementById('reg-error').textContent='Введіть email';return;}
   if(pwd.length<4){document.getElementById('reg-error').textContent='Пароль мінімум 4 символи';return;}
   if(pwd!==pwd2){document.getElementById('reg-error').textContent='Паролі не співпадають';return;}
   isProcessingAuth = true;
@@ -320,7 +320,7 @@ function updatePaymentButtons() {
     }
   } else {
     if (btn) {
-      btn.innerHTML = 'Придбати доступ<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
+      btn.innerHTML = 'Записатися на курс<div class="payment-icons"><img src="/img/googlepay.png" alt="Google Pay"><img src="/img/applepay.png" alt="Apple Pay"></div>';
       btn.onclick = initiatePayment;
       btn.className = 'btn-watch';
       btn.style.background = 'var(--acc)'; btn.style.color = 'white'; btn.style.border = 'none';
