@@ -8,30 +8,8 @@ const SITE_URL = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const MONO_WEBHOOK_STRICT = process.env.MONO_WEBHOOK_STRICT === '1';
 const WEBHOOK_LOG_MAX = Math.min(parseInt(process.env.MONO_WEBHOOK_LOG_MAX || '120', 10) || 120, 500);
 
-// ─── Fetch invoice status from Monobank ──────────────────────────────────────
-async function fetchInvoiceStatus(invoiceId) {
-  const token = getMonoToken();
-  if (!token || !invoiceId) return null;
-  
-  try {
-    const response = await fetch(
-      `https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${encodeURIComponent(invoiceId)}`,
-      { headers: { 'X-Token': token } }
-    );
-    const data = await response.json();
-    if (response.ok && data.invoiceId) {
-      return data;
-    }
-    console.warn('[monobank] Invoice status fetch failed:', data.errText || data.errCode);
-    return null;
-  } catch (e) {
-    console.error('[monobank] Invoice status error:', e.message);
-    return null;
-  }
-}
-
 // ─── Simple email via SMTP (nodemailer) ──────────────────────────────────────
-async function sendPaymentEmail(toEmail, courseTitle, courseSlug, invoiceId) {
+async function sendPaymentEmail(toEmail, courseTitle, courseSlug) {
   try {
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
@@ -46,32 +24,6 @@ async function sendPaymentEmail(toEmail, courseTitle, courseSlug, invoiceId) {
     
     const watchUrl = `${SITE_URL}/watch?course=${courseSlug}`;
     
-    // Fetch payment receipt details
-    let receiptHtml = '';
-    if (invoiceId) {
-      const invoiceData = await fetchInvoiceStatus(invoiceId);
-      if (invoiceData && invoiceData.paymentInfo) {
-        const amount = ((invoiceData.amount || 0) / 100).toFixed(2);
-        const date = invoiceData.createdDate ? new Date(invoiceData.createdDate).toLocaleString('uk-UA') : '—';
-        const card = invoiceData.paymentInfo.maskedPan || '—';
-        const approvalCode = invoiceData.paymentInfo.approvalCode || '—';
-        const reference = invoiceData.reference || '—';
-        
-        receiptHtml = `
-          <div style="margin-top:32px;padding-top:24px;border-top:1px solid #2A2020">
-            <h4 style="color:#C8302A;margin-bottom:16px">Квитанція про оплату</h4>
-            <table style="width:100%;color:#E8D8D5;font-size:14px">
-              <tr><td style="padding:6px 0;color:#9A8A8A">Сума:</td><td style="padding:6px 0;text-align:right">${amount} грн</td></tr>
-              <tr><td style="padding:6px 0;color:#9A8A8A">Дата:</td><td style="padding:6px 0;text-align:right">${date}</td></tr>
-              <tr><td style="padding:6px 0;color:#9A8A8A">Картка:</td><td style="padding:6px 0;text-align:right">${card}</td></tr>
-              <tr><td style="padding:6px 0;color:#9A8A8A">Код авторизації:</td><td style="padding:6px 0;text-align:right">${approvalCode}</td></tr>
-              <tr><td style="padding:6px 0;color:#9A8A8A">Референс:</td><td style="padding:6px 0;text-align:right">${reference}</td></tr>
-            </table>
-          </div>
-        `;
-      }
-    }
-    
     await transporter.sendMail({
       from: `"Vitaliia 3D Fashion Lab" <${process.env.SMTP_USER || 'vitaliia.3dlab@gmail.com'}>`,
       to: toEmail,
@@ -84,7 +36,6 @@ async function sendPaymentEmail(toEmail, courseTitle, courseSlug, invoiceId) {
           <p>Ваш доступ до курсу <strong style="color:#E8D8D5">${courseTitle}</strong> активовано.</p>
           <p style="margin-top:16px">Для перегляду курсу натисніть кнопку:</p>
           <a href="${watchUrl}" style="display:inline-block;margin-top:16px;padding:12px 28px;background:#C8302A;color:#fff;text-decoration:none;border-radius:100px;font-weight:700">Почати перегляд</a>
-          ${receiptHtml}
           <p style="margin-top:24px;color:#9A8A8A;font-size:12px">Якщо у вас виникли питання — пишіть на vitaliia.3dlab@gmail.com</p>
         </div>
       `,
@@ -253,7 +204,7 @@ function mountMonopayWebhook(webhookRouter) {
         d.pendingPayments = (d.pendingPayments || []).filter(x => x.invoiceId !== payment.invoiceId);
       });
       if (emailData) {
-        setImmediate(() => sendPaymentEmail(emailData.email, emailData.title, emailData.slug, payment.invoiceId));
+        setImmediate(() => sendPaymentEmail(emailData.email, emailData.title, emailData.slug));
       }
     }
 
