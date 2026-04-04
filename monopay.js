@@ -1,11 +1,48 @@
 // Monobank: вебхук (raw body) окремо від JSON API — див. server.js порядок middleware.
 const express = require('express');
 const crypto = require('crypto');
+const https = require('https');
 const db = require('./db');
 
 const SITE_URL = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const MONO_WEBHOOK_STRICT = process.env.MONO_WEBHOOK_STRICT === '1';
 const WEBHOOK_LOG_MAX = Math.min(parseInt(process.env.MONO_WEBHOOK_LOG_MAX || '120', 10) || 120, 500);
+
+// ─── Simple email via SMTP (nodemailer) ──────────────────────────────────────
+async function sendPaymentEmail(toEmail, courseTitle, courseSlug) {
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER || 'vitaliia.3dlab@gmail.com',
+        pass: process.env.SMTP_PASS || '',
+      },
+    });
+    const watchUrl = `${SITE_URL}/watch?course=${courseSlug}`;
+    await transporter.sendMail({
+      from: `"Vitaliia 3D Fashion Lab" <${process.env.SMTP_USER || 'vitaliia.3dlab@gmail.com'}>`,
+      to: toEmail,
+      subject: `✅ Оплата підтверджена — ${courseTitle}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#080404;color:#F5F2F0;padding:32px;border-radius:12px">
+          <h2 style="color:#C8302A;margin-bottom:8px">Vitaliia 3D Fashion Lab</h2>
+          <p style="color:#9A8A8A;font-size:13px;margin-bottom:24px">CLO 3D українською</p>
+          <h3 style="margin-bottom:16px">Дякуємо за оплату!</h3>
+          <p>Ваш доступ до курсу <strong style="color:#E8D8D5">${courseTitle}</strong> активовано.</p>
+          <p style="margin-top:16px">Для перегляду курсу перейдіть за посиланням:</p>
+          <a href="${watchUrl}" style="display:inline-block;margin-top:16px;padding:12px 28px;background:#C8302A;color:#fff;text-decoration:none;border-radius:100px;font-weight:700">${watchUrl}</a>
+          <p style="margin-top:24px;color:#9A8A8A;font-size:12px">Якщо у вас виникли питання — пишіть на vitaliia.3dlab@gmail.com</p>
+        </div>
+      `,
+    });
+    console.log('[email] Sent payment confirmation to:', toEmail);
+  } catch (e) {
+    console.warn('[email] Failed to send:', e.message);
+  }
+}
 
 function getMonoToken() {
   const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
@@ -156,6 +193,12 @@ function mountMonopayWebhook(webhookRouter) {
             if (!c.buyers) c.buyers = [];
             c.buyers.push({ id: parseInt(p.buyerId, 10), name: '—', grantedAt: Date.now() });
             console.log('[monobank] Access granted buyer', p.buyerId, 'course', p.courseId);
+          }
+          // Send email receipt
+          const buyer = d.buyerAccounts?.find(a => a.id === parseInt(p.buyerId, 10));
+          const email = buyer?.email || buyer?.username;
+          if (email && c) {
+            setImmediate(() => sendPaymentEmail(email, c.title, c.slug));
           }
         }
         d.pendingPayments = (d.pendingPayments || []).filter(x => x.invoiceId !== payment.invoiceId);
