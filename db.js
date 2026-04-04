@@ -1,18 +1,21 @@
 /**
  * db_v2.js — ULTRA-OPTIMIZED for 0.1 CPU / 512MB RAM
- * 
- * Changes from v1:
- * 1. Stats arrays hard-capped at 500 (was 2000)
- * 2. Save debounce increased to 5s (was 2s)
- * 3. Stats flush every 30s (was 10s) 
- * 4. writeFile is async (non-blocking) instead of writeFileSync
- * 5. Memory pressure monitoring — auto-trim stats if RAM > 400MB
- * 6. Compact JSON (no pretty-print) to save CPU on stringify
+ * Storage: Cloudflare R2 (primary) + local /tmp fallback
  */
 
 const fs   = require('fs');
 const path = require('path');
-const DB   = path.join(__dirname, 'data', 'db.json');
+
+// Use /tmp for ephemeral local cache (Render wipes disk on restart)
+const DB_LOCAL = '/tmp/vfl_db_cache.json';
+const R2_DB_KEY = 'db/db.json';
+
+// Lazy-load r2 to avoid circular deps
+let _r2 = null;
+function getR2() {
+  if (!_r2) _r2 = require('./r2');
+  return _r2;
+}
 
 const DEF = () => ({
   courses:  [],
@@ -24,21 +27,18 @@ const DEF = () => ({
 let _cache = null;
 let _saveTimer = null;
 let _saving = false;
-const SAVE_DELAY = 5000; // 5s (було 2s)
+const SAVE_DELAY = 5000;
 
-// ═══ Stats limits ═══
-const MAX_EVENTS = 500;        // було 2000
+const MAX_EVENTS = 500;
 const MAX_PROGRESS_ENTRIES = 500;
 
 function _loadFromDisk() {
   try {
-    if (!fs.existsSync(DB)) {
-      fs.mkdirSync(path.dirname(DB), { recursive: true });
+    if (!fs.existsSync(DB_LOCAL)) {
       const d = DEF();
-      fs.writeFileSync(DB, JSON.stringify(d));
       return d;
     }
-    const raw = JSON.parse(fs.readFileSync(DB, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(DB_LOCAL, 'utf8'));
     if (!raw.courses) {
       raw.courses = [];
       if (raw.course?.title) {
@@ -51,10 +51,8 @@ function _loadFromDisk() {
     }
     if (!raw.progress) raw.progress = {};
     if (!raw.stats) raw.stats = DEF().stats;
-    // Підрізаємо масиви при завантаженні
     if (raw.stats.botEvents?.length > MAX_EVENTS) raw.stats.botEvents = raw.stats.botEvents.slice(-MAX_EVENTS);
     if (raw.stats.webEvents?.length > MAX_EVENTS) raw.stats.webEvents = raw.stats.webEvents.slice(-MAX_EVENTS);
-    // Підрізаємо прогрес
     _trimProgress(raw);
     return raw;
   } catch { return DEF(); }
@@ -63,29 +61,58 @@ function _loadFromDisk() {
 function _trimProgress(d) {
   const keys = Object.keys(d.progress || {});
   if (keys.length <= MAX_PROGRESS_ENTRIES) return;
-  // Видаляємо найстаріші
   const sorted = keys.map(k => ({ k, ts: d.progress[k].lastTs || 0 })).sort((a, b) => a.ts - b.ts);
   const toRemove = sorted.slice(0, keys.length - MAX_PROGRESS_ENTRIES);
   for (const { k } of toRemove) delete d.progress[k];
 }
 
+// ─── R2 persistence ──────────────────────────────────────────────────────────
+
+async function loadFromR2() {
+  const r2 = getR2();
+  if (!r2.configured) return null;
+  try {
+    const data = await r2.downloadFile(R2_DB_KEY);
+    if (!data) return null;
+    const parsed = JSON.parse(data);
+    // Write to local cache
+    fs.writeFileSync(DB_LOCAL, data);
+    console.log('[db] Loaded from R2, courses:', parsed.courses?.length || 0);
+    return parsed;
+  } catch (e) {
+    console.warn('[db] R2 load error:', e.message);
+    return null;
+  }
+}
+
+async function saveToR2(data) {
+  const r2 = getR2();
+  if (!r2.configured) return;
+  try {
+    const json = JSON.stringify(data);
+    await r2.uploadBuffer(R2_DB_KEY, Buffer.from(json), 'application/json');
+    console.log('[db] Saved to R2');
+  } catch (e) {
+    console.warn('[db] R2 save error:', e.message);
+  }
+}
+
 function _scheduleSave() {
   if (_saveTimer) return;
-  _saveTimer = setTimeout(() => {
+  _saveTimer = setTimeout(async () => {
     _saveTimer = null;
     if (!_cache || _saving) return;
     _saving = true;
     try {
-      fs.mkdirSync(path.dirname(DB), { recursive: true });
-      // Async write — не блокуємо event loop
-      const data = JSON.stringify(_cache); // compact — без pretty print
-      fs.writeFile(DB, data, (err) => {
-        _saving = false;
-        if (err) console.warn('[db] save error:', err.message);
-      });
+      const data = JSON.stringify(_cache);
+      // Save to local cache
+      fs.writeFileSync(DB_LOCAL, data);
+      // Save to R2
+      await saveToR2(_cache);
     } catch (e) {
-      _saving = false;
       console.warn('[db] save error:', e.message);
+    } finally {
+      _saving = false;
     }
   }, SAVE_DELAY);
 }
@@ -94,9 +121,10 @@ function flushSync() {
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
   if (_cache) {
     try {
-      fs.mkdirSync(path.dirname(DB), { recursive: true });
-      fs.writeFileSync(DB, JSON.stringify(_cache));
+      fs.writeFileSync(DB_LOCAL, JSON.stringify(_cache));
     } catch (e) { console.warn('[db] flush error:', e.message); }
+    // Async R2 save (best effort)
+    saveToR2(_cache).catch(() => {});
   }
 }
 
@@ -116,6 +144,21 @@ function set(fn) {
 
 function reload() {
   _cache = _loadFromDisk();
+  return _cache;
+}
+
+// Initialize: try R2 first, fallback to local
+async function init() {
+  const fromR2 = await loadFromR2();
+  if (fromR2) {
+    _cache = fromR2;
+    if (!_cache.courses) _cache.courses = [];
+    if (!_cache.progress) _cache.progress = {};
+    if (!_cache.stats) _cache.stats = DEF().stats;
+    _trimProgress(_cache);
+  } else {
+    _cache = _loadFromDisk();
+  }
   return _cache;
 }
 
@@ -143,9 +186,6 @@ function markWatched(uid, cid, idx) {
   return getProgress(uid, cid);
 }
 
-// ═══════════════════════════════════════════════════════════
-// BATCHED STATS — flush кожні 30 секунд (було 10)
-// ═══════════════════════════════════════════════════════════
 let _statsBotBuffer = [];
 let _statsWebBuffer = [];
 let _statsFlushTimer = null;
@@ -177,7 +217,6 @@ function _ensureStatsFlush() {
   if (_statsFlushTimer) return;
   _statsFlushTimer = setInterval(() => {
     _flushStats();
-    // Перевірка RAM
     _checkMemoryPressure();
     if (_statsBotBuffer.length === 0 && _statsWebBuffer.length === 0) {
       clearInterval(_statsFlushTimer);
@@ -186,9 +225,6 @@ function _ensureStatsFlush() {
   }, STATS_FLUSH_INTERVAL);
 }
 
-// ═══════════════════════════════════════════════════════════
-// ОПТИМІЗАЦІЯ: Memory pressure — якщо RAM > 400MB, скидаємо кеші
-// ═══════════════════════════════════════════════════════════
 function _checkMemoryPressure() {
   const rss = process.memoryUsage().rss;
   if (rss > 400 * 1024 * 1024) {
@@ -198,7 +234,6 @@ function _checkMemoryPressure() {
       if (_cache.stats.webEvents?.length > 200) _cache.stats.webEvents = _cache.stats.webEvents.slice(-200);
     }
     _trimProgress(_cache || {});
-    // Підказка GC
     if (global.gc) global.gc();
   }
 }
@@ -213,8 +248,7 @@ function trackWeb(type, ip, reqPath, data = {}) {
   _ensureStatsFlush();
 }
 
-// Graceful shutdown
 process.on('SIGTERM', () => { _flushStats(); flushSync(); process.exit(0); });
 process.on('SIGINT', () => { _flushStats(); flushSync(); process.exit(0); });
 
-module.exports = { connect, get, set, getCourse, slugify, newId, trackBot, trackWeb, getProgress, markWatched, flushSync, reload };
+module.exports = { connect, get, set, getCourse, slugify, newId, trackBot, trackWeb, getProgress, markWatched, flushSync, reload, init };
