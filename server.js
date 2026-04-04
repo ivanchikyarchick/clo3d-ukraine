@@ -421,22 +421,22 @@ function verifyPassword(pwd, hash) { return hashPassword(pwd) === hash; }
 
 app.post('/api/buyer/register', (req, res) => {
   const { username, password } = req.body;
-  if (!username || username.trim().length < 3) { res.status(400).json({ ok: false, error: 'Юзернейм мінімум 3 символи' }); return; }
+  // username field now holds email
+  const email = (username || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ ok: false, error: 'Введіть коректний email' }); return; }
   if (!password || password.length < 4) { res.status(400).json({ ok: false, error: 'Пароль мінімум 4 символи' }); return; }
-  const nameClean = username.trim().slice(0, 30).toLowerCase();
-  console.log('[register] username:', nameClean, 'hash:', hashPassword(password));
-  const d = db.get();
+  const nameClean = email.slice(0, 100);
+  console.log('[register] email:', nameClean);
   let buyer = _buyerUsers.get(nameClean);
-  if (buyer) { res.status(400).json({ ok: false, error: 'Такий юзернейм вже є' }); return; }
+  if (buyer) { res.status(400).json({ ok: false, error: 'Акаунт з таким email вже існує' }); return; }
   const newUid = Date.now();
   const newHash = hashPassword(password);
   _buyerUsers.set(nameClean, { id: newUid, password: newHash });
   db.set(d => {
     if (!d.buyerAccounts) d.buyerAccounts = [];
-    d.buyerAccounts.push({ id: newUid, username: nameClean, password: newHash, createdAt: Date.now() });
+    d.buyerAccounts.push({ id: newUid, username: nameClean, email: nameClean, password: newHash, createdAt: Date.now() });
     console.log('[register] Added buyer account:', newUid, nameClean, 'total accounts:', d.buyerAccounts.length);
   });
-  // Force immediate save to ensure data is available across restarts
   db.flushSync();
   req.session.buyerId = newUid;
   req.session.buyerName = nameClean;
@@ -447,21 +447,19 @@ app.post('/api/buyer/register', (req, res) => {
 
 app.post('/api/buyer/login-web', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) { res.status(400).json({ ok: false, error: 'Введіть юзернейм та пароль' }); return; }
-  const nameClean = username.trim().slice(0, 30).toLowerCase();
-  console.log('[login-web] attempting:', nameClean, 'pwd hash:', hashPassword(password));
+  if (!username || !password) { res.status(400).json({ ok: false, error: 'Введіть email та пароль' }); return; }
+  const nameClean = username.trim().slice(0, 100).toLowerCase();
+  console.log('[login-web] attempting:', nameClean);
   let buyer = _buyerUsers.get(nameClean);
   if (!buyer) {
     const d = db.get();
     console.log('[login-web] checking db.buyerAccounts:', d.buyerAccounts?.length, 'accounts');
-    // Case-insensitive search
-    const acc = d.buyerAccounts?.find(a => a.username?.toLowerCase() === nameClean);
+    const acc = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
     if (acc) { buyer = acc; _buyerUsers.set(nameClean, acc); console.log('[login-web] found in db:', acc.id, acc.username); }
   }
-  if (!buyer) { console.log('[login-web] buyer not found'); res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
+  if (!buyer) { console.log('[login-web] buyer not found'); res.status(401).json({ ok: false, error: 'Невірний email або пароль' }); return; }
   const pwdMatch = verifyPassword(password, buyer.password);
-  console.log('[login-web] pwd match:', pwdMatch, 'input hash:', hashPassword(password), 'stored hash:', buyer.password);
-  if (!pwdMatch) { res.status(401).json({ ok: false, error: 'Невірний юзернейм або пароль' }); return; }
+  if (!pwdMatch) { res.status(401).json({ ok: false, error: 'Невірний email або пароль' }); return; }
   req.session.buyerId = buyer.id;
   req.session.buyerName = nameClean;
   console.log('[login-web] Session set for buyer:', buyer.id, nameClean);
@@ -845,28 +843,20 @@ app.get('/api/progress/all/:cid', adm, (req, res) => {
   }));
 });
 
-// Notifications (lazy-load bot)
+// Notifications (bot removed — use email notifications instead)
 app.post('/api/notify/new-video/:cid', adm, async (req, res) => {
-  const c = db.getCourse(req.params.cid);
-  if (!c) { res.status(404).json({ ok: false, error: 'Курс не знайдено' }); return; }
-  try {
-    const { notifyNewContent } = require('./bot');
-    const lastVid = c.videos?.[c.videos.length - 1];
-    const text = req.body.text || `Новий урок у «${c.title}»!\n\n${lastVid ? `${lastVid.title}\n\n` : ''}Повернись та продовж навчання: /start`;
-    res.json({ ok: true, ...await notifyNewContent(req.params.cid, text) });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  res.json({ ok: true, sent: 0, note: 'Bot notifications disabled' });
 });
 
 app.post('/api/notify/remind/:cid', adm, async (req, res) => {
-  try { await require('./bot').sendReminders(req.params.cid); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  res.json({ ok: true, note: 'Bot notifications disabled' });
 });
 
 // Buyers management
 app.post('/api/courses/:cid/grant/:uid', adm, (req, res) => {
   const uid = parseInt(req.params.uid), cid = req.params.cid;
   db.set(d => { const c = d.courses.find(x => x.id === cid); if (!c) return; if (!c.buyers) c.buyers = []; if (!c.buyers.some(b => b.id === uid)) { const p = c.pending?.find(b => b.id === uid); c.buyers.push({ id: uid, name: p?.name || '—', username: p?.username || '', grantedAt: Date.now() }); } c.pending = (c.pending || []).filter(b => b.id !== uid); });
-  try { require('./bot').grantAccess(uid, '', '', cid); } catch { }
+  try { /* bot removed */ } catch { }
   invalidateCache();
   res.json({ ok: true });
 });
@@ -874,7 +864,7 @@ app.post('/api/courses/:cid/grant/:uid', adm, (req, res) => {
 app.post('/api/courses/:cid/revoke/:uid', adm, (req, res) => {
   const uid = parseInt(req.params.uid);
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.buyers = (c.buyers || []).filter(b => b.id !== uid); });
-  try { require('./bot').bot.sendMessage(uid, 'Ваш доступ відкликано.'); } catch { }
+  try { /* bot removed */ } catch { }
   invalidateCache();
   res.json({ ok: true });
 });
@@ -882,7 +872,7 @@ app.post('/api/courses/:cid/revoke/:uid', adm, (req, res) => {
 app.delete('/api/courses/:cid/pending/:uid', adm, (req, res) => {
   const uid = parseInt(req.params.uid);
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.pending = (c.pending || []).filter(b => b.id !== uid); });
-  try { require('./bot').bot.sendMessage(uid, 'Ваш запит відхилено.'); } catch { }
+  try { /* bot removed */ } catch { }
   res.json({ ok: true });
 });
 
@@ -929,7 +919,7 @@ app.post('/api/individual/confirm/:uid', adm, (req, res) => {
     const r = d.individualRequests.find(x => x.id === uid);
     if (r) r.status = 'granted';
   });
-  try { require('./bot').bot.sendMessage(uid, '🎉 Ваш індивідуальний розбір підтверджено! Очікуйте на зв\'язок для узгодження часу.'); } catch { }
+  try { /* bot removed */ } catch { }
   res.json({ ok: true });
 });
 
@@ -939,7 +929,7 @@ app.post('/api/individual/reject/:uid', adm, (req, res) => {
     if (!d.individualRequests) return;
     d.individualRequests = d.individualRequests.filter(x => x.id !== uid);
   });
-  try { require('./bot').bot.sendMessage(uid, 'На жаль, вашу заявку на індивідуальний розбір відхилено.'); } catch { }
+  try { /* bot removed */ } catch { }
   res.json({ ok: true });
 });
 
@@ -957,12 +947,9 @@ app.delete('/api/buyer-accounts/:id', adm, (req, res) => {
   res.json({ ok: true });
 });
 
-// Broadcast
+// Broadcast (bot removed)
 app.post('/api/broadcast', adm, async (req, res) => {
-  const { message, cid } = req.body;
-  if (!message) { res.status(400).json({ ok: false, error: 'Немає тексту' }); return; }
-  try { res.json({ ok: true, ...await require('./bot').doBroadcast(message, cid || null) }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  res.json({ ok: false, error: 'Bot notifications disabled' });
 });
 
 // Export/Import
@@ -1004,111 +991,23 @@ app.post('/api/import', adm, uploadImport.single('file'), (req, res) => {
   } catch (e) { try { fs.unlinkSync(req.file.path); } catch { } res.status(400).json({ ok: false, error: e.message }); }
 });
 
-// ── AUTO-SYNC (db.json → Telegram) ───────────────────────────────────────────
-const SYNC_STATE_KEY = '__syncMsgId';
-let syncEnabled = false;
-let syncDebounce = null;
-let lastSyncHash = '';
+// ── AUTO-SYNC (db.json → R2) — handled by db.js save logic ──────────────────
 
-function dbJsonBuffer() { return Buffer.from(JSON.stringify(db.get(), null, 2), 'utf8'); }
-function simpleHash(buf) { let h = 5381; for (const b of buf) h = ((h << 5) + h) ^ b; return (h >>> 0).toString(36); }
-
-function tgApiJson(method, body) {
-  return new Promise((resolve, reject) => {
-    const payload = JSON.stringify(body);
-    const req = https.request({ hostname: 'api.telegram.org', path: `/bot${BOT_TOKEN}/${method}`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } }, r => {
-      let d = ''; r.on('data', c => d += c); r.on('end', () => { try { resolve(JSON.parse(d)); } catch (e) { reject(e); } });
-    });
-    req.on('error', reject); req.write(payload); req.end();
-  });
-}
-
-async function pinMessage(msgId) { try { await tgApiJson('pinChatMessage', { chat_id: ADMIN_ID, message_id: msgId, disable_notification: true }); } catch { } }
-async function unpinMessage(msgId) { if (!msgId) return; try { await tgApiJson('unpinChatMessage', { chat_id: ADMIN_ID, message_id: msgId }); } catch { } }
-
-async function sendDbToAdmin(reason) {
-  const buf = dbJsonBuffer();
-  const hash = simpleHash(buf);
-  if (hash === lastSyncHash && reason !== 'startup' && reason !== 'manual') return;
-  lastSyncHash = hash;
-
-  const oldMsgId = db.get().settings?.[SYNC_STATE_KEY];
-  try {
-    const FormData = require('form-data');
-    const form = new FormData();
-    form.append('chat_id', ADMIN_ID);
-    const ts = new Date().toLocaleString('uk', { timeZone: 'Europe/Kyiv' });
-    form.append('caption', `🗄 *db.json* — резервна копія\n📅 ${ts}\n📝 ${reason}`);
-    form.append('parse_mode', 'Markdown');
-    form.append('document', buf, { filename: 'db.json', contentType: 'application/json' });
-    const tgRes = await postForm('/sendDocument', form);
-
-    if (tgRes.ok) {
-      const newMsgId = tgRes.result.message_id;
-      if (oldMsgId && oldMsgId !== newMsgId) await unpinMessage(oldMsgId);
-      await pinMessage(newMsgId);
-      const d = db.get(); if (!d.settings) d.settings = {}; d.settings[SYNC_STATE_KEY] = newMsgId;
-      if (db.flushSync) db.flushSync();
-    }
-  } catch (e) { console.warn('[sync] помилка:', e.message); }
-}
-
-// ═══════════════════════════════════════════════════════════
-// ОПТИМІЗАЦІЯ 7: Sync debounce 30 секунд (було 10)
-// ═══════════════════════════════════════════════════════════
-function scheduleSyncDebounced() {
-  if (!syncEnabled) return;
-  clearTimeout(syncDebounce);
-  syncDebounce = setTimeout(() => sendDbToAdmin('зміна даних'), 30000);
-}
-
-const _origDbSet = db.set.bind(db);
-db.set = function (fn) { _origDbSet(fn); scheduleSyncDebounced(); };
-
-app.get('/api/sync/status', adm, (_, res) => res.json({ enabled: syncEnabled }));
+app.get('/api/sync/status', adm, (_, res) => res.json({ enabled: true, storage: 'r2' }));
 app.post('/api/sync/toggle', adm, async (req, res) => {
-  syncEnabled = !!req.body.enabled;
-  if (syncEnabled) { lastSyncHash = ''; await sendDbToAdmin('увімкнено синхронізацію'); }
-  res.json({ ok: true, enabled: syncEnabled });
+  res.json({ ok: true, enabled: true, storage: 'r2' });
 });
-app.post('/api/sync/now', adm, async (_, res) => { lastSyncHash = ''; await sendDbToAdmin('manual'); res.json({ ok: true }); });
+app.post('/api/sync/now', adm, async (_, res) => {
+  db.flushSync();
+  res.json({ ok: true });
+});
 
-async function restoreDbFromTelegram() {
-  try {
-    const chatInfo = await tgApiJson('getChat', { chat_id: ADMIN_ID });
-    const pinned = chatInfo.result?.pinned_message;
-    if (!pinned || !pinned.document || pinned.document.file_name !== 'db.json') {
-      syncEnabled = true;
-      await sendDbToAdmin('перший запуск');
-      return;
-    }
-    const fileInfo = await tgApiJson('getFile', { file_id: pinned.document.file_id });
-    if (!fileInfo.ok) throw new Error('getFile failed');
-    const fileUrl = 'https://api.telegram.org/file/bot' + BOT_TOKEN + '/' + fileInfo.result.file_path;
-    const fileContent = await new Promise((resolve, reject) => {
-      https.get(fileUrl, r => { let d = ''; r.on('data', c => d += c); r.on('end', () => resolve(d)); }).on('error', reject);
-    });
-    const restored = JSON.parse(fileContent);
-    fs.mkdirSync('data', { recursive: true });
-    fs.writeFileSync('data/db.json', JSON.stringify(restored, null, 2));
-    if (db.reload) db.reload();
-    const courses = restored.courses?.length || 0;
-    const buyers = (restored.courses || []).reduce((s, c) => s + (c.buyers?.length || 0), 0);
-    lastSyncHash = simpleHash(Buffer.from(fileContent, 'utf8'));
-    syncEnabled = true;
-    await tgApiJson('sendMessage', {
-      chat_id: ADMIN_ID,
-      text: `✅ *Сервер запустився*\nКурсів: ${courses}, Покупців: ${buyers}`,
-      parse_mode: 'Markdown'
-    }).catch(() => { });
-  } catch (e) {
-    console.warn('[sync] помилка відновлення:', e.message);
-    syncEnabled = true;
-    await sendDbToAdmin('startup');
-  }
-}
-
-setTimeout(restoreDbFromTelegram, 4000);
+// ── STARTUP: load db from R2 ──────────────────────────────────────────────────
+db.init().then(() => {
+  console.log('[server] DB initialized, courses:', db.get().courses?.length || 0);
+}).catch(e => {
+  console.warn('[server] DB init error:', e.message);
+});
 
 app.get('/payment-result', (_, res) => res.sendFile(path.join(__dirname, 'public', 'payment-result.html')));
 // Pages
