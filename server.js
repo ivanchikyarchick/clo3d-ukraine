@@ -17,7 +17,7 @@ const multer     = require('multer');
 const os         = require('os');
 const db         = require('./db');
 const r2         = require('./r2');
-const { mountMonopayWebhook, mountMonopayApi } = require('./monopay');
+const { mountMonopayWebhook, mountMonopayApi, sendVerificationCode } = require('./monopay');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
 console.log('[server] Starting with ADMIN_PASSWORD:', ADMIN_PASSWORD);
@@ -416,8 +416,125 @@ app.get('/api/debug/buyer/:id', (req, res) => {
   });
 });
 const _buyerUsers = new Map();
+const _pendingRegistrations = new Map(); // email -> {code, password, timestamp}
+const VERIFICATION_CODE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// Clean up expired verification codes every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [email, data] of _pendingRegistrations) {
+    if (now - data.timestamp > VERIFICATION_CODE_TTL) {
+      _pendingRegistrations.delete(email);
+      console.log('[cleanup] Removed expired verification code for:', email);
+    }
+  }
+}, 5 * 60 * 1000);
+
 function hashPassword(pwd) { return 'x:' + pwd.split('').reverse().join(''); }
 function verifyPassword(pwd, hash) { return hashPassword(pwd) === hash; }
+function generateVerificationCode() { return Math.floor(1000 + Math.random() * 9000).toString(); }
+
+app.post('/api/buyer/register-request', async (req, res) => {
+  const { username, password } = req.body;
+  const email = (username || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { 
+    res.status(400).json({ ok: false, error: 'Введіть коректний email' }); 
+    return; 
+  }
+  if (!password || password.length < 4) { 
+    res.status(400).json({ ok: false, error: 'Пароль мінімум 4 символи' }); 
+    return; 
+  }
+  
+  // Check if email already exists
+  const nameClean = email.slice(0, 100);
+  let buyer = _buyerUsers.get(nameClean);
+  if (!buyer) {
+    const d = db.get();
+    const acc = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
+    if (acc) buyer = acc;
+  }
+  if (buyer) { 
+    res.status(400).json({ ok: false, error: 'Акаунт з таким email вже існує' }); 
+    return; 
+  }
+  
+  // Generate and send verification code
+  const code = generateVerificationCode();
+  _pendingRegistrations.set(nameClean, {
+    code,
+    password: hashPassword(password),
+    timestamp: Date.now()
+  });
+  
+  console.log('[register-request] Generated code for:', nameClean, 'code:', code);
+  
+  try {
+    await sendVerificationCode(email, code);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[register-request] Failed to send email:', e.message);
+    _pendingRegistrations.delete(nameClean);
+    res.status(500).json({ ok: false, error: 'Не вдалося надіслати код. Перевірте email.' });
+  }
+});
+
+app.post('/api/buyer/register-verify', (req, res) => {
+  const { username, password, code } = req.body;
+  const email = (username || '').trim().toLowerCase();
+  const nameClean = email.slice(0, 100);
+  
+  if (!code || code.length !== 4) {
+    res.status(400).json({ ok: false, error: 'Введіть 4-значний код' });
+    return;
+  }
+  
+  const pending = _pendingRegistrations.get(nameClean);
+  if (!pending) {
+    res.status(400).json({ ok: false, error: 'Код не знайдено. Спробуйте отримати новий код.' });
+    return;
+  }
+  
+  // Check if code expired
+  if (Date.now() - pending.timestamp > VERIFICATION_CODE_TTL) {
+    _pendingRegistrations.delete(nameClean);
+    res.status(400).json({ ok: false, error: 'Код застарів. Отримайте новий код.' });
+    return;
+  }
+  
+  // Verify code
+  if (pending.code !== code) {
+    res.status(400).json({ ok: false, error: 'Невірний код' });
+    return;
+  }
+  
+  // Create account
+  const newUid = Date.now();
+  _buyerUsers.set(nameClean, { id: newUid, password: pending.password });
+  db.set(d => {
+    if (!d.buyerAccounts) d.buyerAccounts = [];
+    d.buyerAccounts.push({ 
+      id: newUid, 
+      username: nameClean, 
+      email: nameClean, 
+      password: pending.password, 
+      createdAt: Date.now() 
+    });
+    console.log('[register-verify] Added buyer account:', newUid, nameClean, 'total accounts:', d.buyerAccounts.length);
+  });
+  db.flushSync();
+  
+  // Clean up pending registration
+  _pendingRegistrations.delete(nameClean);
+  
+  // Set session
+  req.session.buyerId = newUid;
+  req.session.buyerName = nameClean;
+  console.log('[register-verify] Session set for buyer:', newUid, nameClean);
+  autoGrantAccess(newUid);
+  
+  res.json({ ok: true, id: newUid, name: nameClean });
+});
 
 app.post('/api/buyer/register', (req, res) => {
   const { username, password } = req.body;
