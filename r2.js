@@ -166,16 +166,36 @@ function streamFile(key, size, clientReq, clientRes) {
 function uploadBuffer(key, buffer, contentType) {
   return new Promise((resolve, reject) => {
     if (!configured) return reject(new Error('R2 не налаштований'));
-    const path   = `/${BUCKET}/${key}`;
+    const urlPath = `/${BUCKET}/${key}`;
+    const bodyHash = _sha256(buffer);
     const headers = {
-      'Host':           new URL(ENDPOINT).hostname,
-      'Content-Type':   contentType || 'application/octet-stream',
-      'Content-Length': String(buffer.length),
+      'Host':                    new URL(ENDPOINT).hostname,
+      'Content-Type':            contentType || 'application/octet-stream',
+      'Content-Length':          String(buffer.length),
+      'x-amz-content-sha256':   bodyHash,
     };
-    _signRequest('PUT', path, headers, false);
+
+    // Sign manually (bypass isStreamingBody flag — we have real hash)
+    const now  = new Date();
+    const date = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+    const stamp = date.slice(0, 8);
+    headers['x-amz-date'] = date;
+
+    const signedHeaders = Object.keys(headers).sort().map(k => k.toLowerCase()).join(';');
+    const canonicalHeaders = Object.keys(headers).sort().map(k => `${k.toLowerCase()}:${headers[k].trim()}\n`).join('');
+    const canonicalRequest = ['PUT', urlPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+    const credentialScope = `${stamp}/${REGION}/s3/aws4_request`;
+    const stringToSign = ['AWS4-HMAC-SHA256', date, credentialScope, _sha256(canonicalRequest)].join('\n');
+    const kDate    = _hmac('AWS4' + SECRET_KEY, stamp);
+    const kRegion  = _hmac(kDate, REGION);
+    const kService = _hmac(kRegion, 's3');
+    const kSigning = _hmac(kService, 'aws4_request');
+    const sig = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+    headers['Authorization'] = `AWS4-HMAC-SHA256 Credential=${ACCESS_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${sig}`;
+
     const req = https.request({
       hostname: new URL(ENDPOINT).hostname,
-      path, method: 'PUT', headers, timeout: 30000,
+      path: urlPath, method: 'PUT', headers, timeout: 30000,
     }, res => {
       let body = '';
       res.on('data', c => body += c);
