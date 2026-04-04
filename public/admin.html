@@ -925,7 +925,6 @@ async function saveCourse(){
     return sep>-1 ? {title:line.slice(0,sep).trim(), desc:line.slice(sep+1).trim()} : {title:line,desc:''};
   });
   let pAmt = document.getElementById('mnc-price-amount').value.replace(/[^\d]/g, '');
-  if(pAmt && parseInt(pAmt) < 10000) pAmt = String(parseInt(pAmt) * 100);
   const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
