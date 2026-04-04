@@ -27,7 +27,7 @@ const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
 const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
-const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || 'mn1v7bplqru').split(',').map(s => s.trim()).filter(Boolean);
+const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || '').split(',').map(s => s.trim()).filter(Boolean);
 
 function isAccessExpired(grantedAt) {
   return grantedAt && (Date.now() - grantedAt > ACCESS_EXPIRY_MS);
@@ -365,23 +365,6 @@ app.get('/api/buyer/me', (req, res) => {
   const uid = req.session.buyerId;
   console.log('[buyer/me] session buyerId:', uid, 'type:', typeof uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
-
-  const d = db.get();
-  // Check and process pending payments
-  const pendingForUser = d.pendingPayments?.filter(p => p.buyerId === parseInt(uid));
-  if (pendingForUser?.length) {
-    db.set(d => {
-      const pending = d.pendingPayments?.filter(p => p.buyerId === parseInt(uid)) || [];
-      for (const p of pending) {
-        const c = d.courses.find(x => x.id === p.courseId);
-        if (c && !c.buyers?.some(b => b.id === parseInt(uid))) {
-          if (!c.buyers) c.buyers = [];
-          c.buyers.push({ id: parseInt(uid), name: '—', grantedAt: Date.now() });
-        }
-      }
-      d.pendingPayments = (d.pendingPayments || []).filter(p => p.buyerId !== parseInt(uid));
-    });
-  }
 
   const myCourses = activeBuyerCourses(uid);
   const uidNum = parseInt(uid, 10);
