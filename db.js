@@ -89,8 +89,8 @@ async function saveToR2(data) {
   const r2 = getR2();
   if (!r2.configured) return;
   try {
-    const json = JSON.stringify(data);
-    await r2.uploadBuffer(R2_DB_KEY, Buffer.from(json), 'application/json');
+    const json = JSON.stringify(data, null, 2);
+    await r2.uploadBuffer(R2_DB_KEY, Buffer.from(json, 'utf8'), 'application/json; charset=utf-8');
     console.log('[db] Saved to R2');
   } catch (e) {
     console.warn('[db] R2 save error:', e.message);
