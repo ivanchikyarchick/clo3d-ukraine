@@ -76,7 +76,7 @@ async function loadFromR2() {
     if (!data) return null;
     const parsed = JSON.parse(data);
     // Write to local cache
-    fs.writeFileSync(DB_LOCAL, data);
+    fs.writeFileSync(DB_LOCAL, data, 'utf8');
     console.log('[db] Loaded from R2, courses:', parsed.courses?.length || 0);
     return parsed;
   } catch (e) {
@@ -104,9 +104,9 @@ function _scheduleSave() {
     if (!_cache || _saving) return;
     _saving = true;
     try {
-      const data = JSON.stringify(_cache);
+      const data = JSON.stringify(_cache, null, 2);
       // Save to local cache
-      fs.writeFileSync(DB_LOCAL, data);
+      fs.writeFileSync(DB_LOCAL, data, 'utf8');
       // Save to R2
       await saveToR2(_cache);
     } catch (e) {
@@ -121,7 +121,7 @@ function flushSync() {
   if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
   if (_cache) {
     try {
-      fs.writeFileSync(DB_LOCAL, JSON.stringify(_cache));
+      fs.writeFileSync(DB_LOCAL, JSON.stringify(_cache, null, 2), 'utf8');
     } catch (e) { console.warn('[db] flush error:', e.message); }
     // Async R2 save (best effort)
     saveToR2(_cache).catch(() => {});
