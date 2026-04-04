@@ -161,6 +161,59 @@ function streamFile(key, size, clientReq, clientRes) {
   });
 }
 
+// ─── Upload Buffer (for small files like db.json) ───────────
+
+function uploadBuffer(key, buffer, contentType) {
+  return new Promise((resolve, reject) => {
+    if (!configured) return reject(new Error('R2 не налаштований'));
+    const path   = `/${BUCKET}/${key}`;
+    const headers = {
+      'Host':           new URL(ENDPOINT).hostname,
+      'Content-Type':   contentType || 'application/octet-stream',
+      'Content-Length': String(buffer.length),
+    };
+    _signRequest('PUT', path, headers, false);
+    const req = https.request({
+      hostname: new URL(ENDPOINT).hostname,
+      path, method: 'PUT', headers, timeout: 30000,
+    }, res => {
+      let body = '';
+      res.on('data', c => body += c);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve();
+        else reject(new Error(`R2 uploadBuffer ${res.statusCode}: ${body.slice(0, 200)}`));
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('R2 uploadBuffer timeout')); });
+    req.write(buffer);
+    req.end();
+  });
+}
+
+// ─── Download (for db.json restore) ─────────────────────────
+
+function downloadFile(key) {
+  return new Promise((resolve) => {
+    if (!configured) return resolve(null);
+    const path = `/${BUCKET}/${key}`;
+    const headers = { 'Host': new URL(ENDPOINT).hostname };
+    _signRequest('GET', path, headers, false);
+    const req = https.request({
+      hostname: new URL(ENDPOINT).hostname,
+      path, method: 'GET', headers, timeout: 15000,
+    }, res => {
+      if (res.statusCode === 404 || res.statusCode === 403) { res.resume(); return resolve(null); }
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.end();
+  });
+}
+
 // ─── Delete ─────────────────────────────────────────────────
 
 function deleteFile(key) {
@@ -186,4 +239,4 @@ function makeKey(courseId, filename) {
   return `videos/${courseId}/${Date.now()}_${safe}`;
 }
 
-module.exports = { configured, uploadFile, streamFile, deleteFile, makeKey };
+module.exports = { configured, uploadFile, uploadBuffer, downloadFile, streamFile, deleteFile, makeKey };
