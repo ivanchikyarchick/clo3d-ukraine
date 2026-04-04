@@ -166,11 +166,17 @@ function streamFile(key, size, clientReq, clientRes) {
 function uploadBuffer(key, buffer, contentType) {
   return new Promise((resolve, reject) => {
     if (!configured) return reject(new Error('R2 не налаштований'));
+    
+    // Ensure buffer is UTF-8 encoded if it's a string
+    if (typeof buffer === 'string') {
+      buffer = Buffer.from(buffer, 'utf8');
+    }
+    
     const urlPath = `/${BUCKET}/${key}`;
     const bodyHash = _sha256(buffer);
     const headers = {
       'Host':                    new URL(ENDPOINT).hostname,
-      'Content-Type':            contentType || 'application/octet-stream',
+      'Content-Type':            contentType || 'application/json; charset=utf-8',
       'Content-Length':          String(buffer.length),
       'x-amz-content-sha256':   bodyHash,
     };
@@ -224,6 +230,7 @@ function downloadFile(key) {
       path, method: 'GET', headers, timeout: 15000,
     }, res => {
       if (res.statusCode === 404 || res.statusCode === 403) { res.resume(); return resolve(null); }
+      res.setEncoding('utf8'); // Явно вказуємо UTF-8 кодування
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => resolve(data));
