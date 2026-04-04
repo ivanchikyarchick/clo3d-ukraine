@@ -280,7 +280,7 @@ function mountMonopayApi(app) {
       ccy: 980,
       merchantPaymInfo: {
         reference,
-        destination: (description || 'Оплата').slice(0, 255),
+        destination: 'Оплата за освітні послуги згідно з Публічною офертою, без ПДВ',
       },
       redirectUrl: redirectUrl || `${SITE_URL}/payment-result`,
       webHookUrl: `${SITE_URL}/api/payment/webhook`,
