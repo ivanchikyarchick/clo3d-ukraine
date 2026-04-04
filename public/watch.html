@@ -85,18 +85,22 @@ video::-webkit-media-controls-download-button{display:none!important;width:0!imp
 video::-webkit-media-controls-enclosure{overflow:hidden!important}
 video::-internal-media-controls-download-button{display:none!important}
 video::-webkit-media-controls-panel{overflow:hidden!important}
-.vwrap:fullscreen{background:#000;display:flex;align-items:center;justify-content:center}
-.vwrap:fullscreen video{max-height:100vh;height:100vh;width:100vw;object-fit:contain}
+.vwrap:fullscreen{background:#000;display:flex;align-items:center;justify-content:center;border-radius:0}
+.vwrap:fullscreen video{max-height:100vh;height:100vh;width:100vw;object-fit:cover;min-height:100vh}
 .vwrap:fullscreen .vloader{display:none}
-.vwrap:-webkit-full-screen{background:#000;display:flex;align-items:center;justify-content:center}
-.vwrap:-webkit-full-screen video{max-height:100vh;height:100vh;width:100vw;object-fit:contain}
+.vwrap:fullscreen .vfs-btn{top:2rem;right:2rem;font-size:.9rem;padding:.65rem 1rem}
+.vwrap:-webkit-full-screen{background:#000;display:flex;align-items:center;justify-content:center;border-radius:0}
+.vwrap:-webkit-full-screen video{max-height:100vh;height:100vh;width:100vw;object-fit:cover;min-height:100vh}
 .vwrap:-webkit-full-screen .vloader{display:none}
-.vwrap:-moz-full-screen{background:#000;display:flex;align-items:center;justify-content:center}
-.vwrap:-moz-full-screen video{max-height:100vh;height:100vh;width:100vw;object-fit:contain}
+.vwrap:-webkit-full-screen .vfs-btn{top:2rem;right:2rem;font-size:.9rem;padding:.65rem 1rem}
+.vwrap:-moz-full-screen{background:#000;display:flex;align-items:center;justify-content:center;border-radius:0}
+.vwrap:-moz-full-screen video{max-height:100vh;height:100vh;width:100vw;object-fit:cover;min-height:100vh}
 .vwrap:-moz-full-screen .vloader{display:none}
-.vwrap:-ms-fullscreen{background:#000;display:flex;align-items:center;justify-content:center}
-.vwrap:-ms-fullscreen video{max-height:100vh;height:100vh;width:100vw;object-fit:contain}
+.vwrap:-moz-full-screen .vfs-btn{top:2rem;right:2rem;font-size:.9rem;padding:.65rem 1rem}
+.vwrap:-ms-fullscreen{background:#000;display:flex;align-items:center;justify-content:center;border-radius:0}
+.vwrap:-ms-fullscreen video{max-height:100vh;height:100vh;width:100vw;object-fit:cover;min-height:100vh}
 .vwrap:-ms-fullscreen .vloader{display:none}
+.vwrap:-ms-fullscreen .vfs-btn{top:2rem;right:2rem;font-size:.9rem;padding:.65rem 1rem}
 .vmeta{background:var(--s1);border:1px solid var(--brd);border-radius:16px;padding:1.4rem 1.75rem}
 .vm-top{display:flex;align-items:flex-start;gap:1rem;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap}
 .vmt{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800}
@@ -245,10 +249,14 @@ async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); locat
 
 function toggleFullscreen() {
   const vwrap = document.getElementById('vwrap');
+  const video = document.getElementById('vid');
   const fsBtn = document.getElementById('fs-btn');
   if (!vwrap) return;
   
   if (!document.fullscreenElement) {
+    // Save playing state
+    const wasPlaying = video && !video.paused;
+    
     // Enter fullscreen
     if (vwrap.requestFullscreen) {
       vwrap.requestFullscreen();
@@ -257,8 +265,19 @@ function toggleFullscreen() {
     } else if (vwrap.msRequestFullscreen) {
       vwrap.msRequestFullscreen();
     }
+    
+    // Resume playing after entering fullscreen
+    if (wasPlaying && video) {
+      setTimeout(() => {
+        video.play().catch(e => console.warn('Play error:', e));
+      }, 100);
+    }
+    
     if (fsBtn) fsBtn.textContent = '⛶ Вийти з повного екрану';
   } else {
+    // Save playing state
+    const wasPlaying = video && !video.paused;
+    
     // Exit fullscreen
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -267,6 +286,14 @@ function toggleFullscreen() {
     } else if (document.msExitFullscreen) {
       document.msExitFullscreen();
     }
+    
+    // Resume playing after exiting fullscreen
+    if (wasPlaying && video) {
+      setTimeout(() => {
+        video.play().catch(e => console.warn('Play error:', e));
+      }, 100);
+    }
+    
     if (fsBtn) fsBtn.textContent = '⛶ На весь екран';
   }
 }
