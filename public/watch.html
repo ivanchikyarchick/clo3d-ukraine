@@ -66,6 +66,8 @@ header{background:var(--s1);border-bottom:1px solid var(--brd);padding:.85rem 2r
 .lid{font-size:.7rem;color:var(--muted);margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .va{flex:1;padding:2rem;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto;min-width:0}
 .vwrap{border-radius:16px;overflow:hidden;position:relative;border:1px solid var(--brd);background:#000;-webkit-user-drag:none;user-drag:none}
+.vfs-btn{position:absolute;top:1rem;right:1rem;z-index:20;background:rgba(17,8,8,.85);border:1px solid rgba(200,48,42,.3);border-radius:8px;padding:.5rem .75rem;color:var(--txt);font-size:.75rem;cursor:pointer;backdrop-filter:blur(8px);transition:.2s;display:flex;align-items:center;gap:.4rem;font-family:'Syne',sans-serif;font-weight:600}
+.vfs-btn:hover{background:rgba(200,48,42,.15);border-color:rgba(200,48,42,.5)}
 .voverlay{position:absolute;inset:0;z-index:5;background:transparent;pointer-events:none}
 .vloader{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;background:linear-gradient(135deg,#0a0a18,#10101e);transition:opacity .5s;border-radius:16px}
 .vloader.h{opacity:0;pointer-events:none}
@@ -139,6 +141,7 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 <div id="app"><header><div class="hdr-brand"><a href="/" style="text-decoration:none"><div class="hdr-logo">Vitaliia 3D Fashion Lab</div><div class="hdr-sub">Навчальна платформа</div></a></div><div class="hdr-r"><span id="uname">—</span><button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button><button class="hdr-btn" onclick="logout()">Вийти</button></div></header><div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div><div class="ctabs" id="ctabs" style="display:none"></div><div class="layout" id="layout"><aside class="sidebar"><div class="sb-head"><div class="sb-title">Уроки курсу</div><div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div><div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div></div><div class="sb-list" id="llist"></div></aside><main class="va" id="va"><div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div></main></div></div>
 
 <div id="toast"></div><div id="resume-toast"></div>
+<a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотній зв'язок</a>
 <div id="mat-overlay" onclick="closeMatPopup()"></div><div id="mat-popup" role="dialog" aria-modal="true"><span class="mat-icon">📎</span><div class="mat-title">Увага!</div><p class="mat-text">До цього відео прикріплені <strong>навчальні файли</strong>.<br>Вам потрібно завантажити їх!</p><button class="mat-btn-dl" id="mat-dl-btn" onclick="handleMatDownload()">⬇ Завантажити матеріали</button></div>
 
 <script>
@@ -227,6 +230,49 @@ async function doRegister(){
   } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;}
 }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
+
+function toggleFullscreen() {
+  const vwrap = document.getElementById('vwrap');
+  const fsBtn = document.getElementById('fs-btn');
+  if (!vwrap) return;
+  
+  if (!document.fullscreenElement) {
+    // Enter fullscreen
+    if (vwrap.requestFullscreen) {
+      vwrap.requestFullscreen();
+    } else if (vwrap.webkitRequestFullscreen) {
+      vwrap.webkitRequestFullscreen();
+    } else if (vwrap.msRequestFullscreen) {
+      vwrap.msRequestFullscreen();
+    }
+    if (fsBtn) fsBtn.textContent = '⛶ Вийти з повного екрану';
+  } else {
+    // Exit fullscreen
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    }
+    if (fsBtn) fsBtn.textContent = '⛶ На весь екран';
+  }
+}
+
+// Update button text when fullscreen changes
+document.addEventListener('fullscreenchange', () => {
+  const fsBtn = document.getElementById('fs-btn');
+  if (fsBtn) {
+    fsBtn.textContent = document.fullscreenElement ? '⛶ Вийти з повного екрану' : '⛶ На весь екран';
+  }
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  const fsBtn = document.getElementById('fs-btn');
+  if (fsBtn) {
+    fsBtn.textContent = document.webkitFullscreenElement ? '⛶ Вийти з повного екрану' : '⛶ На весь екран';
+  }
+});
+
 function showLoginTab(t){ document.getElementById('login-web').style.display=t==='web'?'block':'none'; document.getElementById('login-reg').style.display=t==='reg'?'block':'none'; document.getElementById('tab-web').classList.toggle('on',t==='web'); document.getElementById('tab-reg').classList.toggle('on',t==='reg'); }
 const _tid = document.getElementById('tid'); if (_tid) _tid.addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
 
@@ -276,7 +322,12 @@ function play(idx){
   const v=vids[idx], cid=curCourse?.id, total=vids.length, done=(progress.watched||[]).length, overallPct=total?Math.round(done/total*100):0, isWatched=(progress.watched||[]).includes(idx);
   saveLast(cid,idx);
   document.getElementById('va').innerHTML=`
-    <div class="vwrap" id="vwrap"><div class="vloader" id="vl"><div class="vl-ico">🎬</div><div class="vspin" style="position:absolute;opacity:.4;width:80px;height:80px;border-width:2px"></div><div class="vl-t">Завантаження HLS<span class="vdots"><span>.</span><span>.</span><span>.</span></span></div><div class="vl-s">${v.title||'Урок '+(idx+1)}</div><div class="vlbar"><div class="vlbar-f"></div></div></div><video id="vid" controls playsinline preload="metadata" style="opacity:0" controlsList="nodownload noremoteplayback nofullscreen" disablePictureInPicture crossorigin="use-credentials"></video><div class="voverlay" id="vovl"></div></div>
+    <div class="vwrap" id="vwrap">
+      <button class="vfs-btn" onclick="toggleFullscreen()" id="fs-btn">⛶ На весь екран</button>
+      <div class="vloader" id="vl"><div class="vl-ico">🎬</div><div class="vspin" style="position:absolute;opacity:.4;width:80px;height:80px;border-width:2px"></div><div class="vl-t">Завантаження HLS<span class="vdots"><span>.</span><span>.</span><span>.</span></span></div><div class="vl-s">${v.title||'Урок '+(idx+1)}</div><div class="vlbar"><div class="vlbar-f"></div></div></div>
+      <video id="vid" controls playsinline preload="metadata" style="opacity:0" controlsList="nodownload noremoteplayback nofullscreen" disablePictureInPicture crossorigin="use-credentials"></video>
+      <div class="voverlay" id="vovl"></div>
+    </div>
     <div class="vmeta"><div class="vm-top"><div class="vmt">${v.title||'Урок '+(idx+1)}</div><span class="vm-badge ${isWatched?'vm-watched':'vm-new'}">${isWatched?'✅ Переглянуто':'🔵 Новий урок'}</span></div>${v.desc?`<p class="vmd">${v.desc}</p>`:''}
     <div class="vprog-stats"><div class="vps"><div class="vpsv go">${done}/${total}</div><div class="vpsl">Пройдено</div></div><div class="vps"><div class="vpsv a">${overallPct}%</div><div class="vpsl">Прогрес</div></div><div class="vps"><div class="vpsv b">${total-done}</div><div class="vpsl">Залишилось</div></div><div class="vps"><div class="vpsv g">${progress.completed?'✓':'—'}</div><div class="vpsl">Завершено</div></div></div>
     <div class="vbar-wrap"><div class="vbar-fill" id="vbar" style="width:${overallPct}%"></div></div>
