@@ -18,7 +18,7 @@ async function sendPaymentEmail(toEmail, courseTitle, courseSlug) {
       secure: true,
       auth: {
         user: process.env.SMTP_USER || 'vitaliia.3dlab@gmail.com',
-        pass: process.env.SMTP_PASS || '',
+        pass: process.env.SMTP_PASS || 'zvlegbhjmemkvsef',
       },
     });
     const watchUrl = `${SITE_URL}/watch?course=${courseSlug}`;
@@ -185,6 +185,7 @@ function mountMonopayWebhook(webhookRouter) {
 
     if (payment.status === 'success') {
       console.log('[monobank] Payment SUCCESS:', payment.invoiceId, payment.amount);
+      let emailData = null;
       db.set(d => {
         const p = d.pendingPayments?.find(x => x.invoiceId === payment.invoiceId);
         if (p && p.buyerId && p.courseId) {
@@ -194,15 +195,15 @@ function mountMonopayWebhook(webhookRouter) {
             c.buyers.push({ id: parseInt(p.buyerId, 10), name: '—', grantedAt: Date.now() });
             console.log('[monobank] Access granted buyer', p.buyerId, 'course', p.courseId);
           }
-          // Send email receipt
           const buyer = d.buyerAccounts?.find(a => a.id === parseInt(p.buyerId, 10));
           const email = buyer?.email || buyer?.username;
-          if (email && c) {
-            setImmediate(() => sendPaymentEmail(email, c.title, c.slug));
-          }
+          if (email && c) emailData = { email, title: c.title, slug: c.slug };
         }
         d.pendingPayments = (d.pendingPayments || []).filter(x => x.invoiceId !== payment.invoiceId);
       });
+      if (emailData) {
+        setImmediate(() => sendPaymentEmail(emailData.email, emailData.title, emailData.slug));
+      }
     }
 
     res.json({ ok: true });
