@@ -3,13 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Vitaliia 3D Fashion Lab — курси CLO 3D українською. Навчання для конструкторів та дизайнерів одягу від Віталії Ярошенко. Примірка · Аналіз · Моделювання.">
+<meta name="description" content="Курси CLO 3D українською від Віталії Ярошенко. Навчання 3D-моделюванню одягу онлайн для конструкторів та дизайнерів з нуля. Практика, портфоліо, сертифікат. Записуйтесь!">
 <meta name="robots" content="index,follow">
 <meta name="google-site-verification" content="q6ej2ov3bufUQZWGHJxbMMTIkJyIRo1dVV-ERk28Tf4" />
-<title>Vitaliia 3D Fashion Lab — Курси CLO 3D українською</title>
+<title>Курси CLO 3D українською | Навчання 3D моделюванню одягу онлайн | Vitaliia 3D Fashion Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="icon" href="img/favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [{
+    "@type": "Question",
+    "name": "Що таке CLO 3D і навіщо він конструкторам?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "CLO 3D — це професійна програма для 3D-моделювання одягу. Вона дозволяє створювати реалістичні цифрові копії одягу з урахуванням властивостей тканин, конструювати лекала та проводити віртуальні примірки. Це економить час, тканину та гроші на відшив зразків."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Чи підійде курс, якщо я ніколи не працював(ла) у 3D?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Так, у нас є курси для початківців, де ми розбираємо інтерфейс та базові інструменти програми з нуля. Головне — це ваше бажання навчатись та базове розуміння конструювання одягу."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Які вимоги до комп'ютера для роботи в CLO 3D?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Для комфортної роботи потрібен комп'ютер на базі Windows або Mac (Apple Silicon підтримується). Рекомендовано: мінімум 16 ГБ оперативної пам'яті (краще 32 ГБ), процесор рівня Intel Core i5/i7 або AMD Ryzen 5/7, та дискретна відеокарта (наприклад, NVIDIA GeForce GTX 1660 або краща)."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Чи видається сертифікат після проходження курсу?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Так, після успішного завершення навчання та здачі всіх практичних робіт (портфоліо), ви отримуєте електронний сертифікат, який підтверджує ваші навички роботи в CLO 3D."
+    }
+  }]
+}
+</script>
+
 <style>
 :root{
   --bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;
@@ -138,6 +175,18 @@ section{padding:6rem 2rem}
 .why-card h3{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--txt);display:block;margin-bottom:.4rem}
 .why-card p{font-size:.82rem;color:var(--muted);line-height:1.65;font-weight:300}
 
+/* FAQ SECTION */
+.faq-section { background: var(--bg); }
+.faq-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; max-width: 800px; margin-left: auto; margin-right: auto; }
+.faq-item { background: var(--s1); border: 1px solid var(--brd); border-radius: 12px; overflow: hidden; transition: .3s; }
+.faq-item.active { border-color: rgba(200,48,42,.4); background: var(--s2); box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+.faq-btn { width: 100%; text-align: left; background: none; border: none; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--txt); font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 600; transition: .2s; }
+.faq-btn:hover { color: var(--acc2); }
+.faq-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .3s ease; flex-shrink: 0; }
+.faq-item.active .faq-btn svg { transform: rotate(180deg); stroke: var(--acc); }
+.faq-content { max-height: 0; overflow: hidden; transition: max-height .4s ease; }
+.faq-content p { padding: 0 1.5rem 1.5rem; color: var(--muted); font-size: .88rem; line-height: 1.7; font-weight: 300; }
+
 /* SOC STRIP */
 .soc-strip{background:var(--s2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);padding:2.25rem 8vw;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
 .soc-strip-t{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -183,6 +232,7 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
     <a href="#">ГОЛОВНА</a>
     <a href="#courses">КУРСИ</a>
     <a href="#about">ПРО НАС</a>
+    <a href="#faq">FAQ</a>
     <a href="/contacts.html">КОНТАКТИ</a>
   </div>
   <div class="nav-soc">
@@ -281,6 +331,7 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
         <a href="https://www.youtube.com/@VitaliiaCLO3d" class="soc-btn" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
           @VitaliiaCLO3d
+        </a>
         <a href="https://t.me/Vitaliia_Ya" class="soc-btn" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"></path></svg>
           Telegram
@@ -303,6 +354,57 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
   </div>
 </section>
 
+<section id="faq" class="faq-section">
+  <div class="sec-inner rv">
+    <div class="sec-eyebrow" style="text-align: center;">Запитання-відповіді</div>
+    <h2 class="sec-title" style="text-align: center;">Популярні <em>запитання</em></h2>
+    <p class="sec-sub" style="text-align: center; margin: 0 auto 3rem;">Зібрали відповіді на найчастіші запитання, щоб допомогти вам розібратися з навчанням у CLO 3D.</p>
+
+    <div class="faq-list">
+      
+      <div class="faq-item">
+        <button class="faq-btn">
+          <span>Що таке CLO 3D і навіщо він конструкторам?</span>
+          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-content">
+          <p>CLO 3D — це професійна програма для 3D-моделювання одягу. Вона дозволяє створювати реалістичні цифрові копії одягу з урахуванням властивостей тканин, конструювати лекала та проводити віртуальні примірки. Це економить час, тканину та гроші на відшив зразків.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn">
+          <span>Чи підійде курс, якщо я ніколи не працював(ла) у 3D?</span>
+          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-content">
+          <p>Так, у нас є курси для початківців, де ми розбираємо інтерфейс та базові інструменти програми з нуля. Головне — це ваше бажання навчатись та базове розуміння конструювання одягу.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn">
+          <span>Які вимоги до комп'ютера для роботи в CLO 3D?</span>
+          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-content">
+          <p>Для комфортної роботи потрібен комп'ютер на базі Windows або Mac (Apple Silicon підтримується). Рекомендовано: мінімум 16 ГБ оперативної пам'яті (краще 32 ГБ), процесор рівня Intel Core i5/i7 або AMD Ryzen 5/7, та дискретна відеокарта (наприклад, NVIDIA GeForce GTX 1660 або краща).</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn">
+          <span>Чи видається сертифікат після проходження курсу?</span>
+          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="faq-content">
+          <p>Так, після успішного завершення навчання та здачі всіх практичних робіт (портфоліо), ви отримуєте електронний сертифікат, який підтверджує ваші навички роботи в CLO 3D.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
 <div class="soc-strip">
   <div class="soc-strip-t">Слідкуйте за оновленнями</div>
   <div class="soc-strip-btns">
@@ -374,6 +476,27 @@ async function loadCourses() {
   document.querySelectorAll('.rv,.rv-l,.rv-r').forEach(el=>obs.observe(el));
 }
 loadCourses();
+
+// Скрипт для FAQ
+document.querySelectorAll('.faq-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const content = btn.nextElementSibling;
+    const isActive = item.classList.contains('active');
+    
+    // Закриваємо всі інші відкриті питання
+    document.querySelectorAll('.faq-item').forEach(otherItem => {
+      otherItem.classList.remove('active');
+      otherItem.querySelector('.faq-content').style.maxHeight = null;
+    });
+
+    // Відкриваємо поточне, якщо воно було закрито
+    if (!isActive) {
+      item.classList.add('active');
+      content.style.maxHeight = content.scrollHeight + "px";
+    }
+  });
+});
 </script>
 </body>
 </html>
