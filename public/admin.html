@@ -155,7 +155,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 </nav>
 
 <div class="main">
-  <div class="topbar"><div class="topbar-t" id="tt">Дашборд</div><div style="display:flex;align-items:center;gap:.75rem"><a href="#" onclick="openPreview(event)" style="padding:.35rem .9rem;border:1px solid var(--brd);border-radius:8px;font-size:.72rem;color:var(--muted);text-decoration:none;transition:.2s" onmouseover="this.style.color='var(--txt)';this.style.borderColor='var(--acc)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--brd)'">▶️ Дивитись уроки</a><div class="stbadge"><div class="dot"></div>@Clo3dua_bot</div></div></div>
+  <div class="topbar"><div class="topbar-t" id="tt">Дашборд</div><div style="display:flex;align-items:center;gap:.75rem"><a href="#" onclick="openPreview(event)" style="padding:.35rem .9rem;border:1px solid var(--brd);border-radius:8px;font-size:.72rem;color:var(--muted);text-decoration:none;transition:.2s" onmouseover="this.style.color='var(--txt)';this.style.borderColor='var(--acc)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--brd)'">▶️ Дивитись уроки</a><div id="maintenance-badge" style="display:none;align-items:center;gap:.4rem;font-size:.73rem;padding:.25rem .75rem;border-radius:6px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:var(--gold)">🛠️ Обслуговування</div><div class="stbadge"><div class="dot"></div><span id="online-count-badge">0 онлайн</span></div></div></div>
   <div class="cnt">
 
     <!-- DASH -->
@@ -164,9 +164,9 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <div class="sc"><div class="sl">Курсів</div><div class="sv b" id="s-c">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Веб акаунтів</div><div class="sv a" id="s-wa">—</div><div class="ss">зареєстровані</div></div>
+        <div class="sc" style="border-color:rgba(52,211,153,.25)"><div class="sl">🟢 Зараз онлайн</div><div class="sv g" id="s-online">—</div><div class="ss">на сайті</div></div>
         <div class="sc"><div class="sl">Заявок</div><div class="sv go" id="s-p">—</div><div class="ss">очікують</div></div>
         <div class="sc"><div class="sl">Відео</div><div class="sv b" id="s-v">—</div><div class="ss">всього</div></div>
-        <div class="sc"><div class="sl">Запитів купити</div><div class="sv a" id="s-br">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Перегл. відео</div><div class="sv a" id="s-vv">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Візитів сайту</div><div class="sv b" id="s-wv">—</div><div class="ss">7 днів</div></div>
         <div class="sc"><div class="sl">Видано доступів</div><div class="sv g" id="s-gr">—</div><div class="ss">всього</div></div>
@@ -317,7 +317,22 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="tab" id="tab-settings">
       <div class="sh"><div><h2>Налаштування</h2><p>ФОП та параметри оплати</p></div></div>
 
-      <div class="card-form" style="max-width:500px;margin-bottom:1.25rem">
+      <!-- MAINTENANCE MODE -->
+      <div class="card-form" style="max-width:500px;margin-bottom:1.25rem;border-color:rgba(251,191,36,.25)">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">🛠️ Режим обслуговування</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">
+          Коли увімкнено — відвідувачі сайту бачать сторінку «Сайт оновлюється». Адмін та логін сторінки залишаються доступними.
+        </p>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem">
+          <label style="display:flex;align-items:center;gap:.65rem;cursor:pointer;user-select:none" onclick="toggleMaintenance()">
+            <div id="maint-track" style="width:46px;height:26px;border-radius:13px;background:var(--s3);border:1px solid var(--brd);position:relative;transition:.25s;flex-shrink:0">
+              <div id="maint-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.25s"></div>
+            </div>
+            <span id="maint-label" style="font-size:.84rem;color:var(--muted)">Вимкнено</span>
+          </label>
+        </div>
+        <div id="maint-res" style="font-size:.76rem;min-height:1rem"></div>
+      </div>
         <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">☁️ Авто-синхронізація db</h3>
         <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">
           Надсилає <code style="background:var(--s3);padding:.1rem .35rem;border-radius:4px">db.json</code> у Telegram після кожної зміни. Старий файл видаляється. При запуску сервера — завжди синхронізується автоматично.
@@ -560,10 +575,19 @@ async function load(){
    document.getElementById('s-wa').textContent =s.webAccounts;
    document.getElementById('s-p').textContent =s.pending;
   document.getElementById('s-v').textContent =s.videos;
-  document.getElementById('s-br').textContent=s.buyRequests||0;
   document.getElementById('s-vv').textContent=s.videoViews||0;
   document.getElementById('s-wv').textContent=s.webVisits7||0;
   document.getElementById('s-gr').textContent=s.granted||0;
+  
+  // Online count (not cached — comes directly)
+  if(D.onlineCount !== undefined){
+    document.getElementById('s-online').textContent = D.onlineCount;
+    document.getElementById('online-count-badge').textContent = D.onlineCount + ' онлайн';
+  }
+  
+  // Maintenance mode
+  if(D.maintenanceMode !== undefined) applyMaintenanceUI(D.maintenanceMode);
+  
   if(s.pending>0){const nb=document.getElementById('nb');nb.textContent=s.pending;nb.style.display='inline';}
   else document.getElementById('nb').style.display='none';
   
@@ -1130,7 +1154,17 @@ async function syncNow(){
   btn.disabled=false; btn.textContent='📤 Надіслати зараз';
 }
 
-load(); loadSettings(); loadSyncStatus(); checkDrive(); setInterval(load,30000);
+load(); loadSettings(); loadSyncStatus(); loadMaintenance(); checkDrive(); setInterval(load,30000);
+
+// Оновлювати онлайн-лічильник кожні 15 секунд
+async function refreshOnline(){
+  try{
+    const r=await fetch('/api/online').then(x=>x.json());
+    document.getElementById('s-online').textContent=r.count;
+    document.getElementById('online-count-badge').textContent=r.count+' онлайн';
+  }catch{}
+}
+setInterval(refreshOnline,15000);
 
 async function checkDrive(){
   const el=document.getElementById('drive-status');
@@ -1139,6 +1173,38 @@ async function checkDrive(){
     if(d.r2?.configured){window._driveOk=true;el.innerHTML='☁️ <b>Cloudflare R2 підключено</b> — файли >50 МБ зберігаються на R2';el.style.color='var(--grn)';}
     else{window._driveOk=false;el.innerHTML='⚠️ <b>R2 не налаштований</b> — файли >50 МБ не можна завантажити. Додайте ENV: R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET';el.style.color='var(--gold)';}
   }catch{window._driveOk=false;el.innerHTML='Не вдалося перевірити R2';el.style.color='var(--muted)';}
+}
+
+// ── MAINTENANCE MODE ──────────────────────────────────────
+function applyMaintenanceUI(on){
+  const track=document.getElementById('maint-track');
+  const knob=document.getElementById('maint-knob');
+  const label=document.getElementById('maint-label');
+  const badge=document.getElementById('maintenance-badge');
+  if(!track)return;
+  track.style.background=on?'var(--gold)':'var(--s3)';
+  track.style.borderColor=on?'var(--gold)':'var(--brd)';
+  knob.style.left=on?'25px':'3px';
+  knob.style.background=on?'#fff':'var(--muted)';
+  label.style.color=on?'var(--gold)':'var(--muted)';
+  label.textContent=on?'🛠️ Увімкнено':'Вимкнено';
+  if(badge) { badge.style.display=on?'flex':'none'; }
+}
+async function loadMaintenance(){
+  try{
+    const r=await fetch('/api/maintenance').then(x=>x.json());
+    applyMaintenanceUI(r.enabled);
+  }catch{}
+}
+async function toggleMaintenance(){
+  const isOn=document.getElementById('maint-label').textContent.includes('Увімкнено');
+  const r=await fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!isOn})}).then(x=>x.json());
+  applyMaintenanceUI(r.enabled);
+  const el=document.getElementById('maint-res');
+  el.style.color=r.enabled?'var(--gold)':'var(--grn)';
+  el.textContent=r.enabled?'🛠️ Режим обслуговування увімкнено — сайт недоступний для відвідувачів':'✅ Режим обслуговування вимкнено';
+  setTimeout(()=>el.textContent='',4000);
+  toast(r.enabled?'🛠️ Maintenance ON':'✅ Maintenance OFF');
 }
 
   // ── SYSTEM MONITOR ───────────────────────────────
