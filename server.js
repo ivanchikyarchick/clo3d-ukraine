@@ -29,6 +29,13 @@ const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
 const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || '').split(',').map(s => s.trim()).filter(Boolean);
 
+// ═══ Online users tracker ═══
+const _onlineSessions = new Map(); // sessionID -> { lastSeen, path }
+const ONLINE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+// ═══ Maintenance mode ═══
+let _maintenanceMode = false;
+
 function isAccessExpired(grantedAt) {
   return grantedAt && (Date.now() - grantedAt > ACCESS_EXPIRY_MS);
 }
@@ -112,12 +119,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// ═══════════════════════════════════════════════════════════
-// ОПТИМІЗАЦІЯ 2: trackWeb — сэмплінг 1/10 (було 1/5)
-// ═══════════════════════════════════════════════════════════
+// ═══ Maintenance Mode middleware ═══
+app.use((req, res, next) => {
+  if (!_maintenanceMode) return next();
+  if (req.path.startsWith('/api/') || req.path === '/admin' || req.path === '/login' || req.session?.isAdmin) return next();
+  res.status(503).sendFile(path.join(__dirname, 'public', 'maintenance.html'), err => {
+    if (err) res.status(503).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Технічне обслуговування</title><style>body{background:#080404;color:#F5F2F0;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}.box{max-width:480px;padding:2rem}.icon{font-size:3.5rem;margin-bottom:1rem}h1{font-size:1.5rem;margin-bottom:.75rem;color:#E8D8D5}p{color:#9A8A8A;line-height:1.6;font-size:.95rem}</style></head><body><div class="box"><div class="icon">🛠️</div><h1>Сайт оновлюється</h1><p>Прямо зараз сайт знаходиться на технічному обслуговуванні. Будь ласка, завітайте трохи пізніше.</p></div></body></html>`);
+  });
+});
+
+
 let _webTrackCounter = 0;
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api/') && req.method === 'GET') {
+    // Track online users
+    const sid = req.session?.id || req.ip;
+    _onlineSessions.set(sid, { lastSeen: Date.now(), path: req.path });
     if (++_webTrackCounter % 10 === 0) {
       db.trackWeb('visit', req.ip, req.path, { ua: (req.headers['user-agent'] || '').slice(0, 50) });
     }
@@ -170,6 +187,32 @@ app.post('/api/settings', adm, (req, res) => {
   res.json({ ok: true });
 });
 app.get('/api/settings/public', (_, res) => res.json({ fop: db.get().settings?.fop || '' }));
+
+// ═══ Ping endpoint — frontend heartbeat for online tracking ═══
+app.post('/api/ping', (req, res) => {
+  const sid = req.session?.id || req.ip;
+  _onlineSessions.set(sid, { lastSeen: Date.now(), path: req.body?.path || '/' });
+  res.json({ ok: true });
+});
+
+
+function getOnlineCount() {
+  const now = Date.now();
+  for (const [sid, data] of _onlineSessions) {
+    if (now - data.lastSeen > ONLINE_TTL_MS) _onlineSessions.delete(sid);
+  }
+  return _onlineSessions.size;
+}
+app.get('/api/online', adm, (_, res) => res.json({ count: getOnlineCount() }));
+
+// ═══ Maintenance mode ═══
+app.get('/api/maintenance', adm, (_, res) => res.json({ enabled: _maintenanceMode }));
+app.post('/api/maintenance', adm, (req, res) => {
+  _maintenanceMode = !!req.body.enabled;
+  console.log('[maintenance] mode:', _maintenanceMode);
+  res.json({ ok: true, enabled: _maintenanceMode });
+});
+
 
 app.post('/api/login', (req, res) => {
   const inputPwd = req.body?.password?.trim() || '';
@@ -229,7 +272,7 @@ app.get('/api/dashboard', adm, (req, res) => {
       courses: cs,
     };
   });
-  res.json(data);
+  res.json({ ...data, onlineCount: getOnlineCount(), maintenanceMode: _maintenanceMode });
 });
 
 // ═══ Public courses (CACHED 30s) ═══
