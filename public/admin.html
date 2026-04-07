@@ -147,6 +147,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   <div class="ni" onclick="go('users')"><span class="ic">👥</span> Користувачі</div>
   <div class="ni" onclick="go('individual')"><span class="ic">🎯</span> Індивідуальні <span class="nb" id="nb-ind"></span></div>
   <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
+  <div class="ni" onclick="go('progress')"><span class="ic">📊</span> Прогрес учнів</div>
   <div class="ni" onclick="go('stats')"><span class="ic">📈</span> Статистика</div>
   <div class="ni" onclick="go('export')"><span class="ic">💾</span> Експорт / Імпорт</div>
   <div class="ni" onclick="go('debug')"><span class="ic">🔧</span> Діагностика</div>
@@ -162,12 +163,12 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="tab on" id="tab-dash">
       <div class="sg">
         <div class="sc"><div class="sl">Курсів</div><div class="sv b" id="s-c">—</div><div class="ss">всього</div></div>
-        <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">унікальних</div></div>
         <div class="sc"><div class="sl">Веб акаунтів</div><div class="sv a" id="s-wa">—</div><div class="ss">зареєстровані</div></div>
         <div class="sc" style="border-color:rgba(52,211,153,.25)"><div class="sl">🟢 Зараз онлайн</div><div class="sv g" id="s-online">—</div><div class="ss">на сайті</div></div>
         <div class="sc"><div class="sl">Заявок</div><div class="sv go" id="s-p">—</div><div class="ss">очікують</div></div>
         <div class="sc"><div class="sl">Відео</div><div class="sv b" id="s-v">—</div><div class="ss">всього</div></div>
-        <div class="sc"><div class="sl">Перегл. відео</div><div class="sv a" id="s-vv">—</div><div class="ss">всього</div></div>
+        <div class="sc"><div class="sl">Перегл. відео</div><div class="sv a" id="s-vv">—</div><div class="ss">переглянутих уроків</div></div>
         <div class="sc"><div class="sl">Візитів сайту</div><div class="sv b" id="s-wv">—</div><div class="ss">7 днів</div></div>
         <div class="sc"><div class="sl">Видано доступів</div><div class="sv g" id="s-gr">—</div><div class="ss">всього</div></div>
       </div>
@@ -304,9 +305,39 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       </div>
       <div class="tb-box" id="prg-table"><div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Оберіть курс щоб побачити прогрес</div></div>
     </div>
+    <!-- PROGRESS -->
+    <div class="tab" id="tab-progress">
+      <div class="sh">
+        <div><h2>Прогрес учнів</h2><p>Детальна статистика перегляду по кожному учню</p></div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <select id="prg2-cid" onchange="loadProgressTab()" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.4rem .7rem;color:var(--txt);font-size:.8rem;outline:none">
+            <option value="">Оберіть курс</option>
+          </select>
+          <button class="btn btn-gh" onclick="loadProgressTab()" style="font-size:.78rem">🔄 Оновити</button>
+        </div>
+      </div>
+      <!-- Summary cards -->
+      <div id="prg2-summary" style="display:none;margin-bottom:1.25rem">
+        <div class="sg" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+          <div class="sc"><div class="sl">Учнів</div><div class="sv b" id="prg2-total">—</div><div class="ss">всього</div></div>
+          <div class="sc"><div class="sl">Завершили</div><div class="sv g" id="prg2-completed">—</div><div class="ss">курс</div></div>
+          <div class="sc"><div class="sl">Активних</div><div class="sv go" id="prg2-active">—</div><div class="ss">за 7 днів</div></div>
+          <div class="sc"><div class="sl">Середній прогрес</div><div class="sv a" id="prg2-avg">—</div><div class="ss">%</div></div>
+        </div>
+      </div>
+      <!-- Progress bars overview -->
+      <div id="prg2-bars" style="display:none;background:var(--s1);border:1px solid var(--brd);border-radius:14px;padding:1.35rem;margin-bottom:1.25rem">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;margin-bottom:1rem">📊 Розподіл прогресу</h3>
+        <canvas id="prg2-chart" height="120"></canvas>
+      </div>
+      <!-- Table -->
+      <div class="tb-box" id="prg2-table">
+        <div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Оберіть курс щоб побачити прогрес учнів</div>
+      </div>
+    </div>
+
     <!-- STATS -->
-    <div class="tab" id="tab-stats">
-      <div class="sh"><div><h2>Статистика</h2></div><a href="/api/export/stats" class="btn btn-gh">⬇️ CSV</a></div>
+    <div class="tab" id="tab-stats">      <div class="sh"><div><h2>Статистика</h2></div><a href="/api/export/stats" class="btn btn-gh">⬇️ CSV</a></div>
       <div class="cr">
         <div class="cb"><h3>🤖 Лог бота</h3><div id="bot-log" style="max-height:450px;overflow-y:auto"></div></div>
         <div class="cb"><h3>🌐 Лог сайту</h3><div id="web-log" style="max-height:450px;overflow-y:auto"></div></div>
@@ -333,6 +364,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         </div>
         <div id="maint-res" style="font-size:.76rem;min-height:1rem"></div>
       </div>
+      <div class="card-form" style="max-width:500px;margin-bottom:1.25rem">
         <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">☁️ Авто-синхронізація db</h3>
         <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">
           Надсилає <code style="background:var(--s3);padding:.1rem .35rem;border-radius:4px">db.json</code> у Telegram після кожної зміни. Старий файл видаляється. При запуску сервера — завжди синхронізується автоматично.
@@ -543,8 +575,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
 <script>
 let D=null, charts={}, curCourseId=null, uplFile=null, impFile=null;
-const TABS=['dash','courses','pending','users','individual','notify','stats','export','debug','settings'];
-const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',users:'Користувачі',individual:'Індивідуальні розбори',notify:'Сповіщення',stats:'Статистика',export:'Експорт / Імпорт',debug:'Діагностика',settings:'Налаштування'};
+const TABS=['dash','courses','pending','users','individual','notify','progress','stats','export','debug','settings'];
+const TTITLES={dash:'Дашборд',courses:'Курси',pending:'Заявки курсів',users:'Користувачі',individual:'Індивідуальні розбори',notify:'Сповіщення',progress:'Прогрес учнів',stats:'Статистика',export:'Експорт / Імпорт',debug:'Діагностика',settings:'Налаштування'};
 const EI={start:'🚀',buy_request:'🛒',granted:'✅',video_view:'▶️',visit:'🌐',login_fail:'🔑',broadcast:'📢'};
 const COLORS=['#C8302A','#E8D8D5','#34d399','#fbbf24','#f472b6','#60a5fa','#f87171','#fb923c','#a3e635'];
 
@@ -563,6 +595,7 @@ function go(name){
   document.getElementById('tt').textContent=TTITLES[name]||name;
   document.querySelectorAll('.ni')[TABS.indexOf(name)]?.classList.add('on');
   if(name === 'users') loadUsers();
+  if(name === 'progress') loadProgressTab();
 }
 
 async function load(){
@@ -606,7 +639,7 @@ async function load(){
   // populate notify selects
   const populateSelects = () => {
     const opts = D.courses.map(c=>`<option value="${c.id}">${c.title}</option>`).join('');
-    ['nv-cid','rm-cid','bc-cid2','prg-cid'].forEach(id=>{ const el=document.getElementById(id); if(el){ const prev=el.value; el.innerHTML=(id==='bc-cid2'?'<option value="">— Всі покупці —</option>':'')+opts; if(prev)el.value=prev; } });
+    ['nv-cid','rm-cid','bc-cid2','prg-cid','prg2-cid'].forEach(id=>{ const el=document.getElementById(id); if(el){ const prev=el.value; el.innerHTML=(id==='bc-cid2'?'<option value="">— Всі покупці —</option>':'')+opts; if(prev)el.value=prev; } });
   };
   populateSelects();
 
@@ -1063,7 +1096,7 @@ async function doBroadcast2(){
   btn.disabled=false; btn.textContent='📢 Розіслати';
 }
 
-// ── PROGRESS TABLE ─────────────────────────────────────────
+// ── PROGRESS TABLE (notify tab) ─────────────────────────────────────────────
 async function loadProgress(){
   const cid=document.getElementById('prg-cid').value;
   const el=document.getElementById('prg-table');
@@ -1085,6 +1118,83 @@ async function loadProgress(){
       <td>${r.completed?'<span class="btn-g" style="padding:.15rem .5rem;border-radius:6px;font-size:.7rem;background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)">✅ Так</span>':'<span style="color:var(--muted);font-size:.78rem">—</span>'}</td>
       <td style="font-size:.78rem;color:var(--muted)">${r.lastTs?new Date(r.lastTs).toLocaleDateString('uk'):'Ніколи'}</td>
     </tr>`).join('')+'</tbody></table>';
+}
+
+// ── PROGRESS TAB (окремий таб) ────────────────────────────────────────────────
+let _prgChart2 = null;
+async function loadProgressTab(){
+  const cid = document.getElementById('prg2-cid').value;
+  const el = document.getElementById('prg2-table');
+  if(!cid){
+    el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Оберіть курс щоб побачити прогрес учнів</div>';
+    document.getElementById('prg2-summary').style.display='none';
+    document.getElementById('prg2-bars').style.display='none';
+    return;
+  }
+  el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">⏳ Завантаження...</div>';
+  const rows = await fetch(`/api/progress/all/${cid}`).then(r=>r.json()).catch(()=>[]);
+  if(!rows.length){
+    el.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Немає даних — учні ще не переглядали відео</div>';
+    document.getElementById('prg2-summary').style.display='none';
+    document.getElementById('prg2-bars').style.display='none';
+    return;
+  }
+  // Summary
+  const now = Date.now(), week7 = 7*24*60*60*1000;
+  const completed = rows.filter(r=>r.completed).length;
+  const active = rows.filter(r=>r.lastTs && now-r.lastTs < week7).length;
+  const avgPct = rows.length ? Math.round(rows.reduce((s,r)=>s+r.pct,0)/rows.length) : 0;
+  document.getElementById('prg2-total').textContent = rows.length;
+  document.getElementById('prg2-completed').textContent = completed;
+  document.getElementById('prg2-active').textContent = active;
+  document.getElementById('prg2-avg').textContent = avgPct+'%';
+  document.getElementById('prg2-summary').style.display='block';
+  // Chart — розподіл по відсотках
+  const buckets = [0,0,0,0,0]; // 0-20, 21-40, 41-60, 61-80, 81-100
+  rows.forEach(r=>{ const i=Math.min(4,Math.floor(r.pct/20)); buckets[i]++; });
+  document.getElementById('prg2-bars').style.display='block';
+  if(_prgChart2) _prgChart2.destroy();
+  _prgChart2 = new Chart(document.getElementById('prg2-chart'),{
+    type:'bar',
+    data:{
+      labels:['0–20%','21–40%','41–60%','61–80%','81–100%'],
+      datasets:[{data:buckets,backgroundColor:['#f87171','#fb923c','#fbbf24','#60a5fa','#34d399'],borderRadius:6,borderWidth:0}]
+    },
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(200,48,42,.07)'},ticks:{stepSize:1}}}}
+  });
+  // Table
+  const sorted = [...rows].sort((a,b)=>b.pct-a.pct);
+  el.innerHTML=`<table><thead><tr>
+    <th>#</th><th>Ім'я</th><th>Username</th><th>ID</th>
+    <th>Прогрес</th><th>Переглянуто</th><th>Завершено</th><th>Останній перегляд</th>
+  </tr></thead><tbody>`+
+  sorted.map((r,i)=>{
+    const isActive = r.lastTs && now-r.lastTs < week7;
+    const daysSince = r.lastTs ? Math.floor((now-r.lastTs)/86400000) : null;
+    const lastSeen = r.lastTs
+      ? (daysSince===0 ? 'Сьогодні' : daysSince===1 ? 'Вчора' : `${daysSince} дн. тому`)
+      : 'Ніколи';
+    const barColor = r.pct>=80?'var(--grn)':r.pct>=40?'var(--gold)':'var(--acc)';
+    return `<tr>
+      <td style="color:var(--muted);font-size:.75rem">${i+1}</td>
+      <td>${r.name||'—'} ${isActive?'<span style="font-size:.65rem;color:var(--grn)">●</span>':''}</td>
+      <td style="font-size:.8rem">${r.username?'@'+r.username:'—'}</td>
+      <td><code>${r.id}</code></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div style="width:90px;height:6px;background:var(--s3);border-radius:6px;overflow:hidden">
+            <div style="height:100%;width:${r.pct}%;background:${barColor};border-radius:6px;transition:width .3s"></div>
+          </div>
+          <span style="font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:${barColor}">${r.pct}%</span>
+        </div>
+      </td>
+      <td style="font-size:.82rem;font-weight:500">${r.watched}<span style="color:var(--muted);font-weight:400">/${r.total}</span></td>
+      <td>${r.completed
+        ?'<span style="padding:.15rem .5rem;border-radius:6px;font-size:.7rem;background:rgba(52,211,153,.12);color:var(--grn);border:1px solid rgba(52,211,153,.25)">✅ Так</span>'
+        :'<span style="color:var(--muted);font-size:.78rem">—</span>'}</td>
+      <td style="font-size:.78rem;color:${isActive?'var(--grn)':'var(--muted)'}">${lastSeen}</td>
+    </tr>`;
+  }).join('')+'</tbody></table>';
 }
 
 // ── ADMIN PREVIEW ─────────────────────────────────────────
