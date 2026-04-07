@@ -255,16 +255,27 @@ app.get('/api/dashboard', adm, (req, res) => {
     }
     const cs = d.courses || [], t = s.totals || {}, evTypes = {}, webAccounts = (d.buyerAccounts || []).length;
     bEvt.forEach(e => { evTypes[e.type] = (evTypes[e.type] || 0) + 1; });
+    // Унікальні покупці (один учень може мати кілька курсів)
+    const uniqueBuyers = new Set();
+    cs.forEach(c => (c.buyers || []).forEach(b => uniqueBuyers.add(b.id)));
+    // Реальні перегляди відео з прогресу
+    const realVideoViews = Object.values(d.progress || {}).reduce((sum, p) => sum + (p.watched?.length || 0), 0);
+    // Видано доступів — рахуємо з buyers (точніше ніж totals)
+    const realGranted = cs.reduce((s, c) => s + (c.buyers?.length || 0), 0);
+    // Всі веб-візити за 7 днів (не кожен 10-й)
+    const webVisits7 = wEvt.filter(e => now - e.ts < 7 * 86400000).length;
     return {
       summary: {
         courses: cs.length,
-        buyers: cs.reduce((s, c) => s + (c.buyers?.length || 0), 0),
+        buyers: uniqueBuyers.size,
         webAccounts: webAccounts,
         pending: cs.reduce((s, c) => s + (c.pending?.length || 0), 0),
         videos: cs.reduce((s, c) => s + (c.videos?.length || 0), 0),
-        buyRequests: t.buyRequests || 0, videoViews: t.videoViews || 0,
-        webVisits7: wEvt.filter(e => now - e.ts < 7 * 86400000).length,
-        messages: t.messages || 0, granted: t.granted || 0
+        buyRequests: t.buyRequests || 0,
+        videoViews: realVideoViews,
+        webVisits7: webVisits7,
+        messages: t.messages || 0,
+        granted: realGranted
       },
       charts: { dayLabels, botByDay, webByDay }, evTypes,
       recentBot: bEvt.slice(-20).reverse(),
