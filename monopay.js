@@ -9,7 +9,7 @@ const MONO_WEBHOOK_STRICT = process.env.MONO_WEBHOOK_STRICT === '1';
 const WEBHOOK_LOG_MAX = Math.min(parseInt(process.env.MONO_WEBHOOK_LOG_MAX || '120', 10) || 120, 500);
 
 // ─── Simple email via SMTP (nodemailer) ──────────────────────────────────────
-async function sendVerificationCode(toEmail, code) {
+async function sendVerificationCode(toEmail, code, type = 'registration') {
   try {
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
@@ -22,25 +22,38 @@ async function sendVerificationCode(toEmail, code) {
       },
     });
     
+    const isPasswordReset = type === 'password_reset';
+    const subject = isPasswordReset 
+      ? `Код відновлення пароля` 
+      : `Код підтвердження реєстрації`;
+    
+    const title = isPasswordReset
+      ? `Відновлення пароля`
+      : `Підтвердження реєстрації`;
+    
+    const text = isPasswordReset
+      ? `Введіть цей код для відновлення пароля:`
+      : `Ваш код підтвердження:`;
+
     await transporter.sendMail({
       from: `"Vitaliia 3D Fashion Lab" <${process.env.SMTP_USER || 'vitaliia.3dlab@gmail.com'}>`,
       to: toEmail,
-      subject: `Код підтвердження реєстрації`,
+      subject: subject,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#080404;color:#F5F2F0;padding:32px;border-radius:12px">
           <h2 style="color:#C8302A;margin-bottom:8px">Vitaliia 3D Fashion Lab</h2>
           <p style="color:#9A8A8A;font-size:13px;margin-bottom:24px">CLO 3D українською</p>
-          <h3 style="margin-bottom:16px">Підтвердження реєстрації</h3>
-          <p>Ваш код підтвердження:</p>
+          <h3 style="margin-bottom:16px">${title}</h3>
+          <p>${text}</p>
           <div style="background:#2A2020;border-radius:12px;padding:20px;margin:24px 0;text-align:center">
             <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#C8302A">${code}</span>
           </div>
           <p style="color:#9A8A8A;font-size:14px">Код дійсний протягом 10 хвилин.</p>
-          <p style="margin-top:24px;color:#9A8A8A;font-size:12px">Якщо ви не реєструвалися на нашому сайті, проігноруйте цей лист.</p>
+          <p style="margin-top:24px;color:#9A8A8A;font-size:12px">${isPasswordReset ? 'Якщо ви не запитували відновлення пароля, проігноруйте цей лист.' : 'Якщо ви не реєструвалися на нашому сайті, проігноруйте цей лист.'}</p>
         </div>
       `,
     });
-    console.log('[email] Sent verification code to:', toEmail);
+    console.log('[email] Sent verification code to:', toEmail, 'type:', type);
   } catch (e) {
     console.warn('[email] Failed to send verification code:', e.message);
     throw e;
