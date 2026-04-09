@@ -149,14 +149,41 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 #access-countdown strong{font-weight:800}
 #access-countdown.warn{border-color:rgba(251,191,36,.4);color:var(--gold)}
 #access-countdown.urgent{border-color:rgba(248,113,113,.4);color:var(--red)}
+#pwd-overlay{position:fixed;inset:0;z-index:4999;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .3s}
+#pwd-overlay.show{opacity:1;pointer-events:auto}
+#pwd-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5000;background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid rgba(200,48,42,.3);border-radius:20px;padding:2rem 2.2rem;width:100%;max-width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+#pwd-popup.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.pwd-box{width:100%}
+.pwd-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;margin-bottom:1.2rem;color:var(--txt)}
+.pwd-desc{font-size:.85rem;color:var(--muted);margin-bottom:1rem;line-height:1.5}
+#pwd-popup input{width:100%;background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:.9rem 1.1rem;color:var(--txt);font-size:.95rem;font-family:'Inter',sans-serif;outline:none;text-align:center;transition:.2s;margin-bottom:.75rem}
+#pwd-popup input:focus{border-color:var(--acc)}
 </style>
 </head>
 <body>
 <div id="gate"><div class="gbox"><div class="gt">Vitaliia 3D Fashion Lab</div><div class="gb">Навчальна платформа</div><div id="login-tabs" style="display:flex;gap:.5rem;margin-bottom:1rem;border-bottom:1px solid var(--brd);padding-bottom:.5rem"><button class="gtab on" onclick="showLoginTab('web')" id="tab-web">Вхід</button><button class="gtab" onclick="showLoginTab('reg')" id="tab-reg">Реєстрація</button></div><div id="login-web"><p class="gs">Введіть юзернейм та пароль</p><input id="web-username" placeholder="Юзернейм"><input id="web-password" type="password" placeholder="Пароль" style="margin-top:.5rem"><button class="gbtn" onclick="webLogin()">Увійти →</button></div><div id="login-reg" style="display:none"><p class="gs">Створіть акаунт</p><input id="reg-username" placeholder="Юзернейм"><input id="reg-password" type="password" placeholder="Пароль" style="margin-top:.5rem"><input id="reg-password2" type="password" placeholder="Повторіть пароль" style="margin-top:.5rem"><button class="gbtn" onclick="doRegister()">Зареєструватись</button></div><div class="gerr" id="gerr"></div></div></div>
 <div id="access-countdown"><span class="cd-text">⏳ Доступ: — дн.</span></div>
-<div id="app"><header><div class="hdr-brand"><a href="/" style="text-decoration:none"><div class="hdr-logo">Vitaliia 3D Fashion Lab</div><div class="hdr-sub">Навчальна платформа</div></a></div><div class="hdr-r"><span id="uname">—</span><button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button><button class="hdr-btn" onclick="logout()">Вийти</button></div></header><div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div><div class="ctabs" id="ctabs" style="display:none"></div><div class="layout" id="layout"><aside class="sidebar"><div class="sb-head"><div class="sb-title">Уроки курсу</div><div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div><div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div></div><div class="sb-list" id="llist"></div></aside><main class="va" id="va"><div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div></main></div></div>
+<div id="app"><header><div class="hdr-brand"><a href="/" style="text-decoration:none"><div class="hdr-logo">Vitaliia 3D Fashion Lab</div><div class="hdr-sub">Навчальна платформа</div></a></div><div class="hdr-r"><span id="uname">—</span><button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button><button class="hdr-btn" onclick="showChangePassword()">🔑 Пароль</button><button class="hdr-btn" onclick="logout()">Вийти</button></div></header><div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div><div class="ctabs" id="ctabs" style="display:none"></div><div class="layout" id="layout"><aside class="sidebar"><div class="sb-head"><div class="sb-title">Уроки курсу</div><div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div><div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div></div><div class="sb-list" id="llist"></div></aside><main class="va" id="va"><div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div></main></div></div>
 
 <div id="toast"></div><div id="resume-toast"></div>
+<div id="pwd-overlay" onclick="closeChangePassword()"></div>
+<div id="pwd-popup" role="dialog" aria-modal="true">
+  <div class="pwd-box">
+    <div class="pwd-title">🔑 Зміна пароля</div>
+    <div id="pwd-step1">
+      <p class="pwd-desc">Введіть email, на який зареєстровано акаунт</p>
+      <input id="pwd-email" placeholder="Email">
+      <button class="gbtn" onclick="requestPasswordReset()">Надіслати код</button>
+    </div>
+    <div id="pwd-step2" style="display:none">
+      <p class="pwd-desc">Введіть код, який прийшов на email</p>
+      <input id="pwd-code" placeholder="4-значний код" maxlength="4">
+      <input id="pwd-new" type="password" placeholder="Новий пароль (мін. 4 символи)">
+      <button class="gbtn" onclick="verifyPasswordReset()">Змінити пароль</button>
+    </div>
+    <div class="gerr" id="pwd-err"></div>
+  </div>
+</div>
 <a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотний зв'язок</a>
 <div id="mat-overlay" onclick="closeMatPopup()"></div><div id="mat-popup" role="dialog" aria-modal="true"><span class="mat-icon">📎</span><div class="mat-title">Увага!</div><p class="mat-text">До цього відео прикріплені <strong>навчальні файли</strong>.<br>Вам потрібно завантажити їх!</p><button class="mat-btn-dl" id="mat-dl-btn" onclick="handleMatDownload()">⬇ Завантажити матеріали</button></div>
 
@@ -246,6 +273,32 @@ async function doRegister(){
   } else {document.getElementById('gerr').textContent='❌ '+d.error; btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;}
 }
 async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
+
+function showChangePassword(){ document.getElementById('pwd-overlay').classList.add('show'); document.getElementById('pwd-popup').classList.add('show'); document.getElementById('pwd-step1').style.display='block'; document.getElementById('pwd-step2').style.display='none'; document.getElementById('pwd-email').value=''; document.getElementById('pwd-code').value=''; document.getElementById('pwd-new').value=''; document.getElementById('pwd-err').textContent=''; }
+function closeChangePassword(){ document.getElementById('pwd-overlay').classList.remove('show'); document.getElementById('pwd-popup').classList.remove('show'); }
+async function requestPasswordReset(){
+  const email=document.getElementById('pwd-email').value.trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ document.getElementById('pwd-err').textContent='Введіть коректний email'; return; }
+  document.getElementById('pwd-err').textContent='';
+  try{
+    const d=await fetch('/api/buyer/password-reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email})}).then(r=>r.json());
+    if(d.ok){ document.getElementById('pwd-step1').style.display='none'; document.getElementById('pwd-step2').style.display='block'; showToast('Код надіслано на email!'); }
+    else{ document.getElementById('pwd-err').textContent='❌ '+d.error; }
+  }catch(e){ document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання'; }
+}
+async function verifyPasswordReset(){
+  const email=document.getElementById('pwd-email').value.trim();
+  const code=document.getElementById('pwd-code').value.trim();
+  const newPwd=document.getElementById('pwd-new').value;
+  if(!code||code.length!==4){ document.getElementById('pwd-err').textContent='Введіть 4-значний код'; return; }
+  if(!newPwd||newPwd.length<4){ document.getElementById('pwd-err').textContent='Пароль мінімум 4 символи'; return; }
+  document.getElementById('pwd-err').textContent='';
+  try{
+    const d=await fetch('/api/buyer/password-reset-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email,code:code,newPassword:newPwd})}).then(r=>r.json());
+    if(d.ok){ closeChangePassword(); showToast('✅ Пароль змінено! Увійдіть з новим паролем'); }
+    else{ document.getElementById('pwd-err').textContent='❌ '+d.error; }
+  }catch(e){ document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання'; }
+}
 
 function toggleFullscreen() {
   const vwrap = document.getElementById('vwrap');
