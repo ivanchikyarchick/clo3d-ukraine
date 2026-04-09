@@ -621,6 +621,140 @@ app.post('/api/buyer/login-web', (req, res) => {
   res.json({ ok: true, id: buyer.id, name: nameClean });
 });
 
+const _passwordResetRequests = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [email, data] of _passwordResetRequests) {
+    if (now - data.timestamp > VERIFICATION_CODE_TTL) {
+      _passwordResetRequests.delete(email);
+      console.log('[cleanup] Removed expired password reset code for:', email);
+    }
+  }
+}, 5 * 60 * 1000);
+
+app.post('/api/buyer/password-reset-request', async (req, res) => {
+  const { username } = req.body;
+  const email = (username || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ ok: false, error: 'Введіть коректний email' });
+    return;
+  }
+  const nameClean = email.slice(0, 100);
+  const d = db.get();
+  const buyer = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
+  if (!buyer) {
+    res.status(400).json({ ok: false, error: 'Акаунт з таким email не знайдено' });
+    return;
+  }
+  const code = generateVerificationCode();
+  _passwordResetRequests.set(nameClean, {
+    code,
+    timestamp: Date.now()
+  });
+  console.log('[password-reset] Generated code for:', nameClean, 'code:', code);
+  try {
+    await sendVerificationCode(email, code);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[password-reset] Failed to send email:', e.message);
+    _passwordResetRequests.delete(nameClean);
+    res.status(500).json({ ok: false, error: 'Не вдалося надіслати код. Перевірте email.' });
+  }
+});
+
+app.post('/api/buyer/password-reset-verify', (req, res) => {
+  const { username, code, newPassword } = req.body;
+  const email = (username || '').trim().toLowerCase();
+  const nameClean = email.slice(0, 100);
+  if (!code || code.length !== 4) {
+    res.status(400).json({ ok: false, error: 'Введіть 4-значний код' });
+    return;
+  }
+  const pending = _passwordResetRequests.get(nameClean);
+  if (!pending) {
+    res.status(400).json({ ok: false, error: 'Код не знайдено. Спробуйте отримати новий код.' });
+    return;
+  }
+  if (Date.now() - pending.timestamp > VERIFICATION_CODE_TTL) {
+    _passwordResetRequests.delete(nameClean);
+    res.status(400).json({ ok: false, error: 'Код застарів. Отримайте новий код.' });
+    return;
+  }
+  if (pending.code !== code) {
+    res.status(400).json({ ok: false, error: 'Невірний код' });
+    return;
+  }
+  if (!newPassword || newPassword.length < 4) {
+    res.status(400).json({ ok: false, error: 'Пароль мінімум 4 символи' });
+    return;
+  }
+  const newHash = hashPassword(newPassword);
+  db.set(d => {
+    const buyer = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
+    if (buyer) {
+      buyer.password = newHash;
+      console.log('[password-reset] Password changed for:', nameClean);
+    }
+  });
+  _buyerUsers.set(nameClean, { id: buyer?.id, password: newHash });
+  _passwordResetRequests.delete(nameClean);
+  res.json({ ok: true });
+});
+
+app.post('/api/buyer/password-change', (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const uid = req.session.buyerId;
+  if (!uid) {
+    res.status(401).json({ ok: false, error: 'Сесія закінчилась. Увійдіть знову.' });
+    return;
+  }
+  if (!oldPassword || !newPassword || newPassword.length < 4) {
+    res.status(400).json({ ok: false, error: 'Введіть старий пароль та новий пароль (мін. 4 символи)' });
+    return;
+  }
+  const d = db.get();
+  const buyer = d.buyerAccounts?.find(a => a.id === uid);
+  if (!buyer) {
+    res.status(400).json({ ok: false, error: 'Користувача не знайдено' });
+    return;
+  }
+  if (!verifyPassword(oldPassword, buyer.password)) {
+    res.status(400).json({ ok: false, error: 'Невірний старий пароль' });
+    return;
+  }
+  const newHash = hashPassword(newPassword);
+  db.set(d => {
+    const b = d.buyerAccounts?.find(a => a.id === uid);
+    if (b) b.password = newHash;
+  });
+  _buyerUsers.set((buyer.email || buyer.username)?.toLowerCase(), { id: uid, password: newHash });
+  res.json({ ok: true });
+});
+
+app.post('/api/buyer/password-reset-admin', adm, (req, res) => {
+  const { buyerId, newPassword } = req.body;
+  const uid = parseInt(buyerId);
+  if (!uid || !newPassword || newPassword.length < 4) {
+    res.status(400).json({ ok: false, error: 'Buyer ID та новий пароль (мін. 4 символи)' });
+    return;
+  }
+  const newHash = hashPassword(newPassword);
+  const d = db.get();
+  const buyer = d.buyerAccounts?.find(a => a.id === uid);
+  if (!buyer) {
+    res.status(400).json({ ok: false, error: 'Користувача не знайдено' });
+    return;
+  }
+  db.set(d => {
+    const b = d.buyerAccounts?.find(a => a.id === uid);
+    if (b) b.password = newHash;
+  });
+  const nameKey = (buyer.email || buyer.username)?.toLowerCase();
+  if (nameKey) _buyerUsers.set(nameKey, { id: uid, password: newHash });
+  console.log('[admin-password-reset] Password changed for buyer:', uid);
+  res.json({ ok: true, message: 'Пароль змінено' });
+});
+
 
 const _tgFileCache = new Map();
 const TG_FILE_CACHE_TTL = 50 * 60 * 1000;
