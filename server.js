@@ -653,7 +653,7 @@ app.post('/api/buyer/password-reset-request', async (req, res) => {
   });
   console.log('[password-reset] Generated code for:', nameClean, 'code:', code);
   try {
-    await sendVerificationCode(email, code);
+    await sendVerificationCode(email, code, 'password_reset');
     res.json({ ok: true });
   } catch (e) {
     console.error('[password-reset] Failed to send email:', e.message);
@@ -688,15 +688,21 @@ app.post('/api/buyer/password-reset-verify', (req, res) => {
     res.status(400).json({ ok: false, error: 'Пароль мінімум 4 символи' });
     return;
   }
+  const d = db.get();
+  const buyer = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
+  if (!buyer) {
+    res.status(400).json({ ok: false, error: 'Користувача не знайдено' });
+    return;
+  }
   const newHash = hashPassword(newPassword);
   db.set(d => {
-    const buyer = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
-    if (buyer) {
-      buyer.password = newHash;
+    const b = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
+    if (b) {
+      b.password = newHash;
       console.log('[password-reset] Password changed for:', nameClean);
     }
   });
-  _buyerUsers.set(nameClean, { id: buyer?.id, password: newHash });
+  _buyerUsers.set(nameClean, { id: buyer.id, password: newHash });
   _passwordResetRequests.delete(nameClean);
   res.json({ ok: true });
 });
@@ -753,6 +759,43 @@ app.post('/api/buyer/password-reset-admin', adm, (req, res) => {
   if (nameKey) _buyerUsers.set(nameKey, { id: uid, password: newHash });
   console.log('[admin-password-reset] Password changed for buyer:', uid);
   res.json({ ok: true, message: 'Пароль змінено' });
+});
+
+app.post('/api/buyer/create-admin', adm, (req, res) => {
+  const { username, password, grantCourseId } = req.body;
+  const nameClean = (username || '').trim().slice(0, 100).toLowerCase();
+  if (!nameClean || !password || password.length < 4) {
+    res.status(400).json({ ok: false, error: 'Username та пароль (мін. 4 символи)' });
+    return;
+  }
+  const d = db.get();
+  const existing = d.buyerAccounts?.find(a => (a.email || a.username)?.toLowerCase() === nameClean);
+  if (existing) {
+    res.status(400).json({ ok: false, error: 'Акаунт з таким username вже існує' });
+    return;
+  }
+  const newUid = Date.now();
+  const newHash = hashPassword(password);
+  db.set(d => {
+    if (!d.buyerAccounts) d.buyerAccounts = [];
+    d.buyerAccounts.push({
+      id: newUid,
+      username: nameClean,
+      email: nameClean,
+      password: newHash,
+      createdAt: Date.now()
+    });
+    if (grantCourseId) {
+      const c = d.courses.find(x => x.id === grantCourseId);
+      if (c) {
+        if (!c.buyers) c.buyers = [];
+        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now() });
+      }
+    }
+    console.log('[admin-create] Created account:', newUid, nameClean);
+  });
+  _buyerUsers.set(nameClean, { id: newUid, password: newHash });
+  res.json({ ok: true, id: newUid, name: nameClean, message: 'Акаунт створено' + (grantCourseId ? ' та надано доступ до курсу' : '') });
 });
 
 
