@@ -736,8 +736,28 @@ function renderUsers(accounts){
       <td>${a.username}</td>
       <td><code>${a.id}</code></td>
       <td>${new Date(a.createdAt).toLocaleString('uk')}</td>
-      <td><button class="btn btn-r" onclick="deleteUser(${a.id}, '${a.username}')">🗑 Видалити</button></td>
+      <td style="display:flex;gap:.4rem">
+        <button class="btn btn-go" onclick="resetUserPassword(${a.id}, '${a.username}')">🔑 Змінити пароль</button>
+        <button class="btn btn-r" onclick="deleteUser(${a.id}, '${a.username}')">🗑 Видалити</button>
+      </td>
     </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem">Немає користувачів</td></tr>';
+}
+
+async function resetUserPassword(id, username){
+  const newPwd = prompt(`Введіть новий пароль для користувача ${username}:`);
+  if(!newPwd || newPwd.length < 4){
+    toast('⚠️ Пароль мінімум 4 символи');
+    return;
+  }
+  try{
+    const r = await fetch('/api/buyer/password-reset-admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({buyerId:id, newPassword:newPwd})
+    }).then(x=>x.json());
+    if(r.ok){ toast('✅ Пароль змінено'); }
+    else{ toast('❌ ' + (r.error || 'Помилка')); }
+  }catch(e){ toast('❌ Помилка: ' + e.message); }
 }
 
 async function deleteUser(id, username){
