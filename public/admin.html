@@ -238,7 +238,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
     <!-- USERS -->
     <div class="tab" id="tab-users">
-      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div></div>
+      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div><button class="btn btn-p" onclick="openModal('modal-create-user')">+ Створити акаунт</button></div>
       <div class="tb-box"><table><thead><tr><th>Username</th><th>ID</th><th>Створено</th><th>Дії</th></tr></thead><tbody id="users-tb"></tbody></table></div>
     </div>
 
@@ -500,6 +500,26 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   </div>
 </div>
 
+<!-- MODAL: Create User -->
+<div class="mbg" id="modal-create-user">
+  <div class="mbox" style="max-width:420px">
+    <button class="mc" onclick="closeModal('modal-create-user')">✕</button>
+    <h3>➕ Створити акаунт</h3>
+    <div class="fg"><label>Username (або email) *</label><input id="cu-username" placeholder="username або email"></div>
+    <div class="fg"><label>Пароль * <span style="color:var(--muted);font-weight:400">(мін. 4 символи)</span></label><input id="cu-password" type="password" placeholder="Пароль"></div>
+    <div class="fg"><label>Надати доступ до курсу</label>
+      <select id="cu-course" style="background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.7rem .95rem;color:var(--txt);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;width:100%">
+        <option value="">— Не надавати —</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.5rem">
+      <button class="btn btn-p" onclick="createUser()" style="flex:1;padding:.75rem">Створити</button>
+      <button class="btn btn-gh" onclick="closeModal('modal-create-user')" style="padding:.75rem 1.25rem">Скасувати</button>
+    </div>
+    <div id="cu-res" style="margin-top:.6rem;font-size:.78rem"></div>
+  </div>
+</div>
+
 <!-- MODAL: Course detail (videos + buyers) -->
 <div class="mbg" id="modal-course">
   <div class="mbox" style="max-width:720px">
@@ -758,6 +778,42 @@ async function resetUserPassword(id, username){
     if(r.ok){ toast('✅ Пароль змінено'); }
     else{ toast('❌ ' + (r.error || 'Помилка')); }
   }catch(e){ toast('❌ Помилка: ' + e.message); }
+}
+
+async function createUser(){
+  const username = document.getElementById('cu-username').value.trim();
+  const password = document.getElementById('cu-password').value;
+  const courseId = document.getElementById('cu-course').value;
+  if(!username || !password || password.length < 4){
+    document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">Введіть username та пароль (мін. 4 символи)</span>';
+    return;
+  }
+  try{
+    const r = await fetch('/api/buyer/create-admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username, password, grantCourseId:courseId || null})
+    }).then(x=>x.json());
+    if(r.ok){
+      toast('✅ ' + r.message);
+      closeModal('modal-create-user');
+      document.getElementById('cu-username').value = '';
+      document.getElementById('cu-password').value = '';
+      document.getElementById('cu-course').value = '';
+      loadUsers();
+    }else{
+      document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">❌ ' + (r.error || 'Помилка') + '</span>';
+    }
+  }catch(e){
+    document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">❌ Помилка: ' + e.message + '</span>';
+  }
+}
+
+function populateCreateUserCourses(){
+  if(!D || !D.courses) return;
+  const sel = document.getElementById('cu-course');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Не надавати —</option>' + D.courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
 }
 
 async function deleteUser(id, username){
@@ -1284,7 +1340,7 @@ async function syncNow(){
   btn.disabled=false; btn.textContent='📤 Надіслати зараз';
 }
 
-load(); loadSettings(); loadSyncStatus(); loadMaintenance(); checkDrive(); setInterval(load,30000);
+load(); loadSettings(); loadSyncStatus(); loadMaintenance(); checkDrive(); setInterval(load,30000); populateCreateUserCourses();
 
 // Оновлювати онлайн-лічильник кожні 15 секунд
 async function refreshOnline(){
