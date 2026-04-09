@@ -279,12 +279,12 @@ function closeChangePassword(){ document.getElementById('pwd-overlay').classList
 async function requestPasswordReset(){
   const email=document.getElementById('pwd-email').value.trim();
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ document.getElementById('pwd-err').textContent='Введіть коректний email'; return; }
-  document.getElementById('pwd-err').textContent='';
+  document.getElementById('pwd-err').textContent='⏳ Надсилаємо код...';
   try{
     const d=await fetch('/api/buyer/password-reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email})}).then(r=>r.json());
     if(d.ok){ document.getElementById('pwd-step1').style.display='none'; document.getElementById('pwd-step2').style.display='block'; showToast('Код надіслано на email!'); }
-    else{ document.getElementById('pwd-err').textContent='❌ '+d.error; }
-  }catch(e){ document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання'; }
+    else{ document.getElementById('pwd-err').textContent='❌ '+(d.error || 'Помилка'); }
+  }catch(e){ document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання: '+e.message; }
 }
 async function verifyPasswordReset(){
   const email=document.getElementById('pwd-email').value.trim();
@@ -292,12 +292,12 @@ async function verifyPasswordReset(){
   const newPwd=document.getElementById('pwd-new').value;
   if(!code||code.length!==4){ document.getElementById('pwd-err').textContent='Введіть 4-значний код'; return; }
   if(!newPwd||newPwd.length<4){ document.getElementById('pwd-err').textContent='Пароль мінімум 4 символи'; return; }
-  document.getElementById('pwd-err').textContent='';
+  document.getElementById('pwd-err').textContent='⏳ Зміна пароля...';
   try{
     const d=await fetch('/api/buyer/password-reset-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email,code:code,newPassword:newPwd})}).then(r=>r.json());
     if(d.ok){ closeChangePassword(); showToast('✅ Пароль змінено! Увійдіть з новим паролем'); }
-    else{ document.getElementById('pwd-err').textContent='❌ '+d.error; }
-  }catch(e){ document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання'; }
+    else{ document.getElementById('pwd-err').textContent='❌ '+(d.error || 'Помилка'); }
+  }catch(e){ document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання: '+e.message; }
 }
 
 function toggleFullscreen() {
@@ -374,7 +374,7 @@ async function showApp(name,courses){
   document.getElementById('uname').textContent=name; courses=courses||[];
   // Add free course if not present
   const freeCourse = await fetch('/api/course/mn1v7bplqru/public').then(r=>r.json()).catch(()=>null);
-  if(freeCourse && !courses.some(c => c.id === freeCourse.id)){
+  if(freeCourse && freeCourse.title && !courses.some(c => c.id === freeCourse.id)){
     courses.push(freeCourse);
   }
   myCourses=courses;
@@ -382,8 +382,8 @@ async function showApp(name,courses){
   courses.forEach(c => { if(c.grantedAt) courseGrantedAt[c.id] = c.grantedAt; });
   if(myCourses.length>1){
     const ct=document.getElementById('ctabs'); ct.style.display='flex';
-    ct.innerHTML='<span class="ctabs-label">Курс:</span>'+myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title}</button>`).join('');
-    myCourses.forEach(async c=>{ const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]); const pct=vs.length?Math.round(p.watched.length/vs.length*100):0; const btn=document.querySelector(`.ctab[data-cid="${c.id}"]`); if(btn) btn.textContent=c.title+(p.completed?' ✅':` ${pct}%`); });
+    ct.innerHTML='<span class="ctabs-label">Курс:</span>'+myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title || 'Курс'}</button>`).join('');
+    myCourses.forEach(async c=>{ const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]); const pct=vs.length?Math.round(p.watched.length/vs.length*100):0; const btn=document.querySelector(`.ctab[data-cid="${c.id}"]`); if(btn) btn.textContent=(c.title || 'Курс')+(p.completed?' ✅':` ${pct}%`); });
   }
   const last=tryLoadLast(); const first=(last?.cid&&myCourses.find(c=>c.id===last.cid))||myCourses[0];
   if(first) selectCourse(first.id, last?.cid===first.id ? (last.idx??null) : null);
@@ -501,7 +501,7 @@ async function markDone(idx, silent=false){
   else { p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null); if(!p) return; }
   progress=p; updateSidebarProg(); renderList(); const badge=document.querySelector('.vm-badge'); if(badge){badge.className='vm-badge vm-watched';badge.textContent='✅ Переглянуто';} document.getElementById('done-btn')?.remove(); const total=vids.length, done=p.watched.length, pct=total?Math.round(done/total*100):0; const el=document.getElementById('vbar'); if(el) el.style.width=pct+'%'; document.querySelectorAll('.vpsv').forEach((el,i)=>{ if(i===0) el.textContent=`${done}/${total}`; if(i===1) el.textContent=`${pct}%`; if(i===2) el.textContent=`${total-done}`; if(i===3) el.textContent=p.completed?'✓':'—'; }); const btn=document.querySelector(`.ctab[data-cid="${cid}"]`); if(btn) btn.textContent=curCourse?.title+(p.completed?' ✅':`  ${pct}%`); if(!silent) showToast('✅ Урок позначено пройденим!'); clearVideoPos(cid, idx); }
 
-async function showProgress(){ const lines=[]; for(const c of myCourses){ const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]); const done=p.watched.length, total=vs.length, pct=total?Math.round(done/total*100):0; lines.push(`<b>${c.title}</b><br><small>${done}/${total} уроків · ${pct}% ${p.completed?'· ✅ Завершено':''}</small>`); } showToast('📊 '+lines.join(' | ')); }
+async function showProgress(){ const lines=[]; for(const c of myCourses){ const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]); const done=p.watched.length, total=vs.length, pct=total?Math.round(done/total*100):0; lines.push(`<b>${c.title || 'Курс'}</b><br><small>${done}/${total} уроків · ${pct}% ${p.completed?'· ✅ Завершено':''}</small>`); } showToast('📊 '+lines.join(' | ')); }
 function showToast(msg){ const t=document.getElementById('toast'); t.innerHTML=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),4000); }
 let _matPopupIdx = -1;
 function showMatPopup(idx){ _matPopupIdx = idx; document.getElementById('mat-overlay').classList.add('show'); document.getElementById('mat-popup').classList.add('show'); }
