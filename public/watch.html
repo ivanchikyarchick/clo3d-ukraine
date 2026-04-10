@@ -163,21 +163,442 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 <div id="gate">
   <div class="gbox">
     <div class="gt">Vitaliia 3D Fashion Lab</div>
-    <div class="gb">\u041d\u0430\u0432\u0447\u0430\u043b\u044c\u043d\u0430 \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430</div>
+    <div class="gb">Навчальна платформа</div>
     <div id="login-tabs" style="display:flex;gap:.35rem;margin-bottom:1rem;border-bottom:1px solid var(--brd);padding-bottom:.5rem">
-      <button class="gtab on" onclick="showLoginTab('web')" id="tab-web">\u0412\u0445\u0456\u0434</button>
-      <button class="gtab" onclick="showLoginTab('reg')" id="tab-reg">\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044f</button>
-      <button class="gtab" onclick="openGateChPwd()" id="tab-chpwd">\ud83d\udd11 \u041f\u0430\u0440\u043e\u043b\u044c</button>
+      <button class="gtab on" onclick="showLoginTab('web')" id="tab-web">Вхід</button>
+      <button class="gtab" onclick="showLoginTab('reg')" id="tab-reg">Реєстрація</button>
+      <button class="gtab" onclick="openGateChPwd()" id="tab-chpwd">🔑 Пароль</button>
     </div>
     <div id="login-web">
-      <p class="gs">\u0412\u0432\u0435\u0434\u0456\u0442\u044c email \u0442\u0430 \u043f\u0430\u0440\u043e\u043b\u044c</p>
+      <p class="gs">Введіть email та пароль</p>
       <input id="web-username" placeholder="Email" type="email" autocomplete="email">
-      <input id="web-password" type="password" placeholder="\u041f\u0430\u0440\u043e\u043b\u044c" style="margin-top:.5rem" autocomplete="current-password">
-      <button class="gbtn" onclick="webLogin()">\u0423\u0432\u0456\u0439\u0442\u0438 \u2192</button>
+      <input id="web-password" type="password" placeholder="Пароль" style="margin-top:.5rem" autocomplete="current-password">
+      <button class="gbtn" onclick="webLogin()">Увійти →</button>
     </div>
     <div id="login-reg" style="display:none">
-      <p class="gs">\u0421\u0442\u0432\u043e\u0440\u0456\u0442\u044c \u0430\u043a\u0430\u0443\u043d\u0442</p>
+      <p class="gs">Створіть акаунт</p>
       <input id="reg-username" placeholder="Email" type="email" autocomplete="email">
-      <input id="reg-password" type="password" placeholder="\u041f\u0430\u0440\u043e\u043b\u044c" style="margin-top:.5rem" autocomplete="new-password">
-      <input id="reg-password2" type="password" placeholder="\u041f\u043e\u0432\u0442\u043e\u0440\u0456\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c" style="margin-top:.5rem" autocomplete="new-password">
-      <b
+      <input id="reg-password" type="password" placeholder="Пароль" style="margin-top:.5rem" autocomplete="new-password">
+      <input id="reg-password2" type="password" placeholder="Повторіть пароль" style="margin-top:.5rem" autocomplete="new-password">
+      <button class="gbtn" onclick="doRegister()">Зареєструватись</button>
+    </div>
+    <div class="gerr" id="gerr" style="color:var(--red)"></div>
+  </div>
+</div>
+
+<!-- GATE CHANGE PASSWORD POPUP -->
+<div id="gate-chpwd-overlay" onclick="closeGateChPwd()"></div>
+<div id="gate-chpwd-popup" role="dialog" aria-modal="true">
+  <div class="gcp-title">🔑 Зміна пароля</div>
+  <div id="gcp-step1">
+    <p class="gcp-desc">Введіть email акаунту — надішлемо код для зміни пароля</p>
+    <input id="gcp-email" placeholder="Email" type="email" autocomplete="email">
+    <button class="gbtn" onclick="gcpRequestReset()">Надіслати код</button>
+  </div>
+  <div id="gcp-step2" style="display:none">
+    <p class="gcp-desc">Введіть код з email та новий пароль</p>
+    <input id="gcp-code" placeholder="4-значний код" maxlength="4" inputmode="numeric">
+    <input id="gcp-new" type="password" placeholder="Новий пароль (мін. 4 символи)" autocomplete="new-password">
+    <button class="gbtn" onclick="gcpVerifyReset()">Змінити пароль</button>
+  </div>
+  <div class="gerr" id="gcp-err" style="min-height:1.2rem"></div>
+  <button class="gcp-back" onclick="closeGateChPwd()">← Повернутись до входу</button>
+</div>
+
+<div id="access-countdown"><span class="cd-text">⏳ Доступ: — дн.</span></div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="hdr-brand">
+      <a href="/" style="text-decoration:none">
+        <div class="hdr-logo">Vitaliia 3D Fashion Lab</div>
+        <div class="hdr-sub">Навчальна платформа</div>
+      </a>
+    </div>
+    <div class="hdr-r">
+      <span id="uname">—</span>
+      <button class="hdr-btn" onclick="showProgress()">📊 Прогрес</button>
+      <button class="hdr-btn" onclick="showChangePassword()">🔑 Пароль</button>
+      <button class="hdr-btn" onclick="logout()">Вийти</button>
+    </div>
+  </header>
+  <div class="global-prog"><div class="global-fill" id="global-fill" style="width:0%"></div></div>
+  <div class="ctabs" id="ctabs" style="display:none"></div>
+  <div class="layout" id="layout">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <div class="sb-title">Уроки курсу</div>
+        <div class="sb-prog-wrap"><div class="sb-prog-fill" id="sb-fill" style="width:0%"></div></div>
+        <div class="sb-prog-label"><span id="sb-done">0/0 уроків</span><span id="sb-pct">0%</span></div>
+      </div>
+      <div class="sb-list" id="llist"></div>
+    </aside>
+    <main class="va" id="va">
+      <div class="empty"><strong>Оберіть урок</strong><p>Виберіть зі списку зліва або кнопками нижче</p></div>
+    </main>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="resume-toast"></div>
+
+<!-- IN-APP PASSWORD POPUP -->
+<div id="pwd-overlay" onclick="closeChangePassword()"></div>
+<div id="pwd-popup" role="dialog" aria-modal="true">
+  <div class="pwd-box">
+    <div class="pwd-title">🔑 Зміна пароля</div>
+    <div id="pwd-step1">
+      <p class="pwd-desc">Введіть email, на який зареєстровано акаунт</p>
+      <input id="pwd-email" placeholder="Email" type="email">
+      <button class="gbtn" onclick="requestPasswordReset()">Надіслати код</button>
+    </div>
+    <div id="pwd-step2" style="display:none">
+      <p class="pwd-desc">Введіть код, який прийшов на email</p>
+      <input id="pwd-code" placeholder="4-значний код" maxlength="4">
+      <input id="pwd-new" type="password" placeholder="Новий пароль (мін. 4 символи)">
+      <button class="gbtn" onclick="verifyPasswordReset()">Змінити пароль</button>
+    </div>
+    <div class="gerr" id="pwd-err" style="color:var(--red)"></div>
+  </div>
+</div>
+
+<a class="fb-float" href="https://t.me/Vitaliia_Ya" target="_blank" rel="noopener">💬 Зворотний зв'язок</a>
+<div id="mat-overlay" onclick="closeMatPopup()"></div>
+<div id="mat-popup" role="dialog" aria-modal="true">
+  <span class="mat-icon">📎</span>
+  <div class="mat-title">Увага!</div>
+  <p class="mat-text">До цього відео прикріплені <strong>навчальні файли</strong>.<br>Вам потрібно завантажити їх!</p>
+  <button class="mat-btn-dl" id="mat-dl-btn" onclick="handleMatDownload()">⬇ Завантажити матеріали</button>
+</div>
+
+<script>
+let myCourses=[], curCourse=null, vids=[], curIdx=-1, progress={watched:[],lastIdx:0,completed:false};
+let isFreeMode=false, currentHls=null, courseGrantedAt={};
+const LS='vfl_last', LS_FREE_PREFIX='vfl_free_prog_', LS_VID_POS='vfl_vidpos_';
+let isProcessingAuth=false;
+
+document.addEventListener('contextmenu',e=>{if(!['INPUT','TEXTAREA'].includes(e.target.tagName))e.preventDefault();});
+document.addEventListener('keydown',e=>{if(e.key==='F12'||(e.ctrlKey&&['u','s','p'].includes(e.key.toLowerCase()))||(e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(e.key.toLowerCase()))){e.preventDefault();return false;}});
+
+async function checkMe(){
+  const params=new URLSearchParams(location.search), courseSlug=params.get('course');
+  if(courseSlug){
+    const c=await fetch(`/api/course/${courseSlug}/public`).then(r=>r.json()).catch(()=>null);
+    if(c&&(c.freeAccess||c.priceAmount===0||c.price==='Безкоштовно'||c.price==='0')){await openFreeCourse(c);return;}
+    const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
+    if(d.ok){
+      if(d.courses&&d.courses.some(c2=>c2.slug===courseSlug)){
+        await showApp(d.name,d.courses);
+        const courseId=d.courses.find(c2=>c2.slug===courseSlug).id;
+        selectCourse(courseId);
+      } else {
+        window.location.href=`/course/${courseSlug}`;
+      }
+    } else {
+      // Not logged in — show gate (don't redirect)
+      // gate is already visible by default
+    }
+    return;
+  }
+  const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
+  if(d.ok) showApp(d.name,d.courses);
+}
+
+async function openFreeCourse(c){
+  isFreeMode=true; curCourse=c; myCourses=[c];
+  document.getElementById('gate').style.display='none';
+  const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
+  document.getElementById('uname').textContent=c.title;
+  vids=await fetch(`/api/course/${c.id}/videos/free`).then(r=>r.json()).catch(()=>[]);
+  progress=loadFreeProgress(c.id);
+  updateSidebarProg(); renderList();
+  const startIdx=progress.lastIdx??0;
+  if(vids.length) play(Math.min(startIdx,vids.length-1));
+}
+
+async function webLogin(){
+  if(isProcessingAuth) return;
+  const username=document.getElementById('web-username').value.trim();
+  const pwd=document.getElementById('web-password').value;
+  if(!username||!pwd){setGErr('Введіть email та пароль');return;}
+  const btn=document.querySelector('#login-web .gbtn');
+  isProcessingAuth=true; btn.disabled=true; btn.textContent='Зачекайте...';
+  try{
+    const d=await fetch('/api/buyer/login-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(r=>r.json());
+    if(d.ok){
+      const me=await fetch('/api/buyer/me').then(r=>r.json());
+      if(me.ok) await showApp(me.name,me.courses||[]);
+      else await showApp(d.name,[]);
+    } else {setGErr('❌ '+d.error);}
+  }catch(e){setGErr('❌ Помилка з\'єднання');}
+  btn.disabled=false; btn.textContent='Увійти →'; isProcessingAuth=false;
+}
+
+async function doRegister(){
+  if(isProcessingAuth) return;
+  const username=document.getElementById('reg-username').value.trim();
+  const pwd=document.getElementById('reg-password').value;
+  const btn=document.querySelector('#login-reg .gbtn');
+  isProcessingAuth=true; btn.disabled=true; btn.textContent='Зачекайте...';
+  const d=await fetch('/api/buyer/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:pwd})}).then(x=>x.json());
+  if(d.ok){
+    try{ const me=await fetch('/api/buyer/me').then(r=>r.json()); await showApp(me.name||d.name,me.courses||[]); }
+    catch(e){ await showApp(d.name,[]); }
+  } else {setGErr('❌ '+d.error);}
+  btn.disabled=false; btn.textContent='Зареєструватись'; isProcessingAuth=false;
+}
+
+function setGErr(msg,color='var(--red)'){const el=document.getElementById('gerr');el.style.color=color;el.textContent=msg;}
+
+async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
+
+// ── GATE change password ──
+function openGateChPwd(){
+  document.getElementById('gcp-step1').style.display='block';
+  document.getElementById('gcp-step2').style.display='none';
+  document.getElementById('gcp-email').value='';
+  document.getElementById('gcp-code').value='';
+  document.getElementById('gcp-new').value='';
+  document.getElementById('gcp-err').textContent='';
+  document.getElementById('gate-chpwd-overlay').classList.add('show');
+  document.getElementById('gate-chpwd-popup').classList.add('show');
+}
+function closeGateChPwd(){
+  document.getElementById('gate-chpwd-overlay').classList.remove('show');
+  document.getElementById('gate-chpwd-popup').classList.remove('show');
+}
+async function gcpRequestReset(){
+  const email=document.getElementById('gcp-email').value.trim();
+  const err=document.getElementById('gcp-err');
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.style.color='var(--red)';err.textContent='Введіть коректний email';return;}
+  err.style.color='var(--muted)'; err.textContent='⏳ Надсилаємо код...';
+  try{
+    const d=await fetch('/api/buyer/password-reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email})}).then(r=>r.json());
+    if(d.ok){document.getElementById('gcp-step1').style.display='none';document.getElementById('gcp-step2').style.display='block';err.textContent='';}
+    else{err.style.color='var(--red)';err.textContent='❌ '+(d.error||'Помилка');}
+  }catch(e){err.style.color='var(--red)';err.textContent='❌ Помилка з\'єднання';}
+}
+async function gcpVerifyReset(){
+  const email=document.getElementById('gcp-email').value.trim();
+  const code=document.getElementById('gcp-code').value.trim();
+  const newPwd=document.getElementById('gcp-new').value;
+  const err=document.getElementById('gcp-err');
+  if(!code||code.length!==4){err.style.color='var(--red)';err.textContent='Введіть 4-значний код';return;}
+  if(!newPwd||newPwd.length<4){err.style.color='var(--red)';err.textContent='Пароль мінімум 4 символи';return;}
+  err.style.color='var(--muted)'; err.textContent='⏳ Зміна пароля...';
+  try{
+    const d=await fetch('/api/buyer/password-reset-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email,code,newPassword:newPwd})}).then(r=>r.json());
+    if(d.ok){closeGateChPwd();setGErr('✅ Пароль змінено! Увійдіть з новим паролем.','var(--grn)');}
+    else{err.style.color='var(--red)';err.textContent='❌ '+(d.error||'Помилка');}
+  }catch(e){err.style.color='var(--red)';err.textContent='❌ Помилка з\'єднання';}
+}
+
+// ── In-app password ──
+function showChangePassword(){
+  document.getElementById('pwd-overlay').classList.add('show');
+  document.getElementById('pwd-popup').classList.add('show');
+  document.getElementById('pwd-step1').style.display='block';
+  document.getElementById('pwd-step2').style.display='none';
+  document.getElementById('pwd-email').value='';
+  document.getElementById('pwd-code').value='';
+  document.getElementById('pwd-new').value='';
+  document.getElementById('pwd-err').textContent='';
+}
+function closeChangePassword(){document.getElementById('pwd-overlay').classList.remove('show');document.getElementById('pwd-popup').classList.remove('show');}
+async function requestPasswordReset(){
+  const email=document.getElementById('pwd-email').value.trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){document.getElementById('pwd-err').textContent='Введіть коректний email';return;}
+  document.getElementById('pwd-err').textContent='⏳ Надсилаємо код...';
+  try{
+    const d=await fetch('/api/buyer/password-reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email})}).then(r=>r.json());
+    if(d.ok){document.getElementById('pwd-step1').style.display='none';document.getElementById('pwd-step2').style.display='block';showToast('Код надіслано на email!');}
+    else{document.getElementById('pwd-err').textContent='❌ '+(d.error||'Помилка');}
+  }catch(e){document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання: '+e.message;}
+}
+async function verifyPasswordReset(){
+  const email=document.getElementById('pwd-email').value.trim();
+  const code=document.getElementById('pwd-code').value.trim();
+  const newPwd=document.getElementById('pwd-new').value;
+  if(!code||code.length!==4){document.getElementById('pwd-err').textContent='Введіть 4-значний код';return;}
+  if(!newPwd||newPwd.length<4){document.getElementById('pwd-err').textContent='Пароль мінімум 4 символи';return;}
+  document.getElementById('pwd-err').textContent='⏳ Зміна пароля...';
+  try{
+    const d=await fetch('/api/buyer/password-reset-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email,code,newPassword:newPwd})}).then(r=>r.json());
+    if(d.ok){closeChangePassword();showToast('✅ Пароль змінено! Увійдіть з новим паролем');}
+    else{document.getElementById('pwd-err').textContent='❌ '+(d.error||'Помилка');}
+  }catch(e){document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання: '+e.message;}
+}
+
+function showLoginTab(t){
+  document.getElementById('login-web').style.display=t==='web'?'block':'none';
+  document.getElementById('login-reg').style.display=t==='reg'?'block':'none';
+  document.getElementById('tab-web').classList.toggle('on',t==='web');
+  document.getElementById('tab-reg').classList.toggle('on',t==='reg');
+  document.getElementById('tab-chpwd').classList.remove('on');
+}
+
+function toggleFullscreen(){
+  const vwrap=document.getElementById('vwrap'),video=document.getElementById('vid'),fsBtn=document.getElementById('fs-btn');
+  if(!vwrap) return;
+  if(!document.fullscreenElement){
+    const wp=video&&!video.paused;
+    (vwrap.requestFullscreen||vwrap.webkitRequestFullscreen||vwrap.msRequestFullscreen).call(vwrap);
+    if(wp&&video) setTimeout(()=>video.play().catch(()=>{}),100);
+    if(fsBtn) fsBtn.textContent='⛶ Вийти з повного екрану';
+  } else {
+    const wp=video&&!video.paused;
+    (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);
+    if(wp&&video) setTimeout(()=>video.play().catch(()=>{}),100);
+    if(fsBtn) fsBtn.textContent='⛶ На весь екран';
+  }
+}
+document.addEventListener('fullscreenchange',()=>{const b=document.getElementById('fs-btn');if(b)b.textContent=document.fullscreenElement?'⛶ Вийти з повного екрану':'⛶ На весь екран';});
+document.addEventListener('webkitfullscreenchange',()=>{const b=document.getElementById('fs-btn');if(b)b.textContent=document.webkitFullscreenElement?'⛶ Вийти з повного екрану':'⛶ На весь екран';});
+
+async function showApp(name,courses){
+  document.getElementById('gate').style.display='none';
+  const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
+  document.getElementById('uname').textContent=name; courses=courses||[];
+  const freeCourse=await fetch('/api/course/mn1v7bplqru/public').then(r=>r.json()).catch(()=>null);
+  if(freeCourse&&freeCourse.title&&!courses.some(c=>c.id===freeCourse.id)) courses.push(freeCourse);
+  myCourses=courses; courseGrantedAt={};
+  courses.forEach(c=>{if(c.grantedAt)courseGrantedAt[c.id]=c.grantedAt;});
+  if(myCourses.length>1){
+    const ct=document.getElementById('ctabs'); ct.style.display='flex';
+    ct.innerHTML='<span class="ctabs-label">Курс:</span>'+myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title||'Курс'}</button>`).join('');
+    myCourses.forEach(async c=>{const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]);const pct=vs.length?Math.round(p.watched.length/vs.length*100):0;const btn=document.querySelector(`.ctab[data-cid="${c.id}"]`);if(btn)btn.textContent=(c.title||'Курс')+(p.completed?' ✅':` ${pct}%`);});
+  }
+  const last=tryLoadLast(), first=(last?.cid&&myCourses.find(c=>c.id===last.cid))||myCourses[0];
+  if(first) selectCourse(first.id,last?.cid===first.id?(last.idx??null):null);
+  updateAccessCountdown();
+}
+function tryLoadLast(){try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch{return{}}}
+function saveLast(cid,idx){try{localStorage.setItem(LS,JSON.stringify({cid,idx}))}catch{}}
+
+async function selectCourse(cid,startIdx=null){
+  curCourse=myCourses.find(c=>c.id===cid); curIdx=-1;
+  document.querySelectorAll('.ctab').forEach(t=>t.classList.toggle('on',t.dataset.cid===cid));
+  [vids,progress]=await Promise.all([fetch(`/api/course/${cid}/videos/public`).then(r=>r.json()),fetch(`/api/progress/${cid}`).then(r=>r.json()).catch(()=>({watched:[],lastIdx:0,completed:false}))]);
+  updateSidebarProg(); renderList(); updateAccessCountdown();
+  const idx=startIdx??progress.lastIdx??0;
+  if(vids.length) play(Math.min(idx,vids.length-1));
+}
+function updateSidebarProg(){const total=vids.length,done=(progress.watched||[]).length,pct=total?Math.round(done/total*100):0;document.getElementById('sb-fill').style.width=pct+'%';document.getElementById('sb-done').textContent=`${done}/${total} уроків`;document.getElementById('sb-pct').textContent=pct+'%';document.getElementById('global-fill').style.width=pct+'%';}
+function renderList(){document.getElementById('llist').innerHTML=vids.map((v,i)=>{const w=(progress.watched||[]).includes(i);return `<div class="li ${i===curIdx?'on':''} ${w?'watched':''}" onclick="play(${i})"><div class="lin">${w&&i!==curIdx?'✓':(i+1)}</div><div style="flex:1;min-width:0"><div class="lit">${v.title||'Урок '+(i+1)}</div>${v.desc?`<div class="lid">${v.desc}</div>`:''}</div></div>`;}).join('');}
+
+function destroyHls(){if(currentHls){currentHls.destroy();currentHls=null;}}
+
+function play(idx){
+  if(idx<0||idx>=vids.length)return;
+  if(curIdx===idx)return;
+  destroyHls();
+  curIdx=idx; renderList();
+  const v=vids[idx],cid=curCourse?.id,total=vids.length,done=(progress.watched||[]).length,overallPct=total?Math.round(done/total*100):0,isWatched=(progress.watched||[]).includes(idx);
+  saveLast(cid,idx);
+  document.getElementById('va').innerHTML=`
+    <div class="vwrap" id="vwrap">
+      <button class="vfs-btn" onclick="toggleFullscreen()" id="fs-btn">⛶ На весь екран</button>
+      <div class="vloader" id="vl"><div class="vl-ico">🎬</div><div class="vspin" style="position:absolute;opacity:.4;width:80px;height:80px;border-width:2px"></div><div class="vl-t">Завантаження<span class="vdots"><span>.</span><span>.</span><span>.</span></span></div><div class="vl-s">${v.title||'Урок '+(idx+1)}</div><div class="vlbar"><div class="vlbar-f"></div></div></div>
+      <video id="vid" controls playsinline preload="metadata" style="opacity:0" controlsList="nodownload noremoteplayback nofullscreen" disablePictureInPicture crossorigin="use-credentials"></video>
+      <div class="voverlay" id="vovl"></div>
+    </div>
+    <div class="vmeta"><div class="vm-top"><div class="vmt">${v.title||'Урок '+(idx+1)}</div><span class="vm-badge ${isWatched?'vm-watched':'vm-new'}">${isWatched?'✅ Переглянуто':'🔵 Новий урок'}</span></div>${v.desc?`<p class="vmd">${v.desc}</p>`:''}
+    <div class="vprog-stats"><div class="vps"><div class="vpsv go">${done}/${total}</div><div class="vpsl">Пройдено</div></div><div class="vps"><div class="vpsv a">${overallPct}%</div><div class="vpsl">Прогрес</div></div><div class="vps"><div class="vpsv b">${total-done}</div><div class="vpsl">Залишилось</div></div><div class="vps"><div class="vpsv g">${progress.completed?'✓':'—'}</div><div class="vpsl">Завершено</div></div></div>
+    <div class="vbar-wrap"><div class="vbar-fill" id="vbar" style="width:${overallPct}%"></div></div>
+    <div class="vnav"><button class="vbtn vb-prev" onclick="play(${idx-1})" ${idx===0?'disabled':''}>← Попереднє</button>${!isWatched?`<button class="vbtn vb-done" id="done-btn" onclick="markDone(${idx})">✓ Позначити пройденим</button>`:''}<button class="vbtn vb-next" onclick="play(${idx+1})" ${idx===total-1?'disabled':''}>Наступне →</button><span class="vcnt">Урок ${idx+1} з ${total}</span></div>
+    ${v.hasMaterials?`<div class="vnav" style="margin-top:.6rem"><button class="vbtn vb-dl" onclick="downloadMaterials(${idx})">📎 Завантажити матеріали</button></div>`:''}</div>`;
+
+  if(v.hasMaterials) setTimeout(()=>showMatPopup(idx),800);
+  const video=document.getElementById('vid'),loader=document.getElementById('vl'),overlay=document.getElementById('vovl');
+  const streamUrl=isFreeMode?`/api/video/free/${cid}/${idx}`:`/api/video/stream/${cid}/${idx}`;
+  let hideTimer=setTimeout(()=>{if(loader)loader.classList.add('h');if(video)video.style.opacity='1';},12000);
+  const onReady=()=>{clearTimeout(hideTimer);if(loader)loader.classList.add('h');if(video)video.style.opacity='1';};
+
+  if(streamUrl.includes('.m3u8')){
+    if(Hls.isSupported()){
+      const hls=new Hls({maxBufferLength:30,maxMaxBufferLength:60,enableWorker:true,autoStartLoad:true});
+      currentHls=hls; hls.loadSource(streamUrl); hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>{onReady();video.play().catch(()=>{});});
+      hls.on(Hls.Events.ERROR,(_,data)=>{if(data.fatal){if(loader)loader.querySelector('.vl-t').innerHTML='Помилка відтворення';setTimeout(()=>{if(loader)loader.classList.add('h');video.style.opacity='1';},2000);}});
+    } else if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src=streamUrl; video.addEventListener('canplay',onReady,{once:true});
+    }
+  } else {
+    video.src=streamUrl;
+    video.addEventListener('canplay',onReady,{once:true});
+    video.addEventListener('error',()=>{if(loader)loader.querySelector('.vl-t').innerHTML='Помилка відтворення відео';setTimeout(()=>{if(loader)loader.classList.add('h');video.style.opacity='1';},2000);},{once:true});
+  }
+
+  video.addEventListener('contextmenu',e=>e.preventDefault());
+  video.addEventListener('dragstart',e=>e.preventDefault());
+  video.addEventListener('play',()=>{if(overlay)overlay.style.pointerEvents='none';});
+  video.addEventListener('pause',()=>{if(overlay)overlay.style.pointerEvents='none';});
+  video.addEventListener('keydown',e=>{if(['s','u'].includes(e.key.toLowerCase())&&(e.ctrlKey||e.metaKey))e.preventDefault();});
+  video.addEventListener('loadedmetadata',function(){
+    const saved=loadVideoPos(curCourse?.id,idx);
+    if(saved>5&&video.duration&&saved<video.duration-5){video.currentTime=saved;showResumeToast(saved);}
+  },{once:true});
+
+  let autoMarked=false,_lastSavedTime=0;
+  const saveInterval=setInterval(()=>{if(video&&!video.paused&&video.currentTime&&video.currentTime-_lastSavedTime>=5){_lastSavedTime=video.currentTime;saveVideoPos(curCourse?.id,idx,video.currentTime);}},3000);
+  video.addEventListener('timeupdate',function(){
+    if(!autoMarked&&video.duration&&video.currentTime/video.duration>=0.8){autoMarked=true;markDone(idx,true);}
+    if(isFreeMode&&video.duration&&curCourse?.id){const p=loadFreeProgress(curCourse.id);p.lastIdx=idx;saveFreeProgress(curCourse.id,p);}
+  });
+  video.addEventListener('pause',()=>{if(video.currentTime>0)saveVideoPos(curCourse?.id,idx,video.currentTime);});
+  window._vidUnloadSave=()=>{if(video.currentTime>0)saveVideoPos(curCourse?.id,idx,video.currentTime);clearInterval(saveInterval);};
+  video.addEventListener('ended',()=>{clearInterval(saveInterval);});
+}
+
+function loadFreeProgress(cid){try{return JSON.parse(localStorage.getItem(LS_FREE_PREFIX+cid)||'{"watched":[],"lastIdx":0,"completed":false}');}catch{return{watched:[],lastIdx:0,completed:false};}}
+function saveFreeProgress(cid,p){try{localStorage.setItem(LS_FREE_PREFIX+cid,JSON.stringify(p));}catch{}}
+function saveVideoPos(cid,idx,time){if(cid!==undefined&&idx!==undefined)try{localStorage.setItem(`${LS_VID_POS}${cid}_${idx}`,String(Math.floor(time)));}catch{}}
+function loadVideoPos(cid,idx){try{return parseFloat(localStorage.getItem(`${LS_VID_POS}${cid}_${idx}`)||'0')||0;}catch{return 0;}}
+function clearVideoPos(cid,idx){try{localStorage.removeItem(`${LS_VID_POS}${cid}_${idx}`);}catch{}}
+function showResumeToast(sec){const m=Math.floor(sec/60),s=Math.floor(sec%60);const label=m>0?`${m} хв ${s} с`:`${s} с`;const t=document.getElementById('resume-toast');t.innerHTML=`▶ Продовжуємо з <strong>${label}</strong>`;t.classList.add('show');clearTimeout(t._rt);t._rt=setTimeout(()=>t.classList.remove('show'),4500);}
+window.addEventListener('beforeunload',()=>{window._vidUnloadSave?.();});
+
+async function downloadMaterials(idx){const cid=curCourse?.id;const mats=await fetch(`/api/course/${cid}/videos/${idx}/materials`).then(r=>r.json()).catch(()=>[]);if(!mats.length){showToast('📎 Матеріали не знайдено');return;}for(const m of mats){const a=document.createElement('a');a.href=`/api/course/${cid}/videos/${idx}/materials/${m.id}/download`;a.download=m.name||'material';a.target='_blank';document.body.appendChild(a);a.click();document.body.removeChild(a);await new Promise(r=>setTimeout(r,400));}}
+
+async function markDone(idx,silent=false){
+  const cid=curCourse?.id; let p;
+  if(isFreeMode){p=loadFreeProgress(cid);if(!p.watched.includes(idx))p.watched.push(idx);p.lastIdx=idx;if(p.watched.length>=vids.length)p.completed=true;saveFreeProgress(cid,p);}
+  else{p=await fetch(`/api/progress/${cid}/${idx}`,{method:'POST'}).then(r=>r.json()).catch(()=>null);if(!p)return;}
+  progress=p; updateSidebarProg(); renderList();
+  const badge=document.querySelector('.vm-badge');if(badge){badge.className='vm-badge vm-watched';badge.textContent='✅ Переглянуто';}
+  document.getElementById('done-btn')?.remove();
+  const total=vids.length,done=p.watched.length,pct=total?Math.round(done/total*100):0;
+  const el=document.getElementById('vbar');if(el)el.style.width=pct+'%';
+  document.querySelectorAll('.vpsv').forEach((el,i)=>{if(i===0)el.textContent=`${done}/${total}`;if(i===1)el.textContent=`${pct}%`;if(i===2)el.textContent=`${total-done}`;if(i===3)el.textContent=p.completed?'✓':'—';});
+  const btn=document.querySelector(`.ctab[data-cid="${cid}"]`);if(btn)btn.textContent=curCourse?.title+(p.completed?' ✅':`  ${pct}%`);
+  if(!silent)showToast('✅ Урок позначено пройденим!');
+  clearVideoPos(cid,idx);
+}
+
+async function showProgress(){const lines=[];for(const c of myCourses){const[p,vs]=await Promise.all([fetch(`/api/progress/${c.id}`).then(r=>r.json()).catch(()=>({watched:[]})),fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[])]);const done=p.watched.length,total=vs.length,pct=total?Math.round(done/total*100):0;lines.push(`<b>${c.title||'Курс'}</b><br><small>${done}/${total} уроків · ${pct}% ${p.completed?'· ✅ Завершено':''}</small>`);}showToast('📊 '+lines.join(' | '));}
+function showToast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),4000);}
+let _matPopupIdx=-1;
+function showMatPopup(idx){_matPopupIdx=idx;document.getElementById('mat-overlay').classList.add('show');document.getElementById('mat-popup').classList.add('show');}
+function closeMatPopup(){document.getElementById('mat-overlay').classList.remove('show');document.getElementById('mat-popup').classList.remove('show');}
+function handleMatDownload(){closeMatPopup();if(_matPopupIdx>=0)downloadMaterials(_matPopupIdx);}
+
+function updateAccessCountdown(){
+  const el=document.getElementById('access-countdown');
+  if(isFreeMode||!curCourse){el.style.display='none';return;}
+  const ga=courseGrantedAt[curCourse.id];
+  if(!ga){el.style.display='none';return;}
+  const expiry=ga+30*24*60*60*1000,remaining=expiry-Date.now();
+  el.style.display='flex'; el.className='';
+  if(remaining<=0){el.classList.add('urgent');el.querySelector('.cd-text').textContent='Доступ закінчився!';showToast('⛔ Термін доступу до курсу закінчився.');return;}
+  const days=Math.ceil(remaining/(24*60*60*1000)),hours=Math.floor((remaining%(24*60*60*1000))/(60*60*1000));
+  if(days<=3)el.classList.add('urgent');else if(days<=7)el.classList.add('warn');
+  if(days<=1)el.querySelector('.cd-text').innerHTML='⏳ Доступ: <strong>'+hours+' год</strong>';
+  else el.querySelector('.cd-text').innerHTML='⏳ Доступ: <strong>'+days+'</strong> дн.';
+}
+setInterval(updateAccessCountdown,60000);
+
+checkMe();
+</script>
+</body>
+</html>
