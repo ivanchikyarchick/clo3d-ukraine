@@ -43,6 +43,55 @@
       "@type": "Answer",
       "text": "Так, після успішного завершення навчання та здачі всіх практичних робіт (портфоліо), ви отримуєте електронний сертифікат, який підтверджує ваші навички роботи в CLO 3D."
     }
+  }, {
+    "@type": "Question",
+    "name": "Скільки коштують курси CLO 3D?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Вартість курсів CLO 3D залежить від програми та рівня складності. Деякі базові матеріали доступні безкоштовно на YouTube-каналі. Платні курси мають різні цінові категорії — актуальні ціни вказані в каталозі курсів. Також доступна індивідуальна консультація від 800 грн."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Як проходить навчання — онлайн чи офлайн?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Всі курси CLO 3D проходять онлайн у зручному для вас темпі. Ви отримуєте доступ до відеоуроків, які можна переглядати будь-коли. Індивідуальні заняття проводяться через Google Meet з відеозаписом зустрічі."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Чи потрібен досвід конструювання одягу для навчання?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Базове розуміння конструювання одягу буде перевагою, але не є обов'язковим для всіх курсів. Курси для початківців розраховані на тих, хто тільки знайомиться з 3D-моделюванням. Для просунутих програм бажано мати досвід роботи з лекалами або САПР."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Чим CLO 3D відрізняється від інших програм для дизайну одягу?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "CLO 3D — це спеціалізована програма для моделювання одягу з реалістичною симуляцією тканин. На відміну від загальних 3D-редакторів, CLO 3D враховує фізичні властивості матеріалів, дозволяє будувати лекала та проводити віртуальні примірки на аватарі. Саме тому її використовують такі бренди як Nike, Zara, Adidas та H&M."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Чи можна навчитись CLO 3D з нуля самостійно?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Так, але структурований курс CLO 3D значно прискорить процес. Самостійне навчання часто займає вдвічі більше часу через відсутність системності та мовний бар'єр. Наші курси CLO 3D українською дозволяють уникнути типових помилок і одразу отримати практичні навички."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Для кого підходять курси CLO 3D від Vitaliia 3D Fashion Lab?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Курси CLO 3D підходять для конструкторів одягу, дизайнерів моди, студентів профільних спеціальностей, фрілансерів та всіх, хто хоче навчитись 3D-моделюванню одягу українською мовою."
+    }
+  }, {
+    "@type": "Question",
+    "name": "Як записатись на курс CLO 3D?",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Оберіть курс у каталозі на сайті та натисніть кнопку запису. Після оплати ви одразу отримаєте доступ до матеріалів. Якщо маєте запитання — напишіть у Telegram або Instagram."
+    }
   }]
 }
 </script>
@@ -177,15 +226,21 @@ section{padding:6rem 2rem}
 
 /* FAQ SECTION */
 .faq-section { background: var(--bg); }
-.faq-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; max-width: 800px; margin-left: auto; margin-right: auto; }
-.faq-item { background: var(--s1); border: 1px solid var(--brd); border-radius: 12px; overflow: hidden; transition: .3s; }
-.faq-item.active { border-color: rgba(200,48,42,.4); background: var(--s2); box-shadow: 0 8px 32px rgba(0,0,0,.2); }
-.faq-btn { width: 100%; text-align: left; background: none; border: none; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--txt); font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 600; transition: .2s; }
+.faq-cats { display: flex; flex-direction: column; gap: 2rem; max-width: 860px; margin: 2rem auto 0; }
+.faq-cat { border: 1px solid var(--brd); border-radius: 16px; overflow: hidden; }
+.faq-cat-header { display: flex; align-items: center; gap: .75rem; padding: 1.25rem 1.5rem; background: var(--s2); border-bottom: 1px solid var(--brd); }
+.faq-cat-ico { font-size: 1.2rem; }
+.faq-cat-title { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; color: var(--acc2); letter-spacing: .04em; }
+.faq-list { display: flex; flex-direction: column; }
+.faq-item { border-bottom: 1px solid var(--brd); transition: .3s; }
+.faq-item:last-child { border-bottom: none; }
+.faq-item.active { background: var(--s2); }
+.faq-btn { width: 100%; text-align: left; background: none; border: none; padding: 1.1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--txt); font-family: 'Syne', sans-serif; font-size: .92rem; font-weight: 600; transition: .2s; gap: 1rem; }
 .faq-btn:hover { color: var(--acc2); }
-.faq-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .3s ease; flex-shrink: 0; }
+.faq-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; transition: transform .3s ease; flex-shrink: 0; }
 .faq-item.active .faq-btn svg { transform: rotate(180deg); stroke: var(--acc); }
 .faq-content { max-height: 0; overflow: hidden; transition: max-height .4s ease; }
-.faq-content p { padding: 0 1.5rem 1.5rem; color: var(--muted); font-size: .88rem; line-height: 1.7; font-weight: 300; }
+.faq-content p { padding: 0 1.5rem 1.1rem; color: var(--muted); font-size: .85rem; line-height: 1.7; font-weight: 300; }
 
 /* SOC STRIP */
 .soc-strip{background:var(--s2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);padding:2.25rem 8vw;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
@@ -360,45 +415,71 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
     <h2 class="sec-title" style="text-align: center;">Популярні <em>запитання</em></h2>
     <p class="sec-sub" style="text-align: center; margin: 0 auto 3rem;">Зібрали відповіді на найчастіші запитання, щоб допомогти вам розібратися з навчанням у CLO 3D.</p>
 
-    <div class="faq-list">
-      
-      <div class="faq-item">
-        <button class="faq-btn">
-          <span>Що таке CLO 3D і навіщо він конструкторам?</span>
-          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="faq-content">
-          <p>CLO 3D — це професійна програма для 3D-моделювання одягу. Вона дозволяє створювати реалістичні цифрові копії одягу з урахуванням властивостей тканин, конструювати лекала та проводити віртуальні примірки. Це економить час, тканину та гроші на відшив зразків.</p>
+    <div class="faq-cats">
+
+      <!-- Категорія 1 -->
+      <div class="faq-cat">
+        <div class="faq-cat-header">
+          <span class="faq-cat-ico">💻</span>
+          <span class="faq-cat-title">Про програму CLO 3D</span>
+        </div>
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-btn"><span>Що таке CLO 3D і навіщо він конструкторам?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>CLO 3D — це професійна програма для 3D-моделювання одягу з реалістичною симуляцією тканин. Дозволяє будувати лекала, проводити віртуальні примірки та створювати цифрові зразки — без витрат на тканину та відшив. Використовується такими брендами як Nike, Zara, Adidas та H&M.</p></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn"><span>Чим CLO 3D відрізняється від інших 3D-програм?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>На відміну від Blender чи Maya, CLO 3D заточена саме під одяг: враховує фізику тканин, дозволяє імпортувати лекала та одразу бачити, як виріб сидить на аватарі. Це не загальний 3D-редактор, а інструмент для fashion-індустрії.</p></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn"><span>Які вимоги до комп'ютера?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Windows або Mac (Apple Silicon підтримується). Рекомендовано: 16–32 ГБ RAM, процесор Intel Core i5/i7 або AMD Ryzen 5/7, дискретна відеокарта NVIDIA GeForce GTX 1660 або краща.</p></div>
+          </div>
         </div>
       </div>
 
-      <div class="faq-item">
-        <button class="faq-btn">
-          <span>Чи підійде курс, якщо я ніколи не працював(ла) у 3D?</span>
-          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="faq-content">
-          <p>Так, у нас є курси для початківців, де ми розбираємо інтерфейс та базові інструменти програми з нуля. Головне — це ваше бажання навчатись та базове розуміння конструювання одягу.</p>
+      <!-- Категорія 2 -->
+      <div class="faq-cat">
+        <div class="faq-cat-header">
+          <span class="faq-cat-ico">🎓</span>
+          <span class="faq-cat-title">Навчання та курси CLO 3D</span>
+        </div>
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-btn"><span>Чи підійде курс, якщо я ніколи не працював(ла) у 3D?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Так. Курси для початківців розбирають інтерфейс та базові інструменти з нуля. Потрібне лише бажання навчатись і базове розуміння конструювання одягу.</p></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn"><span>Як проходить навчання і скільки коштує?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Всі курси CLO 3D — онлайн, у власному темпі. Ви отримуєте постійний доступ до відеоуроків. Деякі матеріали безкоштовні на YouTube. Актуальні ціни платних курсів — у каталозі на сайті. Індивідуальна консультація — від 800 грн.</p></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn"><span>Чи видається сертифікат і чи є підтримка?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Так — після виконання всіх практичних завдань ви отримуєте електронний сертифікат. Під час навчання є зворотній зв'язок та відповіді на запитання. Для персонального розбору проекту можна замовити індивідуальну сесію з Віталією.</p></div>
+          </div>
         </div>
       </div>
 
-      <div class="faq-item">
-        <button class="faq-btn">
-          <span>Які вимоги до комп'ютера для роботи в CLO 3D?</span>
-          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="faq-content">
-          <p>Для комфортної роботи потрібен комп'ютер на базі Windows або Mac (Apple Silicon підтримується). Рекомендовано: мінімум 16 ГБ оперативної пам'яті (краще 32 ГБ), процесор рівня Intel Core i5/i7 або AMD Ryzen 5/7, та дискретна відеокарта (наприклад, NVIDIA GeForce GTX 1660 або краща).</p>
+      <!-- Категорія 3 -->
+      <div class="faq-cat">
+        <div class="faq-cat-header">
+          <span class="faq-cat-ico">🚀</span>
+          <span class="faq-cat-title">Старт та запис</span>
         </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-btn">
-          <span>Чи видається сертифікат після проходження курсу?</span>
-          <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="faq-content">
-          <p>Так, після успішного завершення навчання та здачі всіх практичних робіт (портфоліо), ви отримуєте електронний сертифікат, який підтверджує ваші навички роботи в CLO 3D.</p>
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-btn"><span>Для кого підходять курси CLO 3D?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Для конструкторів одягу, дизайнерів моди, студентів профільних спеціальностей та фрілансерів. Підходить усім, хто хоче освоїти 3D-моделювання одягу українською мовою — без мовного бар'єру.</p></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn"><span>Чи можна навчитись CLO 3D самостійно без курсу?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Можна, але структурований курс CLO 3D скорочує шлях вдвічі. Більшість матеріалів в інтернеті — англійською, без системності. Наші курси українською дають чітку структуру і дозволяють уникнути типових помилок.</p></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-btn"><span>Як записатись на курс CLO 3D?</span><svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="faq-content"><p>Оберіть курс у каталозі та натисніть кнопку запису — після оплати доступ відкривається одразу. Є запитання? Напишіть у Telegram або Instagram, допоможемо обрати підходящу програму.</p></div>
+          </div>
         </div>
       </div>
 
