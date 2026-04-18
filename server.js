@@ -864,7 +864,7 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
 
 // ═══ Google OAuth маршрути ═══
 app.get('/api/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+  passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })
 );
 
 app.get('/api/auth/google/callback',
@@ -877,20 +877,20 @@ app.get('/api/auth/google/callback',
     req.session.buyerName = buyer.displayName || buyer.email || buyer.username;
     autoGrantAccess(buyer.id);
 
+    // Читаємо redirect з сесії (або fallback)
     const redirect = req.session.googleAuthRedirect || '/watch';
     delete req.session.googleAuthRedirect;
 
     // Якщо redirect на /watch?course=slug — перевіряємо чи є доступ
-    // Якщо немає — відправляємо на /course/slug для оплати
     const courseMatch = redirect.match(/[?&]course=([^&]+)/);
     if (courseMatch) {
-      const slug = courseMatch[1];
+      const slug = decodeURIComponent(courseMatch[1]);
       const d = db.get();
       const course = d.courses?.find(c => c.slug === slug);
       if (course) {
         const hasAccess = course.freeAccess || course.buyers?.some(b => b.id === buyer.id && !isAccessExpired(b.grantedAt));
         if (!hasAccess) {
-          console.log('[google-auth] No access to course, redirecting to payment:', slug);
+          console.log('[google-auth] No access → payment page:', slug);
           res.redirect(`/course/${slug}?auth=google`);
           return;
         }
@@ -902,10 +902,15 @@ app.get('/api/auth/google/callback',
   }
 );
 
-// Зберегти redirect перед Google login (щоб повернутись на потрібний курс)
+// Зберегти redirect в сесії перед Google login
 app.get('/api/auth/google/start', (req, res) => {
-  if (req.query.redirect) req.session.googleAuthRedirect = req.query.redirect;
-  res.redirect('/api/auth/google');
+  const redirect = req.query.redirect || '/watch';
+  // Зберігаємо в сесії і одразу зберігаємо сесію перед редиректом
+  req.session.googleAuthRedirect = redirect;
+  req.session.save((err) => {
+    if (err) console.error('[google/start] session save error:', err);
+    res.redirect('/api/auth/google');
+  });
 });
 
 
