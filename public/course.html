@@ -525,7 +525,14 @@ async function load(){
   document.querySelectorAll('.rv').forEach(el=>obs.observe(el));
 }
 
-initMe().then(r=>{currentBuyer=r;updatePaymentButtons();}).catch(()=>{});
+initMe().then(r=>{
+  currentBuyer=r;
+  updatePaymentButtons();
+  // Якщо повернулись після Google auth — одразу ініціюємо оплату
+  if(new URLSearchParams(location.search).get('auth')==='google' && currentBuyer){
+    setTimeout(()=>initiatePayment(), 300);
+  }
+}).catch(()=>{});
 load().then(()=>updatePaymentButtons()).catch(e=>{console.error(e);document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');});
 
 function initiatePayment(){
