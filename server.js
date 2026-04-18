@@ -490,6 +490,7 @@ app.get('/api/buyer/me', (req, res) => {
     ok: true,
     id: uidNum,
     name: req.session.buyerName,
+    email: account.email || account.username || '',
     courses: myCourses.map(c => {
       const buyer = c.buyers.find(b => parseInt(b.id, 10) === uidNum);
       return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
@@ -874,7 +875,7 @@ app.get('/api/auth/google/callback',
     if (!buyer) { res.redirect('/watch?auth=error'); return; }
 
     req.session.buyerId   = buyer.id;
-    req.session.buyerName = buyer.displayName || buyer.email || buyer.username;
+    req.session.buyerName = buyer.email || buyer.username || buyer.displayName;
     autoGrantAccess(buyer.id);
 
     // Читаємо redirect з сесії (або fallback)
