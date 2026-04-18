@@ -476,6 +476,14 @@ app.get('/api/buyer/me', (req, res) => {
   console.log('[buyer/me] session buyerId:', uid, 'type:', typeof uid, 'buyerName:', req.session.buyerName);
   if (!uid) { res.json({ ok: false }); return; }
 
+  // Перевіряємо чи акаунт ще існує в db (міг бути видалений адміном)
+  const account = db.get().buyerAccounts?.find(a => a.id === parseInt(uid, 10));
+  if (!account) {
+    req.session.destroy(() => {});
+    res.json({ ok: false });
+    return;
+  }
+
   const myCourses = activeBuyerCourses(uid);
   const uidNum = parseInt(uid, 10);
   res.json({
@@ -1369,13 +1377,22 @@ app.post('/api/individual/reject/:uid', adm, (req, res) => {
 // Delete buyer account
 app.delete('/api/buyer-accounts/:id', adm, (req, res) => {
   const id = parseInt(req.params.id);
+
+  // Знаходимо email перед видаленням щоб очистити in-memory кеш
+  const d = db.get();
+  const buyer = d.buyerAccounts?.find(a => a.id === id);
+  const emailKey = (buyer?.email || buyer?.username)?.toLowerCase();
+
   db.set(d => {
     if (d.buyerAccounts) d.buyerAccounts = d.buyerAccounts.filter(a => a.id !== id);
-    // Also revoke from all courses
     d.courses.forEach(c => {
       if (c.buyers) c.buyers = c.buyers.filter(b => b.id !== id);
     });
   });
+
+  // Очищаємо in-memory кеш
+  if (emailKey) _buyerUsers.delete(emailKey);
+
   invalidateCache();
   res.json({ ok: true });
 });
