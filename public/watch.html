@@ -258,8 +258,8 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
   <div class="pwd-box">
     <div class="pwd-title">🔑 Зміна пароля</div>
     <div id="pwd-step1">
-      <p class="pwd-desc">Надішлемо код підтвердження на ваш email</p>
-      <input id="pwd-email" placeholder="Email" type="email" readonly style="opacity:.6;cursor:not-allowed">
+      <p class="pwd-desc">Код підтвердження буде надіслано на:</p>
+      <p id="pwd-email-display" style="font-size:.95rem;color:var(--acc2);font-weight:600;margin-bottom:1rem;word-break:break-all"></p>
       <button class="gbtn" onclick="requestPasswordReset()">Надіслати код</button>
     </div>
     <div id="pwd-step2" style="display:none">
@@ -370,7 +370,13 @@ async function doRegister(){
 
 function setGErr(msg,color='var(--red)'){const el=document.getElementById('gerr');el.style.color=color;el.textContent=msg;}
 
-async function logout(){ await fetch('/api/buyer/logout',{method:'POST'}); location.reload(); }
+async function logout(){
+  await fetch('/api/buyer/logout',{method:'POST'});
+  // Якщо є курс в URL або активний курс — редирект на сторінку курсу
+  const courseSlug=new URLSearchParams(location.search).get('course') || curCourse?.slug;
+  if(courseSlug) window.location.href=`/course/${courseSlug}`;
+  else window.location.href='/';
+}
 
 // ── GATE change password ──
 function openGateChPwd(){
@@ -419,38 +425,30 @@ function showChangePassword(){
   document.getElementById('pwd-popup').classList.add('show');
   document.getElementById('pwd-step1').style.display='block';
   document.getElementById('pwd-step2').style.display='none';
-  // Підставляємо email поточного юзера і блокуємо поле
-  const emailField=document.getElementById('pwd-email');
-  const currentEmail=currentUserEmail||'';
-  emailField.value=currentEmail;
-  emailField.readOnly=true;
-  emailField.style.opacity='.6';
-  emailField.style.cursor='not-allowed';
+  document.getElementById('pwd-email-display').textContent=currentUserEmail||'—';
   document.getElementById('pwd-code').value='';
   document.getElementById('pwd-new').value='';
   document.getElementById('pwd-err').textContent='';
 }
 function closeChangePassword(){document.getElementById('pwd-overlay').classList.remove('show');document.getElementById('pwd-popup').classList.remove('show');}
 async function requestPasswordReset(){
-  const email=document.getElementById('pwd-email').value.trim();
-  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){document.getElementById('pwd-err').textContent='Введіть коректний email';return;}
+  if(!currentUserEmail){document.getElementById('pwd-err').textContent='Email не визначено';return;}
   document.getElementById('pwd-err').textContent='⏳ Надсилаємо код...';
   try{
-    const d=await fetch('/api/buyer/password-reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email})}).then(r=>r.json());
-    if(d.ok){document.getElementById('pwd-step1').style.display='none';document.getElementById('pwd-step2').style.display='block';showToast('Код надіслано на email!');}
+    const d=await fetch('/api/buyer/password-reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:currentUserEmail})}).then(r=>r.json());
+    if(d.ok){document.getElementById('pwd-step1').style.display='none';document.getElementById('pwd-step2').style.display='block';document.getElementById('pwd-err').textContent='';showToast('Код надіслано на email!');}
     else{document.getElementById('pwd-err').textContent='❌ '+(d.error||'Помилка');}
   }catch(e){document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання: '+e.message;}
 }
 async function verifyPasswordReset(){
-  const email=document.getElementById('pwd-email').value.trim();
   const code=document.getElementById('pwd-code').value.trim();
   const newPwd=document.getElementById('pwd-new').value;
   if(!code||code.length!==4){document.getElementById('pwd-err').textContent='Введіть 4-значний код';return;}
   if(!newPwd||newPwd.length<4){document.getElementById('pwd-err').textContent='Пароль мінімум 4 символи';return;}
   document.getElementById('pwd-err').textContent='⏳ Зміна пароля...';
   try{
-    const d=await fetch('/api/buyer/password-reset-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:email,code,newPassword:newPwd})}).then(r=>r.json());
-    if(d.ok){closeChangePassword();showToast('✅ Пароль змінено! Увійдіть з новим паролем');}
+    const d=await fetch('/api/buyer/password-reset-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:currentUserEmail,code,newPassword:newPwd})}).then(r=>r.json());
+    if(d.ok){closeChangePassword();showToast('✅ Пароль змінено!');}
     else{document.getElementById('pwd-err').textContent='❌ '+(d.error||'Помилка');}
   }catch(e){document.getElementById('pwd-err').textContent='❌ Помилка з\'єднання: '+e.message;}
 }
