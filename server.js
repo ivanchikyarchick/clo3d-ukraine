@@ -15,6 +15,8 @@ const https      = require('https');
 const http       = require('http');
 const multer     = require('multer');
 const os         = require('os');
+const passport   = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const db         = require('./db');
 const r2         = require('./r2');
 const { mountMonopayWebhook, mountMonopayApi, sendVerificationCode } = require('./monopay');
@@ -103,6 +105,60 @@ app.use(session({
   saveUninitialized: false,
   cookie: { maxAge: null } // сесія закінчується при закритті браузера
 }));
+
+// ═══ Google OAuth (Passport) ═══
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ||'' ;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ||'' ;
+
+passport.use(new GoogleStrategy({
+  clientID:     GOOGLE_CLIENT_ID,
+  clientSecret: GOOGLE_CLIENT_SECRET,
+  callbackURL:  (process.env.SITE_URL || 'https://fashionlab.com.ua') + '/api/auth/google/callback',
+}, (accessToken, refreshToken, profile, done) => {
+  const email = (profile.emails?.[0]?.value || '').toLowerCase();
+  const googleId = profile.id;
+  const d = db.get();
+
+  // Шукаємо існуючий акаунт за googleId або email
+  let buyer = d.buyerAccounts?.find(a => a.googleId === googleId || (email && (a.email || a.username)?.toLowerCase() === email));
+
+  if (!buyer) {
+    // Створюємо новий акаунт
+    const newUid = Date.now();
+    db.set(d => {
+      if (!d.buyerAccounts) d.buyerAccounts = [];
+      d.buyerAccounts.push({
+        id: newUid,
+        username: email,
+        email,
+        googleId,
+        displayName: profile.displayName || email,
+        createdAt: Date.now()
+      });
+    });
+    db.flushSync();
+    buyer = { id: newUid, email, googleId, displayName: profile.displayName || email };
+    console.log('[google-auth] New account created:', newUid, email);
+  } else if (!buyer.googleId) {
+    // Прив'язуємо Google до існуючого email-акаунту
+    db.set(d => {
+      const b = d.buyerAccounts?.find(a => a.id === buyer.id);
+      if (b) { b.googleId = googleId; b.displayName = b.displayName || profile.displayName; }
+    });
+    console.log('[google-auth] Linked Google to existing account:', buyer.id, email);
+  }
+
+  return done(null, buyer);
+}));
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser((id, done) => {
+  const buyer = db.get().buyerAccounts?.find(a => a.id === id);
+  done(null, buyer || false);
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Створення платежу / статус — ПІСЛЯ JSON + session (інакше req.body порожній)
 mountMonopayApi(app);
@@ -796,6 +852,35 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
   });
   _buyerUsers.set(nameClean, { id: newUid, password: newHash });
   res.json({ ok: true, id: newUid, name: nameClean, message: 'Акаунт створено' + (grantCourseId ? ' та надано доступ до курсу' : '') });
+});
+
+// ═══ Google OAuth маршрути ═══
+app.get('/api/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/api/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/watch?auth=error' }),
+  (req, res) => {
+    const buyer = req.user;
+    if (!buyer) { res.redirect('/watch?auth=error'); return; }
+
+    req.session.buyerId   = buyer.id;
+    req.session.buyerName = buyer.displayName || buyer.email || buyer.username;
+    autoGrantAccess(buyer.id);
+
+    // Якщо є pending redirect (наприклад, на конкретний курс)
+    const redirect = req.session.googleAuthRedirect || '/watch';
+    delete req.session.googleAuthRedirect;
+    console.log('[google-auth] Login success:', buyer.id, buyer.email, '→', redirect);
+    res.redirect(redirect);
+  }
+);
+
+// Зберегти redirect перед Google login (щоб повернутись на потрібний курс)
+app.get('/api/auth/google/start', (req, res) => {
+  if (req.query.redirect) req.session.googleAuthRedirect = req.query.redirect;
+  res.redirect('/api/auth/google');
 });
 
 
