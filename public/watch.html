@@ -258,8 +258,8 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
   <div class="pwd-box">
     <div class="pwd-title">🔑 Зміна пароля</div>
     <div id="pwd-step1">
-      <p class="pwd-desc">Введіть email, на який зареєстровано акаунт</p>
-      <input id="pwd-email" placeholder="Email" type="email">
+      <p class="pwd-desc">Надішлемо код підтвердження на ваш email</p>
+      <input id="pwd-email" placeholder="Email" type="email" readonly style="opacity:.6;cursor:not-allowed">
       <button class="gbtn" onclick="requestPasswordReset()">Надіслати код</button>
     </div>
     <div id="pwd-step2" style="display:none">
@@ -283,7 +283,7 @@ video::-webkit-media-controls-panel{overflow:hidden!important}
 
 <script>
 let myCourses=[], curCourse=null, vids=[], curIdx=-1, progress={watched:[],lastIdx:0,completed:false};
-let isFreeMode=false, currentHls=null, courseGrantedAt={};
+let isFreeMode=false, currentHls=null, courseGrantedAt={}, currentUserEmail='';
 const LS='vfl_last', LS_FREE_PREFIX='vfl_free_prog_', LS_VID_POS='vfl_vidpos_';
 let isProcessingAuth=false;
 
@@ -419,7 +419,13 @@ function showChangePassword(){
   document.getElementById('pwd-popup').classList.add('show');
   document.getElementById('pwd-step1').style.display='block';
   document.getElementById('pwd-step2').style.display='none';
-  document.getElementById('pwd-email').value='';
+  // Підставляємо email поточного юзера і блокуємо поле
+  const emailField=document.getElementById('pwd-email');
+  const currentEmail=currentUserEmail||'';
+  emailField.value=currentEmail;
+  emailField.readOnly=true;
+  emailField.style.opacity='.6';
+  emailField.style.cursor='not-allowed';
   document.getElementById('pwd-code').value='';
   document.getElementById('pwd-new').value='';
   document.getElementById('pwd-err').textContent='';
@@ -479,6 +485,7 @@ async function showApp(name,courses){
   document.getElementById('gate').style.display='none';
   const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
   document.getElementById('uname').textContent=name; courses=courses||[];
+  currentUserEmail=name; // зберігаємо email для форми зміни пароля
   const freeCourse=await fetch('/api/course/mn1v7bplqru/public').then(r=>r.json()).catch(()=>null);
   if(freeCourse&&freeCourse.title&&!courses.some(c=>c.id===freeCourse.id)) courses.push(freeCourse);
   myCourses=courses; courseGrantedAt={};
