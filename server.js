@@ -869,9 +869,26 @@ app.get('/api/auth/google/callback',
     req.session.buyerName = buyer.displayName || buyer.email || buyer.username;
     autoGrantAccess(buyer.id);
 
-    // Якщо є pending redirect (наприклад, на конкретний курс)
     const redirect = req.session.googleAuthRedirect || '/watch';
     delete req.session.googleAuthRedirect;
+
+    // Якщо redirect на /watch?course=slug — перевіряємо чи є доступ
+    // Якщо немає — відправляємо на /course/slug для оплати
+    const courseMatch = redirect.match(/[?&]course=([^&]+)/);
+    if (courseMatch) {
+      const slug = courseMatch[1];
+      const d = db.get();
+      const course = d.courses?.find(c => c.slug === slug);
+      if (course) {
+        const hasAccess = course.freeAccess || course.buyers?.some(b => b.id === buyer.id && !isAccessExpired(b.grantedAt));
+        if (!hasAccess) {
+          console.log('[google-auth] No access to course, redirecting to payment:', slug);
+          res.redirect(`/course/${slug}?auth=google`);
+          return;
+        }
+      }
+    }
+
     console.log('[google-auth] Login success:', buyer.id, buyer.email, '→', redirect);
     res.redirect(redirect);
   }
