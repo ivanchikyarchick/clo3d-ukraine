@@ -518,14 +518,16 @@ async function load(){
   document.querySelectorAll('.rv').forEach(el=>obs.observe(el));
 }
 
-initMe().then(r=>{currentBuyer=r;updatePaymentButtons();}).catch(()=>{});
-load().then(()=>{
-  updatePaymentButtons();
-  // Якщо повернулись після Google auth — одразу ініціюємо оплату (курс вже завантажений)
-  if(new URLSearchParams(location.search).get('auth')==='google' && currentBuyer){
-    setTimeout(()=>initiatePayment(), 100);
+// Чекаємо і initMe і load перед перевіркою auth=google
+Promise.all([
+  initMe().then(r=>{currentBuyer=r;updatePaymentButtons();}).catch(()=>{}),
+  load().then(()=>updatePaymentButtons()).catch(e=>{console.error(e);document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');})
+]).then(()=>{
+  // Якщо повернулись після Google auth — тепер і buyer і courseData точно завантажені
+  if(new URLSearchParams(location.search).get('auth')==='google' && currentBuyer && currentCourseData){
+    initiatePayment();
   }
-}).catch(e=>{console.error(e);document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');});
+});
 
 function initiatePayment(){
   if(isProcessingPayment) return;
