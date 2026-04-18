@@ -878,8 +878,9 @@ app.get('/api/auth/google/callback',
     req.session.buyerName = buyer.email || buyer.username || buyer.displayName;
     autoGrantAccess(buyer.id);
 
-    // Читаємо redirect з сесії (або fallback)
-    const redirect = req.session.googleAuthRedirect || '/watch';
+    // Читаємо redirect з сесії або зі state параметра (резервний варіант)
+    const stateRedirect = req.query.state ? decodeURIComponent(req.query.state) : null;
+    const redirect = req.session.googleAuthRedirect || stateRedirect || '/watch';
     delete req.session.googleAuthRedirect;
 
     // Якщо redirect на /watch?course=slug — перевіряємо чи є доступ
@@ -903,14 +904,18 @@ app.get('/api/auth/google/callback',
   }
 );
 
-// Зберегти redirect в сесії перед Google login
-app.get('/api/auth/google/start', (req, res) => {
+// Зберегти redirect і передати через state до Google
+app.get('/api/auth/google/start', (req, res, next) => {
   const redirect = req.query.redirect || '/watch';
-  // Зберігаємо в сесії і одразу зберігаємо сесію перед редиректом
   req.session.googleAuthRedirect = redirect;
   req.session.save((err) => {
     if (err) console.error('[google/start] session save error:', err);
-    res.redirect('/api/auth/google');
+    // Також передаємо redirect як state — резервний варіант якщо сесія загубиться
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+      prompt: 'select_account',
+      state: encodeURIComponent(redirect)
+    })(req, res, next);
   });
 });
 
