@@ -270,24 +270,17 @@ function openLoginModal(){
   switchTab('register');
 }
 
-// Open modal for CONTINUE WATCHING — default tab: Login
+// Open modal for CONTINUE WATCHING — завжди показує форму входу
 function openContinueModal(){
-  // If already logged in and has access, go straight to watch
-  if(currentBuyer && currentCourseData){
-    if(currentBuyer.courses && currentBuyer.courses.some(c=>c.id===currentCourseData.id)){
-      window.location.href=`/watch?course=${currentCourseData.slug}`;
-      return;
-    }
-  }
-  // If logged in but no access, go to payment
-  if(currentBuyer){
-    initiatePayment();
+  // Якщо вже залогінений і є доступ — одразу на watch
+  if(currentBuyer && currentCourseData && currentBuyer.courses && currentBuyer.courses.some(c=>c.id===currentCourseData.id)){
+    window.location.href=`/watch?course=${currentCourseData.slug}`;
     return;
   }
+  // В будь-якому іншому стані — показуємо форму входу
   _modalMode='continue';
   document.getElementById('login-modal').style.display='flex';
   switchTab('login');
-  // Update login form description
   document.querySelector('#login-form p').textContent='Увійдіть, щоб продовжити перегляд';
 }
 
@@ -525,15 +518,14 @@ async function load(){
   document.querySelectorAll('.rv').forEach(el=>obs.observe(el));
 }
 
-initMe().then(r=>{
-  currentBuyer=r;
+initMe().then(r=>{currentBuyer=r;updatePaymentButtons();}).catch(()=>{});
+load().then(()=>{
   updatePaymentButtons();
-  // Якщо повернулись після Google auth — одразу ініціюємо оплату
+  // Якщо повернулись після Google auth — одразу ініціюємо оплату (курс вже завантажений)
   if(new URLSearchParams(location.search).get('auth')==='google' && currentBuyer){
-    setTimeout(()=>initiatePayment(), 300);
+    setTimeout(()=>initiatePayment(), 100);
   }
-}).catch(()=>{});
-load().then(()=>updatePaymentButtons()).catch(e=>{console.error(e);document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');});
+}).catch(e=>{console.error(e);document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');});
 
 function initiatePayment(){
   if(isProcessingPayment) return;
