@@ -322,8 +322,8 @@ async function checkMe(){
   const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
   if(d.ok){
     if(!d.courses||d.courses.length===0){
-      // Залогінений але немає жодного курсу — на головну
-      window.location.href='/';
+      // Залогінений але немає жодного курсу — показуємо gate з повідомленням
+      document.getElementById('gerr').textContent='У вас ще немає доступу до курсів.';
       return;
     }
     showApp(d.name,d.courses,d.email);
