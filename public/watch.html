@@ -308,7 +308,7 @@ async function checkMe(){
     const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
     if(d.ok){
       if(d.courses&&d.courses.some(c2=>c2.slug===courseSlug)){
-        await showApp(d.name,d.courses);
+        await showApp(d.name,d.courses,d.email);
         const courseId=d.courses.find(c2=>c2.slug===courseSlug).id;
         selectCourse(courseId);
       } else {
@@ -316,12 +316,18 @@ async function checkMe(){
       }
     } else {
       // Not logged in — show gate (don't redirect)
-      // gate is already visible by default
     }
     return;
   }
   const d=await fetch('/api/buyer/me').then(r=>r.json()).catch(()=>({ok:false}));
-  if(d.ok) showApp(d.name,d.courses);
+  if(d.ok){
+    if(!d.courses||d.courses.length===0){
+      // Залогінений але немає жодного курсу — на головну
+      window.location.href='/';
+      return;
+    }
+    showApp(d.name,d.courses,d.email);
+  }
 }
 
 async function openFreeCourse(c){
@@ -479,11 +485,13 @@ function toggleFullscreen(){
 document.addEventListener('fullscreenchange',()=>{const b=document.getElementById('fs-btn');if(b)b.textContent=document.fullscreenElement?'⛶ Вийти з повного екрану':'⛶ На весь екран';});
 document.addEventListener('webkitfullscreenchange',()=>{const b=document.getElementById('fs-btn');if(b)b.textContent=document.webkitFullscreenElement?'⛶ Вийти з повного екрану':'⛶ На весь екран';});
 
-async function showApp(name,courses){
+async function showApp(name,courses,email){
   document.getElementById('gate').style.display='none';
   const app=document.getElementById('app'); app.style.display='flex'; app.style.flexDirection='column';
-  document.getElementById('uname').textContent=name; courses=courses||[];
-  currentUserEmail=name; // зберігаємо email для форми зміни пароля
+  // name може бути email — показуємо тільки частину до @
+  const displayName=name&&name.includes('@')?name.split('@')[0]:name;
+  document.getElementById('uname').textContent=displayName||name; courses=courses||[];
+  currentUserEmail=email||name; // завжди email для зміни пароля
   const freeCourse=await fetch('/api/course/mn1v7bplqru/public').then(r=>r.json()).catch(()=>null);
   if(freeCourse&&freeCourse.title&&!courses.some(c=>c.id===freeCourse.id)) courses.push(freeCourse);
   myCourses=courses; courseGrantedAt={};
