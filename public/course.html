@@ -427,7 +427,8 @@ function updatePaymentButtons(){
   if(hasAccess){
     [btnH,btnB].forEach(btn=>{
       if(!btn) return;
-      btn.innerHTML=`<span class="pay-label">Перейти до курсу →</span>${_payIcons}`;
+      btn.innerHTML=`<span class="pay-label">Перейти до курсу →</span>`;
+      btn.style.fontSize='1rem';
       btn.onclick=()=>window.location.href=`/watch?course=${currentCourseData.slug}`;
       btn.style.background='linear-gradient(135deg,#34d399 0%,#059669 100%)';
       btn.style.boxShadow='0 4px 20px rgba(52,211,153,.35)';
@@ -439,6 +440,7 @@ function updatePaymentButtons(){
     [btnH,btnB].forEach(btn=>{
       if(!btn) return;
       btn.innerHTML=`<span class="pay-label">Записатися на курс</span>${_payIcons}`;
+      btn.style.fontSize='';
       btn.onclick=initiatePayment;
       btn.style.background='linear-gradient(135deg,var(--acc) 0%,#a01e1e 100%)';
       btn.style.boxShadow='0 4px 20px rgba(200,48,42,.35)';
