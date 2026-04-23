@@ -83,6 +83,35 @@ mountMonopayWebhook(webhookRouter);
 app.use('/api', webhookRouter);
 
 // ═══════════════════════════════════════════════════════════
+// SEO MIDDLEWARE — розміщено ДО static та інших роутів
+// ═══════════════════════════════════════════════════════════
+
+// Редирект http → https (Render.com проксує через X-Forwarded-Proto)
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] === 'http') {
+    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  }
+  next();
+});
+
+// Редирект www → non-www (301)
+app.use((req, res, next) => {
+  if (req.headers.host?.startsWith('www.')) {
+    return res.redirect(301, 'https://fashionlab.com.ua' + req.url);
+  }
+  next();
+});
+
+// Content-Language та Cache-Control для HTML-сторінок (не для /api/)
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/') && !req.path.includes('.')) {
+    res.setHeader('Content-Language', 'uk');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+  }
+  next();
+});
+
+// ═══════════════════════════════════════════════════════════
 // ОПТИМІЗАЦІЯ 1: gzip compression — зменшує трафік на 60-80%
 // ═══════════════════════════════════════════════════════════
 app.use(compression({
@@ -1555,5 +1584,82 @@ function syncAutoGrant() {
 setInterval(syncAutoGrant, 24 * 60 * 60 * 1000);
 // Also run once on startup after 10 seconds (give server time to start)
 setTimeout(syncAutoGrant, 10000);
+
+// ═══════════════════════════════════════════════════════════
+// SEO: Sitemap генератор
+// ═══════════════════════════════════════════════════════════
+app.get('/sitemap.xml', (req, res) => {
+  try {
+    const courses = (db.get().courses || []).filter(c => c.published);
+    const base = 'https://fashionlab.com.ua';
+    const now = new Date().toISOString().split('T')[0];
+
+    const urls = [
+      { loc: base + '/', priority: '1.0', changefreq: 'weekly' },
+      { loc: base + '/individual.html', priority: '0.7', changefreq: 'monthly' },
+      { loc: base + '/contacts.html', priority: '0.7', changefreq: 'monthly' },
+      ...courses.map(c => ({
+        loc: `${base}/course?slug=${c.slug}`,
+        priority: '0.9',
+        changefreq: 'weekly'
+      }))
+    ];
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(u => `  <url>
+    <loc>${u.loc}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(xml);
+  } catch (e) {
+    console.error('[sitemap] Error generating sitemap:', e.message);
+    const fallback = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://fashionlab.com.ua/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(fallback);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// SEO: robots.txt
+// ═══════════════════════════════════════════════════════════
+app.get('/robots.txt', (req, res) => {
+  const content = [
+    'User-agent: *',
+    'Allow: /',
+    'Disallow: /admin',
+    'Disallow: /api/',
+    'Disallow: /watch',
+    'Disallow: /login.html',
+    'Disallow: /payment-result.html',
+    '',
+    'Sitemap: https://fashionlab.com.ua/sitemap.xml',
+  ].join('\n');
+
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(content);
+});
+
+// 404 handler — must be last middleware
+app.use((req, res) => {
+  console.log('[404]', req.method, req.url, 'Referer:', req.headers.referer || '-');
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'), err => {
+    if (err) res.status(404).send('Not found');
+  });
+});
 
 module.exports = { app, PORT };
