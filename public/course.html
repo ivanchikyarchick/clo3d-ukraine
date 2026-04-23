@@ -4,8 +4,14 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow">
 <title id="pt">Курс — Vitaliia 3D Fashion Lab</title>
-<meta name="description" id="pd" content="Курс CLO 3D від Vitalia 3D Fashion Lab">
+<meta name="description" id="pd" content="">
 <link id="pc" rel="canonical" href="">
+<meta id="og-title" property="og:title" content="">
+<meta id="og-desc" property="og:description" content="">
+<meta id="og-url" property="og:url" content="">
+<meta id="og-type" property="og:type" content="product">
+<script id="course-ld" type="application/ld+json"></script>
+<script id="breadcrumb-ld" type="application/ld+json"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -263,6 +269,55 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 let currentBuyer=null, isProcessingPayment=false, isProcessingAuth=false, isFree=false, regTempData=null;
 // 'pay' = opened for payment, 'continue' = opened for continue watching
 let _modalMode = 'pay';
+
+// --- SEO functions ---
+function formatCourseTitle(course){
+  if(course.freeAccess) return `Безкоштовно: ${course.title} | CLO 3D | Vitaliia 3D Fashion Lab`;
+  return `${course.title} | CLO 3D | Vitaliia 3D Fashion Lab`;
+}
+
+function buildCourseJsonLd(course){
+  const price=course.priceAmount!=null?String(course.priceAmount):(course.price||'0');
+  return {
+    "@context":"https://schema.org",
+    "@type":"Course",
+    "name":course.title,
+    "description":course.description||'',
+    "provider":{"@type":"Organization","name":"Vitaliia 3D Fashion Lab","url":"https://fashionlab.com.ua"},
+    "offers":{"@type":"Offer","price":price,"priceCurrency":"UAH"},
+    "hasCourseInstance":{"@type":"CourseInstance","courseMode":"online"}
+  };
+}
+
+function buildBreadcrumbJsonLd(course){
+  return {
+    "@context":"https://schema.org",
+    "@type":"BreadcrumbList",
+    "itemListElement":[
+      {"@type":"ListItem","position":1,"name":"Головна","item":"https://fashionlab.com.ua/"},
+      {"@type":"ListItem","position":2,"name":"Курси","item":"https://fashionlab.com.ua/#courses"},
+      {"@type":"ListItem","position":3,"name":course.title}
+    ]
+  };
+}
+
+function applySEO(course){
+  const title=formatCourseTitle(course);
+  const desc=course.description||`Курс CLO 3D: ${course.title}`;
+  const url=`https://fashionlab.com.ua/course/${course.slug}`;
+
+  document.title=title;
+  document.getElementById('pt').textContent=title;
+  document.getElementById('pd').content=desc;
+  document.getElementById('pc').href=url;
+  document.getElementById('og-title').content=title;
+  document.getElementById('og-desc').content=desc;
+  document.getElementById('og-url').content=url;
+  document.getElementById('og-type').content='product';
+  document.getElementById('course-ld').textContent=JSON.stringify(buildCourseJsonLd(course));
+  document.getElementById('breadcrumb-ld').textContent=JSON.stringify(buildBreadcrumbJsonLd(course));
+}
+// --- end SEO functions ---
 const _payIcons=`<div class="payment-icons"><img src="https://cdn.simpleicons.org/googlepay/white" alt="Google Pay"><img src="https://cdn.simpleicons.org/applepay/white" alt="Apple Pay"></div>`;
 
 function switchTab(tab){
@@ -472,14 +527,7 @@ async function load(){
 
     currentCourseData=c;
     isFree=c.freeAccess||c.priceAmount===0||c.price==='Безкоштовно'||c.price==='0';
-    document.title=`${c.title} — Vitalia 3D Fashion Lab`;
-    document.getElementById('pd').content=c.description||`Курс CLO 3D: ${c.title}`;
-    document.getElementById('pc').href=`/course/${c.slug}`;
-    document.getElementById('pt').textContent=`${c.title} — Vitaliia 3D Fashion Lab`;
-
-    const sd=document.createElement('script'); sd.type='application/ld+json';
-    sd.textContent=JSON.stringify({"@context":"https://schema.org","@type":"Course","name":c.title,"description":c.description||'','provider':{"@type":"Organization","name":"Vitaliia 3D Fashion Lab"}});
-    document.head.appendChild(sd);
+    applySEO(c);
 
     if(c.badge){const b=document.getElementById('ch-badge');b.textContent=c.badge;b.style.display='inline-flex';}
     if(c.color) document.documentElement.style.setProperty('--acc',c.color);
