@@ -116,15 +116,21 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 .mbox .btn-g{width:100%;padding:.85rem;background:var(--acc);border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;transition:.2s;display:block;text-align:center;justify-content:center}
 .mbox .btn-g:hover{background:#a01e1e}
 .mbox .btn-g:disabled{opacity:.6;cursor:not-allowed}
+.lang-btn.active{color:#fff!important;background:linear-gradient(135deg,var(--acc),var(--acc2))!important;box-shadow:0 2px 8px rgba(200,48,42,.3)!important}
 .gerr{color:var(--acc);font-size:.85rem;min-height:1.2rem}
 </style>
+<script src="/i18n.js"></script>
 </head>
 <body>
 <div id="pl"><div class="pl-spin"></div></div>
 
 <nav>
   <a class="nav-logo" href="/">Vitaliia 3D Fashion Lab</a>
-  <a class="nav-back" href="/">← Всі курси</a>
+  <div class="lang-switcher" style="display:flex;align-items:center;gap:.35rem;background:rgba(22,12,12,.8);border:1px solid rgba(200,48,42,.18);border-radius:100px;padding:.25rem;margin:0 auto 0 1rem">
+    <button class="lang-btn active" data-lang="uk" onclick="switchLanguage('uk')" style="padding:.3rem .65rem;font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif">УКР</button>
+    <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')" style="padding:.3rem .65rem;font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif">ENG</button>
+  </div>
+  <a class="nav-back" href="/" data-i18n="course_back">← Всі курси</a>
 </nav>
 
 <section class="ch" id="ch">
@@ -136,26 +142,24 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
       <p class="ch-desc" id="ch-desc"></p>
       <div class="ch-pills">
         <span class="ch-pill">CLO 3D</span>
-        <span class="ch-pill">🎬 <span id="ch-vc">0</span> уроків</span>
-        <span class="ch-pill">🔒 Навчальна програма</span>
-        <span class="ch-pill">Доступ 30 днів</span>
+        <span class="ch-pill">🎬 <span id="ch-vc">0</span> <span data-i18n="course_lessons_count">уроків</span></span>
+        <span class="ch-pill">🔒 <span data-i18n="course_program">Навчальна програма</span></span>
+        <span class="ch-pill" data-i18n="course_access">Доступ 30 днів</span>
       </div>
     </div>
     <div class="ch-box">
       <div class="ch-price" id="ch-price"></div>
-      <div class="ch-price-note" id="ch-price-note">Одноразова оплата</div>
+      <div class="ch-price-note" id="ch-price-note" data-i18n="course_one_time">Одноразова оплата</div>
       <ul class="ch-includes" id="ch-includes"></ul>
-      <!-- PAY button — id="btn-pay-hero" -->
       <button class="btn-pay" id="btn-pay-hero" onclick="initiatePayment()">
-        <span class="pay-label">Записатися на курс</span>
+        <span class="pay-label" data-i18n="course_enroll">Записатися на курс</span>
         <div class="payment-icons">
           <img src="https://cdn.simpleicons.org/googlepay/white" alt="Google Pay">
           <img src="https://cdn.simpleicons.org/applepay/white" alt="Apple Pay">
         </div>
       </button>
-      <!-- CONTINUE button — opens login modal with Login tab -->
       <button class="btn-watch" id="btn-continue-hero" onclick="openContinueModal()" style="display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.75rem 1.75rem;margin-top:.75rem;border:1.5px solid var(--brd);border-radius:100px;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;color:var(--muted);background:transparent;cursor:pointer;transition:.2s;letter-spacing:.08em">
-        ▶️ Продовжити перегляд
+        ▶️ <span data-i18n="course_continue">Продовжити перегляд</span>
       </button>
     </div>
   </div>
@@ -163,15 +167,13 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
 
 <section class="vl-sec">
   <div class="sec-inner">
-    <div class="sec-eyebrow rv">Навчальна програма</div>
-    <div class="sec-title rv">Зміст курсу</div>
+    <div class="sec-eyebrow rv" data-i18n="course_program">Навчальна програма</div>
+    <div class="sec-title rv" data-i18n="course_program_title">Зміст курсу</div>
     <div class="vl-list rv" id="vl-list">
       <div style="padding:1.5rem;color:var(--muted)">Завантаження...</div>
     </div>
   </div>
 </section>
-
-<section class="wg-sec">
   <div class="sec-inner">
     <div class="sec-eyebrow rv">Що ви отримаєте</div>
     <div class="sec-title rv">Програма включає</div>
@@ -520,7 +522,8 @@ let currentCourseData=null;
 async function load(){
   if(!slug) return;
   try{
-    const resp=await fetch(`/api/course/${slug}/public`);
+    const lang=localStorage.getItem('lang')||'uk';
+    const resp=await fetch(`/api/course/${slug}/public?lang=${lang}`);
     if(!resp.ok){document.getElementById('ch-title').textContent='Помилка сервера: '+resp.status;document.getElementById('pl').classList.add('out');return;}
     const c=await resp.json();
     if(!c||c.ok===false){document.getElementById('ch-title').textContent='Курс не знайдено';document.getElementById('pl').classList.add('out');return;}
@@ -532,6 +535,7 @@ async function load(){
     if(c.badge){const b=document.getElementById('ch-badge');b.textContent=c.badge;b.style.display='inline-flex';}
     if(c.color) document.documentElement.style.setProperty('--acc',c.color);
 
+    // API вже повертає i18n переклад якщо налаштовано в адміні
     document.getElementById('ch-title').textContent=c.title;
     document.getElementById('ch-desc').textContent=c.description||'';
     document.getElementById('ch-price').textContent=c.price||'';
@@ -557,7 +561,7 @@ async function load(){
       </div>`).join('');
 
     const vids=await Promise.race([
-      fetch(`/api/course/${c.id}/videos/public`).then(r=>r.json()).catch(()=>[]),
+      fetch(`/api/course/${c.id}/videos/public?lang=${lang}`).then(r=>r.json()).catch(()=>[]),
       new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout')),10000))
     ]).catch(()=>[]);
 
@@ -566,6 +570,7 @@ async function load(){
     if(!vids.length){
       listEl.innerHTML='<div style="padding:1.5rem;color:var(--muted)">Відео незабаром з\'являться</div>';
     } else {
+      const moreLabel=lang==='en'?`+ ${vids.length-show} more...`:`+ ще ${vids.length-show} уроків...`;
       listEl.innerHTML=vids.slice(0,show).map((v,i)=>`
         <div class="vl-item">
           <span class="vl-n">${i+1}</span>
@@ -575,7 +580,7 @@ async function load(){
           </div>
           <span class="vl-lock">🔒</span>
         </div>`).join('')+
-        (vids.length>show?`<div class="vl-more">+ ще ${vids.length-show} урок${vids.length-show>4?'ів':vids.length-show>1?'и':''}...</div>`:'');
+        (vids.length>show?`<div class="vl-more">${moreLabel}</div>`:'');
     }
   }catch(e){
     console.error(e);
@@ -656,6 +661,11 @@ function proceedToPayment(){
     alert('Помилка з\'єднання: '+e.message);
     btn.innerHTML=originalHTML; btn.disabled=false; isProcessingPayment=false;
   });
+}
+
+function switchLanguage(lang){
+  setLanguage(lang);
+  load();
 }
 </script>
 </body>
