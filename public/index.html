@@ -28,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="img/favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="/i18n.js"></script>
 
 <script type="application/ld+json">
 {
@@ -187,6 +188,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,4,10,.85);
 .nav-soc a{width:30px;height:30px;border:1px solid var(--brd);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);text-decoration:none;transition:.2s}
 .nav-soc a:hover{border-color:var(--acc2);color:var(--txt)}
 .nav-soc svg{width:13px;height:13px;fill:currentColor}
+.lang-switcher{display:flex;align-items:center;gap:.35rem;background:var(--s2);border:1px solid var(--brd);border-radius:100px;padding:.25rem}
+.lang-btn{padding:.35rem .75rem;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif}
+.lang-btn:hover{color:var(--txt)}
+.lang-btn.active{color:#fff;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 2px 8px rgba(200,48,42,.3)}
+.lang-btn .flag{font-size:1rem;margin-right:.25rem}
 @media(max-width:900px){.nav-links{display:none}}
 
 /* HERO */
@@ -347,14 +353,22 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 <nav>
   <a class="nav-logo" href="/">
     <span class="n1">Vitaliia 3D Fashion Lab</span>
-    <span class="n2">CLO 3D українською</span>
+    <span class="n2" data-i18n="nav_logo_sub">CLO 3D українською</span>
   </a>
   <div class="nav-links">
-    <a href="#">ГОЛОВНА</a>
-    <a href="#courses">КУРСИ</a>
-    <a href="#about">ПРО НАС</a>
+    <a href="#" data-i18n="nav_home">ГОЛОВНА</a>
+    <a href="#courses" data-i18n="nav_courses">КУРСИ</a>
+    <a href="#about" data-i18n="nav_about">ПРО НАС</a>
     <a href="#faq">FAQ</a>
-    <a href="/contacts.html">КОНТАКТИ</a>
+    <a href="/contacts.html" data-i18n="nav_contacts">КОНТАКТИ</a>
+  </div>
+  <div class="lang-switcher">
+    <button class="lang-btn active" data-lang="uk" onclick="switchLanguage('uk')">
+      УКР
+    </button>
+    <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')">
+      ENG
+    </button>
   </div>
   <div class="nav-soc">
     <a href="https://www.instagram.com/vitaliia.3dlab?igsh=MWgyZG43YXJodDM5NQ%3D%3D" target="_blank" rel="noopener" title="Instagram">
@@ -368,24 +382,23 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 
 <section class="hero">
   <div class="hero-glow"></div>
-  <div class="hero-eyebrow">🧵 3D дизайн одягу · CLO 3D</div>
-  <h1 class="hero-title">Навчись<br><span class="hl">CLO 3D</span><br>українською</h1>
-  <div class="hero-sub">Примірка · Аналіз · Моделювання</div>
-  <p class="hero-desc">Практичні курси від конструктора одягу. <br> Від перших кроків у програмі до впевненої роботи <br> з реальними лекалами.</p>
+  <div class="hero-eyebrow" data-i18n="hero_eyebrow">🧵 3D дизайн одягу · CLO 3D</div>
+  <h1 class="hero-title" data-i18n-html="hero_title_html">Навчись<br><span class="hl">CLO 3D</span><br>українською</h1>
+  <div class="hero-sub" data-i18n="hero_subtitle">Примірка · Аналіз · Моделювання</div>
+  <p class="hero-desc" data-i18n="hero_desc">Практичні курси від конструктора одягу. Від перших кроків у програмі до впевненої роботи з реальними лекалами.</p>
   <div class="hero-btns">
-    <a href="#courses" class="btn-g">Переглянути курси <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-    <a href="#about" class="btn-o">Про викладача</a>
+    <a href="#courses" class="btn-g"><span data-i18n="hero_btn_courses">Переглянути курси</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    <a href="#about" class="btn-o" data-i18n="hero_btn_about">Про викладача</a>
   </div>
   <div class="hero-stats">
-    <div class="hstat"><div class="num" id="stat-c">—</div><div class="lbl">Курсів</div></div>
-    <div class="hstat"><div class="num">100%</div><div class="lbl">Українська</div></div>
-    <div class="hstat"><div class="num">CLO 3D</div><div class="lbl">Програма</div></div>
-
+    <div class="hstat"><div class="num" id="stat-c">—</div><div class="lbl" data-i18n="hero_stat_courses">Курсів</div></div>
+    <div class="hstat"><div class="num">100%</div><div class="lbl" data-i18n="hero_stat_lang">Українська</div></div>
+    <div class="hstat"><div class="num">CLO 3D</div><div class="lbl" data-i18n="hero_stat_program">Програма</div></div>
   </div>
 </section>
 
 <div class="marquee-wrap">
-  <p class="marquee-lbl">Програму CLO 3D використовують топові бренди</p>
+  <p class="marquee-lbl" data-i18n="marquee_label">Програму CLO 3D використовують топові бренди</p>
   <div style="overflow:hidden">
     <div class="marquee">
       <span>Nike</span><span>Zara</span><span>H&amp;M</span><span>Adidas</span><span>Burberry</span><span>Calvin Klein</span><span>Tommy Hilfiger</span><span>Under Armour</span><span>Uniqlo</span><span>Gap</span><span>Puma</span><span>New Balance</span>
@@ -396,9 +409,9 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 
 <section class="courses-section" id="courses">
   <div class="sec-inner">
-    <div class="sec-eyebrow rv">Каталог курсів</div>
-    <h2 class="sec-title rv">Наші <em>програми</em></h2>
-    <p class="sec-sub rv">Оберіть курс та починайте навчатись прямо зараз</p>
+    <div class="sec-eyebrow rv" data-i18n="sec_courses_eyebrow">Каталог курсів</div>
+    <h2 class="sec-title rv"><span data-i18n="our_programs_pre"></span>Наші</span> <em data-i18n="sec_courses_title">програми</em></h2>
+    <p class="sec-sub rv" data-i18n="sec_courses_sub">Оберіть курс та починайте навчатись прямо зараз</p>
     <div class="courses-grid" id="courses-grid">
       <div class="courses-empty">Завантаження...</div>
     </div>
@@ -409,21 +422,21 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
   <div class="sec-inner">
     <div class="individual-card rv">
       <div class="ic-left">
-        <div class="ic-badge">🎯 Індивідуальна послуга</div>
-        <h2 class="ic-title">Індивідуальний розбір з Віталією</h2>
-        <p class="ic-subtitle">Практична допомога у програмах САПР Valentina та CLO 3D від конструктора-експерта.</p>
+        <div class="ic-badge" data-i18n="individual_badge">🎯 Індивідуальна послуга</div>
+        <h2 class="ic-title" data-i18n="individual_title">Індивідуальний розбір з Віталією</h2>
+        <p class="ic-subtitle" data-i18n="individual_subtitle">Практична допомога у програмах САПР Valentina та CLO 3D від конструктора-експерта.</p>
         <div class="ic-features">
-          <div class="ic-feature"><span>✓</span> Відповіді на запитання: розберемо складні вузли, інструменти чи алгоритми побудови</div>
-          <div class="ic-feature"><span>✓</span> Перевірка файлів: перегляну ваш файл у Valentina чи CLO, знайду помилки та допоможу виправити</div>
-          <div class="ic-feature"><span>✓</span> Технічний супровід: допоможу адаптувати вашу базу під конкретний виріб</div>
+          <div class="ic-feature"><span>✓</span> <span data-i18n="individual_f1">Відповіді на запитання: розберемо складні вузли, інструменти чи алгоритми побудови</span></div>
+          <div class="ic-feature"><span>✓</span> <span data-i18n="individual_f2">Перевірка файлів: перегляну ваш файл у Valentina чи CLO, знайду помилки та допоможу виправити</span></div>
+          <div class="ic-feature"><span>✓</span> <span data-i18n="individual_f3">Технічний супровід: допоможу адаптувати вашу базу під конкретний виріб</span></div>
         </div>
         <div class="ic-format">
-          <div>⏱️ 60 – 90 хвилин</div>
-          <div>📹 Google Meet</div>
-          <div>🎁 Відеозапис зустрічі</div>
+          <div>⏱️ <span data-i18n="individual_duration">60 – 90 хвилин</span></div>
+          <div>📹 <span data-i18n="individual_format">Google Meet</span></div>
+          <div>🎁 <span data-i18n="individual_recording">Відеозапис зустрічі</span></div>
         </div>
         <div class="ic-price">800 грн</div>
-        <a href="/individual.html" class="ic-btn" target="_blank">Записатися на розбір <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <a href="/individual.html" class="ic-btn" target="_blank"><span data-i18n="individual_btn">Записатися на розбір</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
       </div>
       <div class="ic-right">
         <div class="ic-decor"></div>
@@ -439,7 +452,7 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
       <img class="ai1" src="/img/about1.jpg" alt="Навчання 3D моделюванню одягу онлайн — Vitaliia 3D Fashion Lab" loading="lazy" onerror="this.style.background='#110808'">
     </div>
     <div class="about-text rv-r">
-      <div class="sec-eyebrow">Викладач</div>
+      <div class="sec-eyebrow" data-i18n="about_eyebrow">Викладач</div>
       <h2 class="sec-title">Vitaliia<br><em>Yaroshenko</em></h2>
       <p>Я — <strong>Віталія Ярошенко</strong>, конструктор одягу та засновниця <strong>Vitaliia 3D Fashion Lab</strong>. Навчаю CLO 3D українською мовою — від базового огляду інтерфейсу до складного технічного аналізу виробів.</p>
       <p>Моя мета — зробити 3D моделювання доступним для <strong>українських конструкторів та дизайнерів</strong>. Жодних мовних бар'єрів, лише практика і результат.</p>
@@ -464,22 +477,22 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 
 <section class="why-section">
   <div class="sec-inner">
-    <div class="sec-eyebrow rv">Переваги</div>
-    <h2 class="sec-title rv">Чому <em>обирають нас</em></h2>
+    <div class="sec-eyebrow rv" data-i18n="why_eyebrow">Переваги</div>
+    <h2 class="sec-title rv"><span data-i18n="why_pre">Чому</span> <em data-i18n="why_title">обирають нас</em></h2>
     <div class="why-grid">
-      <div class="why-card rv"><div class="why-ico">🇺🇦</div><h3>Українська мова</h3><p>Всі матеріали та підтримка — виключно українською. Жодних мовних бар'єрів.</p></div>
-      <div class="why-card rv d1"><div class="why-ico">🎬</div><h3>Безкоштовні уроки</h3><p>На нашому ютуб-каналі ви знайдете безкоштовні уроки з CLO 3D.</p></div>
-      <div class="why-card rv d2"><div class="why-ico">🎓</div><h3>Сертифікат</h3><p>Сертифікат після успішного проходження курсів та виконання всіх завдань.</p></div>
-      <div class="why-card rv d3"><div class="why-ico">💬</div><h3>Підтримка</h3><p>Зворотній зв'язок, відповіді на запитання та розбір ваших проектів.</p></div>
+      <div class="why-card rv"><div class="why-ico">🇺🇦</div><h3 data-i18n="why_lang_title">Українська мова</h3><p data-i18n="why_lang_desc">Всі матеріали та підтримка — виключно українською. Жодних мовних бар'єрів.</p></div>
+      <div class="why-card rv d1"><div class="why-ico">🎬</div><h3 data-i18n="why_free_title">Безкоштовні уроки</h3><p data-i18n="why_free_desc">На нашому ютуб-каналі ви знайдете безкоштовні уроки з CLO 3D.</p></div>
+      <div class="why-card rv d2"><div class="why-ico">🎓</div><h3 data-i18n="why_cert_title">Сертифікат</h3><p data-i18n="why_cert_desc">Сертифікат після успішного проходження курсів та виконання всіх завдань.</p></div>
+      <div class="why-card rv d3"><div class="why-ico">💬</div><h3 data-i18n="why_support_title">Підтримка</h3><p data-i18n="why_support_desc">Зворотній зв'язок, відповіді на запитання та розбір ваших проектів.</p></div>
     </div>
   </div>
 </section>
 
 <section id="faq" class="faq-section">
   <div class="sec-inner rv">
-    <div class="sec-eyebrow" style="text-align: center;">Запитання-відповіді</div>
-    <h2 class="sec-title" style="text-align: center;">Популярні <em>запитання</em></h2>
-    <p class="sec-sub" style="text-align: center; margin: 0 auto 3rem;">Зібрали відповіді на найчастіші запитання, щоб допомогти вам розібратися з навчанням у CLO 3D.</p>
+    <div class="sec-eyebrow" style="text-align: center;" data-i18n="faq_eyebrow">Запитання-відповіді</div>
+    <h2 class="sec-title" style="text-align: center;"><span data-i18n="faq_pre">Популярні</span> <em data-i18n="faq_title">запитання</em></h2>
+    <p class="sec-sub" style="text-align: center; margin: 0 auto 3rem;" data-i18n="faq_sub">Зібрали відповіді на найчастіші запитання, щоб допомогти вам розібратися з навчанням у CLO 3D.</p>
 
     <div class="faq-cats">
 
@@ -587,27 +600,35 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 </footer>
 
 <script>
+function switchLanguage(lang) {
+  setLanguage(lang);
+  loadCourses();
+}
+
 async function loadCourses() {
   try {
-    const cs = await fetch('/api/courses/public').then(r=>r.json());
+    const lang = localStorage.getItem('lang') || 'uk';
+    const cs = await fetch(`/api/courses/public?lang=${lang}`).then(r=>r.json());
     document.getElementById('stat-c').textContent = cs.length || '0';
     const grid = document.getElementById('courses-grid');
     if (!cs.length) {
-      grid.innerHTML = `<div class="courses-empty">Курси незабаром з'являться.<br>Слідкуйте у <a href="/contacts.html" style="color:var(--acc2)">контактах</a></div>`;
+      grid.innerHTML = `<div class="courses-empty">${t('Курси незабаром з\'являться.')}<br>Слідкуйте у <a href="/contacts.html" style="color:var(--acc2)">${t('контактах')}</a></div>`;
     } else {
+      // API вже повертає i18n переклад якщо налаштовано в адміні
       grid.innerHTML = cs.map(c => {
         const link = c.freeAccess ? `/watch?course=${c.slug}` : `/course/${c.slug}`;
+        const lessonWord = t('уроків');
         return `
         <a href="${link}" class="course-card" style="--card-acc:${c.color||'#C8302A'}">
           <div class="cc-accent"></div>
           <div class="cc-body">
-            ${c.freeAccess ? `<span class="cc-badge" style="background:rgba(52,211,153,.12);color:#34d399;border-color:rgba(52,211,153,.25)">🆓 Безкоштовно</span>` : (c.badge ? `<span class="cc-badge">${c.badge}</span>` : '')}
+            ${c.freeAccess ? `<span class="cc-badge" style="background:rgba(52,211,153,.12);color:#34d399;border-color:rgba(52,211,153,.25)">${t('🆓 Безкоштовно')}</span>` : (c.badge ? `<span class="cc-badge">${c.badge}</span>` : '')}
             <h3 class="cc-title">${c.title}</h3>
             <p class="cc-desc">${c.description || ''}</p>
             <div class="cc-foot">
               <div>
-                <div class="cc-price">${c.freeAccess ? 'Безкоштовно' : (c.price || '')}</div>
-                <div class="cc-meta">🎬 ${c.videoCount} урок${c.videoCount===1?'':'ів'}</div>
+                <div class="cc-price">${c.freeAccess ? t('🆓 Безкоштовно') : (c.price || '')}</div>
+                <div class="cc-meta">🎬 ${c.videoCount} ${lessonWord}</div>
               </div>
               <div class="cc-arr"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
             </div>
