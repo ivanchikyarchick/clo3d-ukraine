@@ -1159,8 +1159,9 @@ app.patch('/api/courses/:id', adm, (req, res) => {
     if (includes !== undefined) c.includes = includes;
     if (features !== undefined) c.features = features; 
     if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
-    if (i18n !== undefined) c.i18n = i18n; // Оновлюємо переклади
+    if (i18n !== undefined) c.i18n = i18n;
   });
+  db.flushSync();
   invalidateCache();
   res.json({ ok: true });
 });
@@ -1259,19 +1260,20 @@ app.patch('/api/courses/:cid/videos/:idx', adm, (req, res) => {
     if (v) {
       if (req.body.title !== undefined) v.title = req.body.title;
       if (req.body.desc  !== undefined) v.desc  = req.body.desc;
-      // i18n для відео: { en: { title, desc } }
       if (req.body.i18n !== undefined) {
         if (!v.i18n) v.i18n = {};
         Object.assign(v.i18n, req.body.i18n);
       }
     }
   });
+  db.flushSync();
   invalidateCache();
   res.json({ ok: true });
 });
 
 app.delete('/api/courses/:cid/videos/:idx', adm, (req, res) => {
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) c.videos.splice(parseInt(req.params.idx), 1); });
+  db.flushSync();
   invalidateCache();
   res.json({ ok: true });
 });
@@ -1279,6 +1281,7 @@ app.delete('/api/courses/:cid/videos/:idx', adm, (req, res) => {
 app.post('/api/courses/:cid/videos/reorder', adm, (req, res) => {
   const { from, to } = req.body;
   db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); if (c) { const [item] = c.videos.splice(from, 1); c.videos.splice(to, 0, item); } });
+  db.flushSync();
   invalidateCache();
   res.json({ ok: true });
 });
@@ -1418,11 +1421,11 @@ app.post('/api/courses/:cid/videos/:idx/audio', uploadAudio.single('audio'), asy
       const v = c?.videos?.[idx]; 
       if (v) { 
         if (!v.audioTracks) v.audioTracks = []; 
-        // Видаляємо стару доріжку для цієї мови якщо є
         v.audioTracks = v.audioTracks.filter(a => a.lang !== lang);
         v.audioTracks.push(audioEntry); 
       } 
     });
+    db.flushSync();
     invalidateCache();
     res.json({ ok: true, audioTrack: audioEntry });
   } catch (e) { 
@@ -1496,6 +1499,7 @@ app.delete('/api/courses/:cid/videos/:idx/audio/:aid', adm, (req, res) => {
     const v = c?.videos?.[parseInt(req.params.idx)]; 
     if (v) v.audioTracks = (v.audioTracks || []).filter(a => a.id !== req.params.aid); 
   });
+  db.flushSync();
   invalidateCache();
   res.json({ ok: true });
 });
