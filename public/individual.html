@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="/i18n.js"></script>
 <style>
 :root{--bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;--acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -94,13 +95,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,4,10,.85);
 <nav>
   <a class="nav-logo" href="/">
     <span class="n1">Vitaliia 3D Fashion Lab</span>
-    <span class="n2">CLO 3D українською</span>
+    <span class="n2" data-i18n="nav_logo_sub">CLO 3D українською</span>
   </a>
   <div class="nav-links">
-    <a href="#">ГОЛОВНА</a>
-    <a href="#courses">КУРСИ</a>
-    <a href="#about">ПРО НАС</a>
-    <a href="/contacts.html">КОНТАКТИ</a>
+    <a href="#" data-i18n="nav_home">ГОЛОВНА</a>
+    <a href="#courses" data-i18n="nav_courses">КУРСИ</a>
+    <a href="#about" data-i18n="nav_about">ПРО НАС</a>
+    <a href="/contacts.html" data-i18n="nav_contacts">КОНТАКТИ</a>
+  </div>
+  <div class="lang-switcher" style="display:flex;align-items:center;gap:.35rem;background:var(--s2);border:1px solid var(--brd);border-radius:100px;padding:.25rem">
+    <button class="lang-btn active" data-lang="uk" onclick="switchLanguage('uk')" style="padding:.3rem .65rem;font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif">УКР</button>
+    <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')" style="padding:.3rem .65rem;font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif">ENG</button>
   </div>
   <div class="nav-soc">
     <a href="https://www.instagram.com/vitaliia.3dlab?igsh=MWgyZG43YXJodDM5NQ%3D%3D" target="_blank" rel="noopener" title="Instagram">
@@ -114,87 +119,87 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,4,10,.85);
 
 <section class="hero">
   <div class="hero-glow"></div>
-  <div class="badge">🎯 Індивідуальна послуга</div>
-  <h1 class="title">Індивідуальний розбір<br>з <span>Віталією</span></h1>
-  <p class="subtitle">Практична допомога у програмах САПР Valentina та CLO 3D від конструктора-експерта. Розберу ваші питання, перевірю файли та допоможу вирішити складні задачі.</p>
+  <div class="badge" data-i18n="individual_badge">🎯 Індивідуальна послуга</div>
+  <h1 class="title" data-i18n-html="individual_title_html">Індивідуальний розбір<br>з <span>Віталією</span></h1>
+  <p class="subtitle" data-i18n="individual_subtitle">Практична допомога у програмах САПР Valentina та CLO 3D від конструктора-експерта. Розберу ваші питання, перевірю файли та допоможу вирішити складні задачі.</p>
 </section>
 
 <section class="section">
-  <h2 class="section-title">Що входить у <span>розбір</span></h2>
+  <h2 class="section-title"><span data-i18n="individual_what_included_pre">Що входить у</span> <span data-i18n="individual_what_included_em">розбір</span></h2>
   <div class="features">
     <div class="feature">
       <div class="feature-icon">❓</div>
-      <h3>Відповіді на запитання</h3>
-      <p>Розберемо складні вузли, інструменти та алгоритми побудови. Будь-які запитання щодо роботи в CLO 3D та САПР Valentina.</p>
+      <h3 data-i18n="individual_f_qa_title">Відповіді на запитання</h3>
+      <p data-i18n="individual_f_qa_desc">Розберемо складні вузли, інструменти та алгоритми побудови. Будь-які запитання щодо роботи в CLO 3D та САПР Valentina.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">📁</div>
-      <h3>Перевірка файлів</h3>
-      <p>Ви можете надіслати свої креслення чи 3D-проекти заздалегідь. Я перевірю посадочні формули, знайду помилки та допоможу їх виправити.</p>
+      <h3 data-i18n="individual_f_files_title">Перевірка файлів</h3>
+      <p data-i18n="individual_f_files_desc">Ви можете надіслати свої креслення чи 3D-проекти заздалегідь. Я перевірю посадочні формули, знайду помилки та допоможу їх виправити.</p>
     </div>
     <div class="feature">
       <div class="feature-icon">⚙️</div>
-      <h3>Технічний супровід</h3>
-      <p>Допоможу адаптувати вашу базу під конкретний виріб. Налаштування лекал, розмірної сітки, а також допомога зі встановленням програми.</p>
+      <h3 data-i18n="individual_f_tech_title">Технічний супровід</h3>
+      <p data-i18n="individual_f_tech_desc">Допоможу адаптувати вашу базу під конкретний виріб. Налаштування лекал, розмірної сітки, а також допомога зі встановленням програми.</p>
     </div>
   </div>
 
   <div class="details">
-    <h2 class="section-title">Формат <span>зустрічі</span></h2>
+    <h2 class="section-title"><span data-i18n="individual_format_pre">Формат</span> <span data-i18n="individual_format_em">зустрічі</span></h2>
     <div class="details-grid">
       <div class="detail-item">
         <div class="detail-icon">⏱️</div>
         <div class="detail">
-          <h4>Тривалість</h4>
-          <p>60 – 90 хвилин</p>
+          <h4 data-i18n="individual_duration_title">Тривалість</h4>
+          <p data-i18n="individual_duration_val">60 – 90 хвилин</p>
         </div>
       </div>
       <div class="detail-item">
         <div class="detail-icon">📹</div>
         <div class="detail">
-          <h4>Платформа</h4>
-          <p>Google Meet (демонстрація екрана)</p>
+          <h4 data-i18n="individual_platform_title">Платформа</h4>
+          <p data-i18n="individual_platform_val">Google Meet (демонстрація екрана)</p>
         </div>
       </div>
       <div class="detail-item">
         <div class="detail-icon">🎁</div>
         <div class="detail">
-          <h4>Бонус</h4>
-          <p>Відеозапис зустрічі залишається у вас</p>
+          <h4 data-i18n="individual_bonus_title">Бонус</h4>
+          <p data-i18n="individual_bonus_val">Відеозапис зустрічі залишається у вас</p>
         </div>
       </div>
     </div>
   </div>
 
   <div class="process">
-    <h2 class="section-title">Як це <span>працює</span></h2>
+    <h2 class="section-title"><span data-i18n="individual_how_pre">Як це</span> <span data-i18n="individual_how_em">працює</span></h2>
     <div class="process-steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-content">
-          <h4>Замовлення послуги</h4>
-          <p>Натискаєте кнопку нижче — і переходите до контактної форми для обговорення деталей.</p>
+          <h4 data-i18n="individual_step1_title">Замовлення послуги</h4>
+          <p data-i18n="individual_step1_desc">Натискаєте кнопку нижче — і переходите до контактної форми для обговорення деталей.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-content">
-          <h4>Узгодження та оплата</h4>
-          <p>Ми підбираємо зручну для обох дату та час зустрічі, після чого я надсилаю офіційні реквізити ФОП для оплати.</p>
+          <h4 data-i18n="individual_step2_title">Узгодження та оплата</h4>
+          <p data-i18n="individual_step2_desc">Ми підбираємо зручну для обох дату та час зустрічі, після чого я надсилаю офіційні реквізити ФОП для оплати.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-content">
-          <h4>Надсилання матеріалів</h4>
-          <p>Ви надсилаєте свій файл або список запитань (бажано за 24 години до нашого зідзвону).</p>
+          <h4 data-i18n="individual_step3_title">Надсилання матеріалів</h4>
+          <p data-i18n="individual_step3_desc">Ви надсилаєте свій файл або список запитань (бажано за 24 години до нашого зідзвону).</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-content">
-          <h4>Зустріч та результат</h4>
-          <p>Зустрічаємось у Google Meet: я демонструю екран та відповідаю на запитання. Після розбору ви отримуєте відеозапис.</p>
+          <h4 data-i18n="individual_step4_title">Зустріч та результат</h4>
+          <p data-i18n="individual_step4_desc">Зустрічаємось у Google Meet: я демонструю екран та відповідаю на запитання. Після розбору ви отримуєте відеозапис.</p>
         </div>
       </div>
     </div>
@@ -204,25 +209,27 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,4,10,.85);
 <section class="price-section">
   <div class="price">800 грн</div>
   <a href="https://t.me/Vitaliia_Ya" class="btn">
-    Написати Віталії
+    <span data-i18n="individual_cta">Написати Віталії</span>
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
   </a>
-  
 </section>
 
 <footer>
   <div class="foot-inner">
-    <div class="foot-brand">Vitalia 3D Fashion Lab</div>
+    <div class="foot-brand">Vitaliia 3D Fashion Lab</div>
     <div class="foot-links">
-      <a href="#courses">Курси</a>
-      <a href="#about">Про мене</a>
+      <a href="#courses" data-i18n="nav_courses">Курси</a>
+      <a href="#about" data-i18n="about_me">Про мене</a>
       <a href="https://www.youtube.com/@VitaliiaCLO3d" target="_blank" rel="noopener">YouTube</a>
       <a href="https://www.instagram.com/vitaliia.3dlab?igsh=MWgyZG43YXJodDM5NQ%3D%3D" target="_blank" rel="noopener">Instagram</a>
-      <a href="/watch">Мої курси</a>
-      <a href="/login" style="opacity:.3">Адмін</a>
+      <a href="/watch" data-i18n="my_courses">Мої курси</a>
+      <a href="/login" style="opacity:.3" data-i18n="admin">Адмін</a>
     </div>
   </div>
 </footer>
 
+<script>
+function switchLanguage(lang) { setLanguage(lang); }
+</script>
 </body>
 </html>
