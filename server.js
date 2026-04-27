@@ -373,39 +373,78 @@ app.get('/api/dashboard', adm, (req, res) => {
 
 // ═══ Public courses (CACHED 30s) ═══
 app.get('/api/courses/public', (req, res) => {
-  const data = cachedResponse('courses_public', 30000, () =>
-    (db.get().courses || []).filter(c => c.published).map(c => ({
-      id: c.id, slug: c.slug, title: c.title, description: c.description,
-      price: c.price, badge: c.badge, color: c.color || '#5b8dee',
-      videoCount: c.videos?.length || 0, freeAccess: !!c.freeAccess
-    }))
+  const lang = req.query.lang || 'uk';
+  const data = cachedResponse(`courses_public_${lang}`, 30000, () =>
+    (db.get().courses || []).filter(c => c.published).map(c => {
+      const i18n = c.i18n?.[lang] || {};
+      return {
+        id: c.id, 
+        slug: c.slug, 
+        title: i18n.title || c.title, 
+        description: i18n.description || c.description,
+        price: i18n.price || c.price,
+        priceAmount: i18n.priceAmount || c.priceAmount,
+        currency: lang === 'en' ? 'USD' : 'UAH',
+        badge: i18n.badge || c.badge, 
+        color: c.color || '#5b8dee',
+        videoCount: c.videos?.length || 0, 
+        freeAccess: !!c.freeAccess
+      };
+    })
   );
   res.json(data);
 });
 
 app.get('/api/course/:slug/public', (req, res) => {
-  const data = cachedResponse('course_' + req.params.slug, 30000, () => {
+  const lang = req.query.lang || 'uk';
+  const data = cachedResponse(`course_${req.params.slug}_${lang}`, 30000, () => {
     const c = (db.get().courses || []).find(x => x.slug === req.params.slug && x.published);
     if (!c) return null;
-    return { id: c.id, slug: c.slug, title: c.title, description: c.description, price: c.price, priceAmount: c.priceAmount || c.price, badge: c.badge, color: c.color, videoCount: c.videos?.length || 0, includes: c.includes || [], features: c.features || [], freeAccess: !!c.freeAccess };
+    const i18n = c.i18n?.[lang] || {};
+    return { 
+      id: c.id, 
+      slug: c.slug, 
+      title: i18n.title || c.title, 
+      description: i18n.description || c.description, 
+      price: i18n.price || c.price, 
+      priceAmount: i18n.priceAmount || c.priceAmount || c.price,
+      currency: lang === 'en' ? 'USD' : 'UAH',
+      badge: i18n.badge || c.badge, 
+      color: c.color, 
+      videoCount: c.videos?.length || 0, 
+      includes: i18n.includes || c.includes || [], 
+      features: i18n.features || c.features || [], 
+      freeAccess: !!c.freeAccess 
+    };
   });
   if (!data) { res.status(404).json({ ok: false }); return; }
   res.json(data);
 });
 
 // Video lists
-const vidList = (v, i) => ({ i, title: v.title, desc: v.desc, hasMaterials: !!(v.materials?.length) });
+const vidList = (v, i, lang) => {
+  const i18n = lang && v.i18n?.[lang];
+  return {
+    i,
+    title: i18n?.title || v.title,
+    desc:  i18n?.desc  || v.desc,
+    hasMaterials: !!(v.materials?.length),
+    i18n: v.i18n  // передаємо повністю для watch.html
+  };
+};
 
 app.get('/api/course/:cid/videos/public', (req, res) => {
+  const lang = req.query.lang || 'uk';
   const c = (db.get().courses || []).find(x => x.id === req.params.cid);
   if (!c) { res.status(404).json({ ok: false }); return; }
-  res.json((c.videos || []).map(vidList));
+  res.json((c.videos || []).map((v,i) => vidList(v, i, lang)));
 });
 
 app.get('/api/course/:cid/videos/free', (req, res) => {
+  const lang = req.query.lang || 'uk';
   const c = (db.get().courses || []).find(x => x.id === req.params.cid && x.freeAccess);
   if (!c) { res.status(403).json({ ok: false }); return; }
-  res.json((c.videos || []).map(vidList));
+  res.json((c.videos || []).map((v,i) => vidList(v, i, lang)));
 });
 
 // Admin preview
@@ -1080,10 +1119,28 @@ function proxyStream(url, res, h = {}) {
 app.get('/api/courses', adm, (req, res) => res.json(db.get().courses || []));
 
 app.post('/api/courses', adm, (req, res) => {
-  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess } = req.body;
+  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, i18n } = req.body;
   if (!title) { res.status(400).json({ ok: false, error: 'Потрібна назва' }); return; }
   const id = db.newId(), slug = db.slugify(title);
-  db.set(d => { d.courses.push({ id, slug, title, description: description || '', price: price || '', priceAmount: priceAmount || price || '', badge: badge || '', color: color || '#C8302A', published: !!published, freeAccess: !!freeAccess, createdAt: Date.now(), videos: [], buyers: [], pending: [], includes: includes || [], features: features || [] }); });
+  db.set(d => { 
+    d.courses.push({ 
+      id, slug, title, 
+      description: description || '', 
+      price: price || '', 
+      priceAmount: priceAmount || price || '', 
+      badge: badge || '', 
+      color: color || '#C8302A', 
+      published: !!published, 
+      freeAccess: !!freeAccess, 
+      createdAt: Date.now(), 
+      videos: [], 
+      buyers: [], 
+      pending: [], 
+      includes: includes || [], 
+      features: features || [],
+      i18n: i18n || {} // { en: { title, description, price, priceAmount, badge, includes, features } }
+    }); 
+  });
   invalidateCache();
   res.json({ ok: true, id, slug });
 });
@@ -1091,12 +1148,18 @@ app.post('/api/courses', adm, (req, res) => {
 app.patch('/api/courses/:id', adm, (req, res) => {
   db.set(d => {
     const c = d.courses.find(x => x.id === req.params.id); if (!c) return;
-    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess } = req.body;
+    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, i18n } = req.body;
     if (title !== undefined) { c.title = title; c.slug = db.slugify(title); }
-    if (description !== undefined) c.description = description; if (price !== undefined) c.price = price; if (priceAmount !== undefined) c.priceAmount = priceAmount;
-    if (badge !== undefined) c.badge = badge; if (color !== undefined) c.color = color;
-    if (published !== undefined) c.published = !!published; if (includes !== undefined) c.includes = includes;
-    if (features !== undefined) c.features = features; if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
+    if (description !== undefined) c.description = description; 
+    if (price !== undefined) c.price = price; 
+    if (priceAmount !== undefined) c.priceAmount = priceAmount;
+    if (badge !== undefined) c.badge = badge; 
+    if (color !== undefined) c.color = color;
+    if (published !== undefined) c.published = !!published; 
+    if (includes !== undefined) c.includes = includes;
+    if (features !== undefined) c.features = features; 
+    if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
+    if (i18n !== undefined) c.i18n = i18n; // Оновлюємо переклади
   });
   invalidateCache();
   res.json({ ok: true });
@@ -1135,6 +1198,7 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
   const cid = req.params.cid;
   const title = req.body.title || `Урок ${(db.getCourse(cid)?.videos?.length || 0) + 1}`;
   const desc = req.body.desc || '';
+  const i18n = req.body.i18n ? (typeof req.body.i18n === 'string' ? JSON.parse(req.body.i18n) : req.body.i18n) : undefined;
   const size = req.file.size || 0;
   const TG_MAX = 50 * 1024 * 1024;
 
@@ -1153,6 +1217,7 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
       if (!tgRes.ok) { res.status(500).json({ ok: false, error: tgRes.description || 'Telegram error' }); return; }
       videoEntry = {
         id: db.newId(), title, desc,
+        ...(i18n ? { i18n } : {}),
         telegramFileId: tgRes.result.video.file_id,
         size: tgRes.result.video.file_size || size,
         addedAt: Date.now()
@@ -1170,6 +1235,7 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
       try { fs.unlinkSync(req.file.path); } catch { }
       videoEntry = {
         id: db.newId(), title, desc,
+        ...(i18n ? { i18n } : {}),
         r2Key: r2key,
         size,
         addedAt: Date.now()
@@ -1187,7 +1253,19 @@ app.post('/api/courses/:cid/videos', uploadVideo.single('video'), async (req, re
 });
 
 app.patch('/api/courses/:cid/videos/:idx', adm, (req, res) => {
-  db.set(d => { const c = d.courses.find(x => x.id === req.params.cid); const v = c?.videos?.[parseInt(req.params.idx)]; if (v) { if (req.body.title !== undefined) v.title = req.body.title; if (req.body.desc !== undefined) v.desc = req.body.desc; } });
+  db.set(d => {
+    const c = d.courses.find(x => x.id === req.params.cid);
+    const v = c?.videos?.[parseInt(req.params.idx)];
+    if (v) {
+      if (req.body.title !== undefined) v.title = req.body.title;
+      if (req.body.desc  !== undefined) v.desc  = req.body.desc;
+      // i18n для відео: { en: { title, desc } }
+      if (req.body.i18n !== undefined) {
+        if (!v.i18n) v.i18n = {};
+        Object.assign(v.i18n, req.body.i18n);
+      }
+    }
+  });
   invalidateCache();
   res.json({ ok: true });
 });
@@ -1293,6 +1371,133 @@ app.get('/api/course/:cid/videos/:idx/materials/:mid/download', async (req, res)
       console.error('[mat-dl] TG error:', e.message);
       if (!res.headersSent) res.status(500).end(e.message);
     });
+});
+
+// ═══ Audio tracks for videos ═══
+// Upload audio track (MP3) for a specific language
+const uploadAudio = multer({ dest: '/tmp/vfl_tmp/', limits: { fileSize: 100 * 1024 * 1024 } });
+
+app.post('/api/courses/:cid/videos/:idx/audio', uploadAudio.single('audio'), async (req, res) => {
+  if (!checkAdm(req, res)) return;
+  if (!req.file) { res.status(400).json({ ok: false, error: 'Немає файлу' }); return; }
+  
+  const { lang, label } = req.body; // lang: 'uk' | 'en', label: 'Українська' | 'English'
+  if (!lang || !label) {
+    try { fs.unlinkSync(req.file.path); } catch { }
+    res.status(400).json({ ok: false, error: 'Вкажіть мову (lang) та назву (label)' });
+    return;
+  }
+
+  const size = req.file.size || 0;
+
+  try {
+    let audioEntry;
+
+    // Аудіо завжди на R2 (не в Telegram — файли занадто великі для TG API)
+    if (!r2.configured) {
+      try { fs.unlinkSync(req.file.path); } catch { }
+      res.status(400).json({ ok: false, error: 'R2 не налаштований. Додайте R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET у змінні середовища.' });
+      return;
+    }
+    const r2key = r2.makeKey(req.params.cid, `audio_${lang}_${Date.now()}_${req.file.originalname}`);
+    await r2.uploadFile(r2key, req.file.path, req.file.mimetype || 'audio/mpeg', size);
+    try { fs.unlinkSync(req.file.path); } catch { }
+    audioEntry = {
+      id: db.newId(),
+      lang,
+      label,
+      name: req.file.originalname,
+      r2Key: r2key,
+      size,
+      addedAt: Date.now()
+    };
+
+    const cid = req.params.cid, idx = parseInt(req.params.idx);
+    db.set(d => { 
+      const c = d.courses.find(x => x.id === cid); 
+      const v = c?.videos?.[idx]; 
+      if (v) { 
+        if (!v.audioTracks) v.audioTracks = []; 
+        // Видаляємо стару доріжку для цієї мови якщо є
+        v.audioTracks = v.audioTracks.filter(a => a.lang !== lang);
+        v.audioTracks.push(audioEntry); 
+      } 
+    });
+    invalidateCache();
+    res.json({ ok: true, audioTrack: audioEntry });
+  } catch (e) { 
+    try { fs.unlinkSync(req.file.path); } catch { } 
+    res.status(500).json({ ok: false, error: e.message }); 
+  }
+});
+
+// Get available audio tracks for a video
+app.get('/api/course/:cid/videos/:idx/audio', (req, res) => {
+  const c = (db.get().courses || []).find(x => x.id === req.params.cid);
+  if (!c) { res.status(404).json({ ok: false }); return; }
+  const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
+  const buyer = c.buyers?.find(b => b.id === uid);
+  if (!isAdm && !buyer && !c.freeAccess) { res.status(403).json({ ok: false }); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { 
+    res.status(403).json({ ok: false, error: 'Термін доступу закінчився' }); 
+    return; 
+  }
+  const tracks = (c.videos?.[parseInt(req.params.idx)]?.audioTracks || []).map(a => ({ 
+    id: a.id, 
+    lang: a.lang, 
+    label: a.label,
+    name: a.name,
+    size: a.size 
+  }));
+  res.json({ ok: true, tracks });
+});
+
+// Download audio track
+app.get('/api/course/:cid/videos/:idx/audio/:aid/download', async (req, res) => {
+  const c = (db.get().courses || []).find(x => x.id === req.params.cid);
+  if (!c) { res.status(404).end(); return; }
+  const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
+  const buyer = c.buyers?.find(b => b.id === uid);
+  if (!isAdm && !buyer && !c.freeAccess) { res.status(403).end(); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { res.status(403).end(); return; }
+  const audio = (c.videos?.[parseInt(req.params.idx)]?.audioTracks || []).find(a => a.id === req.params.aid);
+  if (!audio) { res.status(404).end(); return; }
+
+  // R2 сховище
+  if (audio.r2Key) {
+    try {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Accept-Ranges', 'bytes');
+      await r2.streamFile(audio.r2Key, audio.size || 0, req, res);
+    } catch (e) {
+      console.error('[audio-dl] R2 error:', e.message);
+      if (!res.headersSent) res.status(500).end(e.message);
+    }
+    return;
+  }
+
+  // Telegram
+  console.log(`[audio-dl] TG: ${audio.label}`);
+  getTgFileUrl(audio.telegramFileId)
+    .then(file => {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Accept-Ranges', 'bytes');
+      proxyStream(file.url, res);
+    }).catch(e => {
+      console.error('[audio-dl] TG error:', e.message);
+      if (!res.headersSent) res.status(500).end(e.message);
+    });
+});
+
+// Delete audio track
+app.delete('/api/courses/:cid/videos/:idx/audio/:aid', adm, (req, res) => {
+  db.set(d => { 
+    const c = d.courses.find(x => x.id === req.params.cid); 
+    const v = c?.videos?.[parseInt(req.params.idx)]; 
+    if (v) v.audioTracks = (v.audioTracks || []).filter(a => a.id !== req.params.aid); 
+  });
+  invalidateCache();
+  res.json({ ok: true });
 });
 
 // Progress
