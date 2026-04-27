@@ -492,6 +492,32 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <textarea id="mnc-features" style="min-height:120px;font-size:.82rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією&#10;1 місяць доступу | Доступ діє 30 днів з дня покупки"></textarea>
       </div>
     </div>
+
+    <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
+      <div style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--acc);margin-bottom:1rem;font-weight:600">🌍 Мультимовність</div>
+      
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+        <button class="btn btn-gh" style="flex:1;font-size:.78rem" onclick="switchI18nTab('uk')">🇺🇦 Українська</button>
+        <button class="btn btn-gh" style="flex:1;font-size:.78rem" onclick="switchI18nTab('en')" id="i18n-en-tab">🇬🇧 English</button>
+      </div>
+
+      <div id="i18n-uk-content">
+        <p style="font-size:.78rem;color:var(--muted);line-height:1.5">Основна мова курсу. Редагуйте назву, опис та ціну у формі вище. <span style="background:rgba(251,191,36,.1);color:var(--gold);padding:.15rem .4rem;border-radius:4px;font-weight:600">💰 UAH</span></p>
+      </div>
+
+      <div id="i18n-en-content" style="display:none">
+        <div class="fg"><label>Назва англійською</label><input id="i18n-en-title" placeholder="CLO 3D: Quick Start"></div>
+        <div class="fg"><label>Опис англійською</label><textarea id="i18n-en-description" placeholder="Learn CLO 3D basics in English" style="min-height:80px"></textarea></div>
+        <div class="row">
+          <div class="fg"><label>Ціна (текст) <span style="background:rgba(251,191,36,.1);color:var(--gold);padding:.15rem .4rem;border-radius:4px;font-weight:600;font-size:.68rem">💵 USD</span></label><input id="i18n-en-price" placeholder="$99"></div>
+          <div class="fg"><label>Ціна (число)</label><input type="number" id="i18n-en-priceAmount" placeholder="99"></div>
+        </div>
+        <div class="fg"><label>Бейдж</label><input id="i18n-en-badge" placeholder="Beginner"></div>
+        <div class="fg"><label>Що включено (через кому)</label><textarea id="i18n-en-includes" placeholder="20 video lessons, Practice files, Certificate" style="min-height:60px"></textarea></div>
+        <div class="fg"><label>Особливості (через кому)</label><textarea id="i18n-en-features" placeholder="Learn interface, Create first garment, Export patterns" style="min-height:60px"></textarea></div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button class="btn btn-p" onclick="saveCourse()" style="flex:1;padding:.75rem">💾 Зберегти</button>
       <button class="btn btn-gh" onclick="closeModal('modal-new-course')" style="padding:.75rem 1.25rem">Скасувати</button>
@@ -531,6 +557,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <button class="btn btn-gh" id="mct-byr" onclick="mcTab('byr')">👥 Покупці</button>
       <button class="btn btn-gh" id="mct-upl" onclick="mcTab('upl')">⬆️ Завантажити відео</button>
       <button class="btn btn-gh" id="mct-mat" onclick="mcTab('mat')">📎 Файли уроку</button>
+      <button class="btn btn-gh" id="mct-aud" onclick="mcTab('aud')">🎧 Аудіодоріжки</button>
     </div>
     <div id="mc-vid" class="mc-section">
       <div id="mc-vid-list" style="max-height:380px;overflow-y:auto"></div>
@@ -545,6 +572,11 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div id="mc-upl" class="mc-section" style="display:none">
       <div class="fg"><label>Назва уроку *</label><input id="upl-title" placeholder="Урок 1 — Вступ до CLO3D"></div>
       <div class="fg"><label>Опис уроку</label><textarea id="upl-desc" style="min-height:70px" placeholder="Що розглядається..."></textarea></div>
+      <div style="background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#60a5fa;margin-bottom:.6rem">🇬🇧 English</div>
+        <div class="fg" style="margin-bottom:.5rem"><label style="color:#60a5fa">Назва (EN)</label><input id="upl-title-en" placeholder="Lesson 1 — Intro to CLO3D"></div>
+        <div class="fg" style="margin-bottom:0"><label style="color:#60a5fa">Опис (EN)</label><textarea id="upl-desc-en" style="min-height:60px" placeholder="What's covered..."></textarea></div>
+      </div>
       <div class="fg"><label>Відеофайл *</label>
         <div class="fdrop" id="ufdrop">
           <input type="file" id="upl-file" accept="video/*" onchange="onUplFile()">
@@ -589,6 +621,49 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       </div>
       <!-- Existing materials list -->
       <div id="mat-list" style="margin-top:1.25rem"></div>
+    </div>
+
+    <!-- Audio tracks tab -->
+    <div id="mc-aud" class="mc-section" style="display:none">
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Завантажте MP3 файли озвучки для різних мов. Аудіо буде накладатись на оригінальне відео при перегляді.</p>
+      <div class="fg"><label>Урок</label>
+        <select id="aud-vid-idx" style="background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.7rem .95rem;color:var(--txt);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;width:100%" onchange="renderAudList()">
+          <option value="">Оберіть урок...</option>
+        </select>
+      </div>
+      <div id="aud-list" style="margin-bottom:1rem"></div>
+      <div style="border-top:1px solid var(--brd);padding-top:1rem;margin-top:.5rem">
+        <div style="font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem">Додати нову доріжку</div>
+        <div class="row">
+          <div class="fg">
+            <label>Мова</label>
+            <select id="aud-lang" style="background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.7rem .95rem;color:var(--txt);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;width:100%" onchange="document.getElementById('aud-label').value=this.value==='uk'?'Українська':'English'">
+              <option value="uk">🇺🇦 Українська</option>
+              <option value="en">🇬🇧 English</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Назва доріжки</label>
+            <input id="aud-label" placeholder="Українська">
+          </div>
+        </div>
+        <div class="fg"><label>MP3 файл</label>
+          <div class="fdrop" id="aud-fdrop">
+            <input type="file" id="aud-file" accept="audio/mpeg,audio/mp3" onchange="document.getElementById('aud-fn').textContent=this.files[0]?.name||''">
+            <div>🎵 Клікніть або перетягніть MP3</div>
+            <div style="font-size:.73rem;color:var(--muted);margin-top:.25rem">MP3 — до 100 MB</div>
+            <div id="aud-fn" style="font-size:.75rem;color:var(--grn);margin-top:.3rem"></div>
+          </div>
+        </div>
+        <div class="uprog" id="aud-uprog">
+          <div class="upl"><span id="aud-up-txt">Завантаження...</span><span id="aud-up-pct">0%</span></div>
+          <div class="upbar-w"><div class="upbar" id="aud-up-bar"></div></div>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:center;margin-top:.5rem">
+          <button class="btn btn-p" onclick="doAudUpload()" style="padding:.7rem 1.4rem">🎧 Завантажити</button>
+          <div id="aud-upl-res" style="font-size:.78rem"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -854,10 +929,11 @@ function openCourse(cid){
   mcTab('vid');
 }
 function mcTab(t){
-  ['vid','byr','upl','mat'].forEach(x=>{ document.getElementById('mc-'+x).style.display=x===t?'block':'none'; document.getElementById('mct-'+x).className='btn '+(x===t?'btn-p':'btn-gh'); });
+  ['vid','byr','upl','mat','aud'].forEach(x=>{ document.getElementById('mc-'+x).style.display=x===t?'block':'none'; document.getElementById('mct-'+x).className='btn '+(x===t?'btn-p':'btn-gh'); });
   if(t==='vid') renderMcVids();
   if(t==='byr') renderMcBuyers();
   if(t==='mat') renderMatTab();
+  if(t==='aud') renderAudTab();
 }
 
 function renderMatTab(){
@@ -903,6 +979,10 @@ function renderMcVids(){
       <div class="vii">
         <div class="vit" id="vit-${i}" onclick="editVT(${i})">${v.title||'—'}</div>
         <div class="vid2" id="vid2-${i}" onclick="editVD(${i})">${v.desc||'<em style="color:var(--muted)">без опису</em>'}</div>
+        <div style="display:flex;gap:.4rem;margin-top:.35rem;flex-wrap:wrap">
+          <div id="vit-en-${i}" onclick="editVTen(${i})" style="font-size:.72rem;color:#60a5fa;cursor:pointer;padding:.15rem .4rem;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.18);border-radius:5px;min-width:60px">🇬🇧 ${v.i18n?.en?.title||'<em style="opacity:.5">EN назва</em>'}</div>
+          <div id="vid2-en-${i}" onclick="editVDen(${i})" style="font-size:.72rem;color:#60a5fa;cursor:pointer;padding:.15rem .4rem;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.18);border-radius:5px;min-width:60px">🇬🇧 ${v.i18n?.en?.desc||'<em style="opacity:.5">EN опис</em>'}</div>
+        </div>
         <div class="vim">${v.size?(v.size/1024/1024).toFixed(1)+' MB · ':''} ${v.r2Key?'☁️ R2 · ':''} ${v.addedAt?new Date(v.addedAt).toLocaleDateString('uk'):''}</div>
       </div>
       <div class="via">
@@ -914,8 +994,24 @@ function renderMcVids(){
 }
 function editVT(i){ const el=document.getElementById('vit-'+i); const cur=D.courses.find(x=>x.id===curCourseId).videos[i].title||''; el.innerHTML=`<input class="ei" value="${cur}" onblur="saveVT(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()" autofocus>`; el.querySelector('input').focus(); }
 function editVD(i){ const el=document.getElementById('vid2-'+i); const cur=D.courses.find(x=>x.id===curCourseId).videos[i].desc||''; el.innerHTML=`<input class="ei" value="${cur}" placeholder="Опис..." onblur="saveVD(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()" autofocus>`; el.querySelector('input').focus(); }
+function editVTen(i){ const el=document.getElementById('vit-en-'+i); const cur=D.courses.find(x=>x.id===curCourseId).videos[i].i18n?.en?.title||''; el.innerHTML=`<input class="ei" style="color:#60a5fa" value="${cur}" placeholder="EN title..." onblur="saveVTen(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()" autofocus>`; el.querySelector('input').focus(); }
+function editVDen(i){ const el=document.getElementById('vid2-en-'+i); const cur=D.courses.find(x=>x.id===curCourseId).videos[i].i18n?.en?.desc||''; el.innerHTML=`<input class="ei" style="color:#60a5fa" value="${cur}" placeholder="EN desc..." onblur="saveVDen(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()" autofocus>`; el.querySelector('input').focus(); }
 async function saveVT(i,v){ await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:v})}); D.courses.find(x=>x.id===curCourseId).videos[i].title=v; renderMcVids(); toast('✅ Збережено'); }
 async function saveVD(i,v){ await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({desc:v})}); D.courses.find(x=>x.id===curCourseId).videos[i].desc=v; renderMcVids(); toast('✅ Збережено'); }
+async function saveVTen(i,v){
+  const vid=D.courses.find(x=>x.id===curCourseId).videos[i];
+  if(!vid.i18n)vid.i18n={};if(!vid.i18n.en)vid.i18n.en={};
+  vid.i18n.en.title=v;
+  await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({i18n:{en:{title:v,desc:vid.i18n.en.desc||''}}})});
+  renderMcVids(); toast('✅ EN назву збережено');
+}
+async function saveVDen(i,v){
+  const vid=D.courses.find(x=>x.id===curCourseId).videos[i];
+  if(!vid.i18n)vid.i18n={};if(!vid.i18n.en)vid.i18n.en={};
+  vid.i18n.en.desc=v;
+  await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({i18n:{en:{title:vid.i18n.en.title||'',desc:v}}})});
+  renderMcVids(); toast('✅ EN опис збережено');
+}
 async function mvVid(from,to){ await fetch(`/api/courses/${curCourseId}/videos/reorder`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to})}); await load(); renderMcVids(); toast('↕️ Порядок змінено'); }
 async function delVid(i){ const c=D.courses.find(x=>x.id===curCourseId); if(!confirm(`Видалити "${c.videos[i].title}"?`))return; await fetch(`/api/courses/${curCourseId}/videos/${i}`,{method:'DELETE'}); await load(); renderMcVids(); toast('🗑 Відео видалено'); }
 
@@ -995,7 +1091,11 @@ async function doUpload(){
   if(uplFile.size>TG_MAX&&!window._driveOk){toast('⚠️ Файл >50 МБ потребує Cloudflare R2 (не налаштований)');return;}
   const btn=document.getElementById('upl-btn'),prog=document.getElementById('uprog'),bar=document.getElementById('up-bar'),pct=document.getElementById('up-pct'),txt=document.getElementById('up-txt'),res=document.getElementById('upl-res');
   btn.disabled=true; btn.textContent='⏳'; prog.classList.add('show'); bar.style.width='0%'; pct.textContent='0%'; txt.textContent='Підготовка...'; res.textContent='';
-  const fd=new FormData(); fd.append('title',title); fd.append('desc',document.getElementById('upl-desc').value); fd.append('video',uplFile);
+  const fd=new FormData(); fd.append('title',title); fd.append('desc',document.getElementById('upl-desc').value);
+  const enTitle=document.getElementById('upl-title-en').value.trim();
+  const enDesc=document.getElementById('upl-desc-en').value.trim();
+  if(enTitle||enDesc) fd.append('i18n',JSON.stringify({en:{title:enTitle,desc:enDesc}}));
+  fd.append('video',uplFile);
   const xhr=new XMLHttpRequest(); xhr.open('POST',`/api/courses/${curCourseId}/videos`);
   // Додаємо пароль у header щоб upload не падав при протухлій сесії
   const savedPwd = sessionStorage.getItem('adm_pwd') || '';
@@ -1011,7 +1111,7 @@ async function doUpload(){
       return;
     }
     try{const d=JSON.parse(xhr.responseText);
-      if(d.ok){bar.style.width='100%';pct.textContent='100%';txt.textContent='✅ Готово!';res.innerHTML=`<span style="color:var(--grn)">✅ Відео #${d.total} збережено</span>`;toast('🎬 Відео додано!');document.getElementById('upl-title').value='';document.getElementById('upl-desc').value='';document.getElementById('upl-fn').textContent='';ufd.classList.remove('sel');uplFile=null;await load();renderMcVids();setTimeout(()=>prog.classList.remove('show'),3000);}
+      if(d.ok){bar.style.width='100%';pct.textContent='100%';txt.textContent='✅ Готово!';res.innerHTML=`<span style="color:var(--grn)">✅ Відео #${d.total} збережено</span>`;toast('🎬 Відео додано!');document.getElementById('upl-title').value='';document.getElementById('upl-desc').value='';document.getElementById('upl-title-en').value='';document.getElementById('upl-desc-en').value='';document.getElementById('upl-fn').textContent='';ufd.classList.remove('sel');uplFile=null;await load();renderMcVids();setTimeout(()=>prog.classList.remove('show'),3000);}
       else{txt.textContent='❌ '+d.error;bar.style.background='var(--red)';setTimeout(()=>{bar.style.background='';prog.classList.remove('show');},5000);}
     }catch(e){txt.textContent='❌ Помилка';}
     btn.disabled=false;btn.textContent='⬆️ Завантажити';
@@ -1044,6 +1144,16 @@ function editCourse(cid){
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
+  // Завантажити i18n дані
+  const en=c.i18n?.en||{};
+  document.getElementById('i18n-en-title').value=en.title||'';
+  document.getElementById('i18n-en-description').value=en.description||'';
+  document.getElementById('i18n-en-price').value=en.price||'';
+  document.getElementById('i18n-en-priceAmount').value=en.priceAmount||'';
+  document.getElementById('i18n-en-badge').value=en.badge||'';
+  document.getElementById('i18n-en-includes').value=(en.includes||[]).join(', ');
+  document.getElementById('i18n-en-features').value=(en.features||[]).map(f=>f.title||f).join(', ');
+  switchI18nTab('uk');
   document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.c===c.color));
   openModal('modal-new-course');
 }
@@ -1058,7 +1168,20 @@ async function saveCourse(){
     return sep>-1 ? {title:line.slice(0,sep).trim(), desc:line.slice(sep+1).trim()} : {title:line,desc:''};
   });
   let pAmt = document.getElementById('mnc-price-amount').value.replace(/[^\d]/g, '');
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features};
+  // Зібрати i18n дані
+  const enTitle = document.getElementById('i18n-en-title').value.trim();
+  const i18n = enTitle ? {
+    en: {
+      title: enTitle,
+      description: document.getElementById('i18n-en-description').value.trim(),
+      price: document.getElementById('i18n-en-price').value.trim(),
+      priceAmount: parseFloat(document.getElementById('i18n-en-priceAmount').value)||0,
+      badge: document.getElementById('i18n-en-badge').value.trim(),
+      includes: document.getElementById('i18n-en-includes').value.split(',').map(s=>s.trim()).filter(Boolean),
+      features: document.getElementById('i18n-en-features').value.split(',').map(s=>s.trim()).filter(Boolean).map(t=>({title:t,desc:''}))
+    }
+  } : {};
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features,i18n};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
@@ -1341,6 +1464,90 @@ async function syncNow(){
 }
 
 load(); loadSettings(); loadSyncStatus(); loadMaintenance(); checkDrive(); setInterval(load,30000); populateCreateUserCourses();
+
+// ── i18n tab switcher ─────────────────────────────────────
+function switchI18nTab(lang){
+  document.getElementById('i18n-uk-content').style.display=lang==='uk'?'block':'none';
+  document.getElementById('i18n-en-content').style.display=lang==='en'?'block':'none';
+  document.getElementById('i18n-en-tab').className='btn '+(lang==='en'?'btn-p':'btn-gh');
+}
+
+// ── Audio tracks ──────────────────────────────────────────
+function renderAudTab(){
+  const c=D.courses.find(x=>x.id===curCourseId);
+  const vids=c?.videos||[];
+  const sel=document.getElementById('aud-vid-idx');
+  sel.innerHTML='<option value="">Оберіть урок...</option>'+vids.map((v,i)=>`<option value="${i}">${i+1}. ${v.title||'Урок '+(i+1)}</option>`).join('');
+  document.getElementById('aud-list').innerHTML='';
+}
+
+async function renderAudList(){
+  const idx=document.getElementById('aud-vid-idx').value;
+  const el=document.getElementById('aud-list');
+  if(idx===''){el.innerHTML='';return;}
+  try{
+    const r=await fetch(`/api/course/${curCourseId}/videos/${idx}/audio`);
+    const data=await r.json();
+    if(!data.ok||!data.tracks?.length){
+      el.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:.5rem 0">Аудіодоріжок немає</div>';
+      return;
+    }
+    el.innerHTML='<div style="font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem">Завантажені доріжки</div>'+
+      data.tracks.map(t=>`
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:var(--s2);border:1px solid var(--brd);border-radius:8px;margin-bottom:.4rem">
+          <span style="font-size:1.2rem">${t.lang==='uk'?'🇺🇦':'🇬🇧'}</span>
+          <div style="flex:1">
+            <div style="font-size:.82rem;font-weight:600">${t.label}</div>
+            <div style="font-size:.72rem;color:var(--muted)">${t.name} · ${(t.size/1024/1024).toFixed(1)} MB</div>
+          </div>
+          <button class="btn btn-r" style="padding:.25rem .5rem;font-size:.7rem" onclick="delAudTrack('${t.id}')">🗑</button>
+        </div>`).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--red);font-size:.8rem">Помилка завантаження</div>';}
+}
+
+async function doAudUpload(){
+  const idx=document.getElementById('aud-vid-idx').value;
+  const file=document.getElementById('aud-file').files[0];
+  const lang=document.getElementById('aud-lang').value;
+  const label=document.getElementById('aud-label').value.trim();
+  const res=document.getElementById('aud-upl-res');
+  if(idx===''){res.innerHTML='<span style="color:var(--red)">Оберіть урок</span>';return;}
+  if(!file){res.innerHTML='<span style="color:var(--red)">Оберіть MP3 файл</span>';return;}
+  if(!label){res.innerHTML='<span style="color:var(--red)">Вкажіть назву доріжки</span>';return;}
+  const fd=new FormData();
+  fd.append('audio',file);
+  fd.append('lang',lang);
+  fd.append('label',label);
+  const prog=document.getElementById('aud-uprog');
+  const bar=document.getElementById('aud-up-bar');
+  const txt=document.getElementById('aud-up-txt');
+  const pct=document.getElementById('aud-up-pct');
+  prog.classList.add('show');
+  const xhr=new XMLHttpRequest();
+  xhr.upload.addEventListener('progress',e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);bar.style.width=p+'%';pct.textContent=p+'%';}});
+  xhr.onload=async()=>{
+    try{
+      const d=JSON.parse(xhr.responseText);
+      if(d.ok){
+        txt.textContent='✅ Завантажено!';bar.style.background='var(--grn)';
+        document.getElementById('aud-file').value='';
+        document.getElementById('aud-fn').textContent='';
+        await renderAudList();
+        setTimeout(()=>{prog.classList.remove('show');bar.style.background='';bar.style.width='0%';},2000);
+      }else{txt.textContent='❌ '+d.error;bar.style.background='var(--red)';}
+    }catch(e){txt.textContent='❌ Помилка';}
+  };
+  xhr.open('POST',`/api/courses/${curCourseId}/videos/${idx}/audio`);
+  xhr.send(fd);
+}
+
+async function delAudTrack(aid){
+  if(!confirm('Видалити аудіодоріжку?'))return;
+  const idx=document.getElementById('aud-vid-idx').value;
+  await fetch(`/api/courses/${curCourseId}/videos/${idx}/audio/${aid}`,{method:'DELETE'});
+  toast('🗑 Доріжку видалено');
+  renderAudList();
+}
 
 // Оновлювати онлайн-лічильник кожні 15 секунд
 async function refreshOnline(){
