@@ -8,9 +8,7 @@
 <title>Контакти — Vitaliia 3D Fashion Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#080404;--s1:#110808;--s2:#160C0C;--s3:#1E1010;
+<script src="/i18n.js"></script>
   --acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--rose:#E8A0A0;
   --txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18);
 }
@@ -94,13 +92,17 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 <nav>
   <a class="nav-logo" href="/">
     <span class="n1">Vitaliia 3D Fashion Lab</span>
-    <span class="n2">CLO 3D українською</span>
+    <span class="n2" data-i18n="nav_logo_sub">CLO 3D українською</span>
   </a>
   <div class="nav-links">
-      <a href="/">ГОЛОВНА</a>
-      <a href="/courses">КУРСИ</a>
-      <a href="/#about">ПРО НАС</a>
-      <a href="contacts.html" style="color:var(--txt)">КОНТАКТИ</a>
+      <a href="/" data-i18n="nav_home">ГОЛОВНА</a>
+      <a href="/courses" data-i18n="nav_courses">КУРСИ</a>
+      <a href="/#about" data-i18n="nav_about">ПРО НАС</a>
+      <a href="contacts.html" style="color:var(--txt)" data-i18n="nav_contacts">КОНТАКТИ</a>
+  </div>
+  <div class="lang-switcher" style="display:flex;align-items:center;gap:.35rem;background:var(--s2);border:1px solid var(--brd);border-radius:100px;padding:.25rem">
+    <button class="lang-btn active" data-lang="uk" onclick="switchLanguage('uk')" style="padding:.3rem .65rem;font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif">УКР</button>
+    <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')" style="padding:.3rem .65rem;font-size:.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:transparent;border:none;border-radius:100px;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif">ENG</button>
   </div>
   <div class="nav-soc">
     <a href="https://www.instagram.com/vitaliia.3dlab?igsh=MWgyZG43YXJodDM5NQ%3D%3D" target="_blank" rel="noopener" title="Instagram">
@@ -201,6 +203,9 @@ window.addEventListener('load', () => {
   
   document.querySelectorAll('.rv, .rv-l, .rv-r').forEach(el => obs.observe(el));
 });
+</script>
+<script>
+function switchLanguage(lang) { setLanguage(lang); }
 </script>
 </body>
 </html>
