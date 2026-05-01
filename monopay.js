@@ -393,7 +393,8 @@ function grantCourseAccess(buyerId, courseId) {
     const c = d.courses.find(x => x.id === courseId);
     if (c && !c.buyers?.some(b => b.id === parseInt(buyerId, 10))) {
       if (!c.buyers) c.buyers = [];
-      c.buyers.push({ id: parseInt(buyerId, 10), name: '—', grantedAt: Date.now() });
+      const DEFAULT_ACCESS_DAYS = parseInt(process.env.ACCESS_DAYS || '30');
+      c.buyers.push({ id: parseInt(buyerId, 10), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || DEFAULT_ACCESS_DAYS });
       console.log('[grantCourseAccess] Access granted to buyer:', buyerId, 'course:', c.title);
     }
   });
