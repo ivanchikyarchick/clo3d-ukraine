@@ -491,6 +491,11 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <label for="mnc-free" style="font-size:.82rem;color:var(--txt);cursor:pointer">🆓 Вільний доступ — дивитись без входу (для безкоштовних/YouTube курсів)</label>
     </div>
 
+    <div class="fg"><label>⏰ Днів доступу до курсу</label>
+      <input type="number" id="mnc-access-days" min="1" max="3650" placeholder="30" style="font-size:1rem;font-weight:600">
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Кількість днів, протягом яких покупець матиме доступ до курсу після покупки</div>
+    </div>
+
     <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
       <div style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--acc);margin-bottom:1rem;font-weight:600">📋 Контент сторінки курсу</div>
 
@@ -1163,6 +1168,7 @@ function editCourse(cid){
   document.getElementById('mnc-color').value=c.color||'#C8302A';
   document.getElementById('mnc-pub').checked=!!c.published;
   document.getElementById('mnc-free').checked=!!c.freeAccess;
+  document.getElementById('mnc-access-days').value=c.accessDays||30;
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
@@ -1203,7 +1209,7 @@ async function saveCourse(){
       features: document.getElementById('i18n-en-features').value.split(',').map(s=>s.trim()).filter(Boolean).map(t=>({title:t,desc:''}))
     }
   } : {};
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features,i18n};
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,accessDays:Math.max(1,parseInt(document.getElementById('mnc-access-days').value)||30),includes,features,i18n};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
