@@ -28,6 +28,7 @@ const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
+const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || '').split(',').map(s => s.trim()).filter(Boolean);
 
 // ═══ Online users tracker ═══
@@ -37,13 +38,8 @@ const ONLINE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 // ═══ Maintenance mode ═══
 let _maintenanceMode = false;
 
-function getAccessExpiryMs(accessDays) {
-  const days = accessDays || 90; // fallback to 90 if not set
-  return days * 24 * 60 * 60 * 1000;
-}
-
-function isAccessExpired(grantedAt, accessDays) {
-  return grantedAt && (Date.now() - grantedAt > getAccessExpiryMs(accessDays));
+function isAccessExpired(grantedAt) {
+  return grantedAt && (Date.now() - grantedAt > ACCESS_EXPIRY_MS);
 }
 
 function autoGrantAccess(uid) {
@@ -53,7 +49,7 @@ function autoGrantAccess(uid) {
       const c = d.courses.find(x => x.id === cid);
       if (c && !c.buyers?.some(b => b.id === uid)) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now() });
         console.log('[autoGrant] Access granted to user', uid, 'for course:', c.title);
       }
     }
@@ -466,9 +462,9 @@ app.post('/api/buyer/login', (req, res) => {
   const myCourses = activeBuyerCourses(uid);
   if (!myCourses.length) { res.status(403).json({ ok: false, error: 'Доступ не знайдено або термін доступу закінчився.' }); return; }
   req.session.buyerId = uid;
-  req.session.buyerName = myCourses[0].buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt, b.accessDays))?.name || 'Учень';
+  req.session.buyerName = myCourses[0].buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt))?.name || 'Учень';
   res.json({ ok: true, name: req.session.buyerName, courses: myCourses.map(c => {
-    const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt, b.accessDays));
+    const buyer = c.buyers.find(b => b.id === uid && !isAccessExpired(b.grantedAt));
     return { id: c.id, slug: c.slug, title: c.title, color: c.color, grantedAt: buyer?.grantedAt };
   }) });
 });
@@ -487,7 +483,7 @@ app.post('/api/debug/grant-access', adm, (req, res) => {
     const c = d.courses.find(x => x.id === courseId);
     if (c && !c.buyers?.some(b => b.id === buyerId)) {
       if (!c.buyers) c.buyers = [];
-      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now() });
       console.log('[debug] Access granted to buyer:', buyerId, 'course:', courseId);
       res.json({ ok: true, message: 'Access granted' });
     } else {
@@ -512,7 +508,7 @@ app.post('/api/debug/grant-all', adm, (req, res) => {
     let added = 0;
     for (const acc of accounts) {
       if (!c.buyers.some(b => b.id === acc.id)) {
-        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now() });
         added++;
       }
     }
@@ -574,7 +570,7 @@ app.get('/api/debug/buyer/:id', (req, res) => {
   const uid = parseInt(req.params.id);
   const d = db.get();
   const courses = d.courses || [];
-  const buyerCourses = courses.filter(c => c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt, b.accessDays)));
+  const buyerCourses = courses.filter(c => c.buyers?.some(b => b.id === uid && !isAccessExpired(b.grantedAt)));
   const pending = d.pendingPayments?.filter(p => p.buyerId === uid) || [];
   const account = d.buyerAccounts?.find(a => a.id === uid);
   res.json({ 
@@ -585,7 +581,7 @@ app.get('/api/debug/buyer/:id', (req, res) => {
     courseBuyers: courses.map(c => ({ 
       id: c.id, 
       title: c.title, 
-      buyers: c.buyers?.map(b => ({ id: b.id, grantedAt: b.grantedAt, accessDays: b.accessDays, expired: isAccessExpired(b.grantedAt, b.accessDays) }))
+      buyers: c.buyers?.map(b => ({ id: b.id, grantedAt: b.grantedAt, expired: isAccessExpired(b.grantedAt) }))
     }))
   });
 });
@@ -899,7 +895,7 @@ app.post('/api/buyer/password-reset-admin', adm, (req, res) => {
 });
 
 app.post('/api/buyer/create-admin', adm, (req, res) => {
-  const { username, password, grantCourseId, grantDays } = req.body;
+  const { username, password, grantCourseId } = req.body;
   const nameClean = (username || '').trim().slice(0, 100).toLowerCase();
   if (!nameClean || !password || password.length < 4) {
     res.status(400).json({ ok: false, error: 'Username та пароль (мін. 4 символи)' });
@@ -926,8 +922,7 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
       const c = d.courses.find(x => x.id === grantCourseId);
       if (c) {
         if (!c.buyers) c.buyers = [];
-        const finalDays = grantDays || c.accessDays || 90;
-        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: finalDays });
+        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now() });
       }
     }
     console.log('[admin-create] Created account:', newUid, nameClean);
@@ -963,7 +958,7 @@ app.get('/api/auth/google/callback',
       const d = db.get();
       const course = d.courses?.find(c => c.slug === slug);
       if (course) {
-        const hasAccess = course.freeAccess || course.buyers?.some(b => b.id === buyer.id && !isAccessExpired(b.grantedAt, b.accessDays));
+        const hasAccess = course.freeAccess || course.buyers?.some(b => b.id === buyer.id && !isAccessExpired(b.grantedAt));
         if (!hasAccess) {
           console.log('[google-auth] No access → payment page:', slug);
           res.redirect(`/course/${slug}?auth=google`);
@@ -1032,7 +1027,7 @@ app.get('/api/video/stream/:cid/:idx', (req, res) => {
     if (!uid) { res.status(403).end(); return; }
     const c = db.get().courses.find(x => x.id === req.params.cid);
     const buyer = c?.buyers?.find(b => b.id === uid);
-    if (!buyer || isAccessExpired(buyer.grantedAt, buyer.accessDays)) { res.status(403).end(); return; }
+    if (!buyer || isAccessExpired(buyer.grantedAt)) { res.status(403).end(); return; }
   }
   const c = db.get().courses.find(x => x.id === req.params.cid);
   const v = c?.videos?.[parseInt(req.params.idx)];
@@ -1124,7 +1119,7 @@ function proxyStream(url, res, h = {}) {
 app.get('/api/courses', adm, (req, res) => res.json(db.get().courses || []));
 
 app.post('/api/courses', adm, (req, res) => {
-  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, accessDays, i18n } = req.body;
+  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, i18n } = req.body;
   if (!title) { res.status(400).json({ ok: false, error: 'Потрібна назва' }); return; }
   const id = db.newId(), slug = db.slugify(title);
   db.set(d => { 
@@ -1137,7 +1132,6 @@ app.post('/api/courses', adm, (req, res) => {
       color: color || '#C8302A', 
       published: !!published, 
       freeAccess: !!freeAccess, 
-      accessDays: Math.max(1, parseInt(accessDays) || 90),
       createdAt: Date.now(), 
       videos: [], 
       buyers: [], 
@@ -1154,7 +1148,7 @@ app.post('/api/courses', adm, (req, res) => {
 app.patch('/api/courses/:id', adm, (req, res) => {
   db.set(d => {
     const c = d.courses.find(x => x.id === req.params.id); if (!c) return;
-    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, accessDays, i18n } = req.body;
+    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, i18n } = req.body;
     if (title !== undefined) { c.title = title; c.slug = db.slugify(title); }
     if (description !== undefined) c.description = description; 
     if (price !== undefined) c.price = price; 
@@ -1165,7 +1159,6 @@ app.patch('/api/courses/:id', adm, (req, res) => {
     if (includes !== undefined) c.includes = includes;
     if (features !== undefined) c.features = features; 
     if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
-    if (accessDays !== undefined) c.accessDays = Math.max(1, parseInt(accessDays) || 90);
     if (i18n !== undefined) c.i18n = i18n;
   });
   db.flushSync();
@@ -1343,7 +1336,7 @@ app.get('/api/course/:cid/videos/:idx/materials', (req, res) => {
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
   const buyer = c.buyers?.find(b => b.id === uid);
   if (!isAdm && !buyer && !c.freeAccess) { res.status(403).json({ ok: false }); return; }
-  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt, buyer.accessDays)) { res.status(403).json({ ok: false, error: 'Термін доступу закінчився' }); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { res.status(403).json({ ok: false, error: 'Термін доступу закінчився' }); return; }
   res.json((c.videos?.[parseInt(req.params.idx)]?.materials || []).map(m => ({ id: m.id, name: m.name, size: m.size })));
 });
 
@@ -1353,7 +1346,7 @@ app.get('/api/course/:cid/videos/:idx/materials/:mid/download', async (req, res)
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
   const buyer = c.buyers?.find(b => b.id === uid);
   if (!isAdm && !buyer && !c.freeAccess) { res.status(403).end(); return; }
-  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt, buyer.accessDays)) { res.status(403).end(); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { res.status(403).end(); return; }
   const mat = (c.videos?.[parseInt(req.params.idx)]?.materials || []).find(m => m.id === req.params.mid);
   if (!mat) { res.status(404).end(); return; }
 
@@ -1448,7 +1441,7 @@ app.get('/api/course/:cid/videos/:idx/audio', (req, res) => {
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
   const buyer = c.buyers?.find(b => b.id === uid);
   if (!isAdm && !buyer && !c.freeAccess) { res.status(403).json({ ok: false }); return; }
-  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt, buyer.accessDays)) { 
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { 
     res.status(403).json({ ok: false, error: 'Термін доступу закінчився' }); 
     return; 
   }
@@ -1469,7 +1462,7 @@ app.get('/api/course/:cid/videos/:idx/audio/:aid/download', async (req, res) => 
   const uid = req.session.buyerId, isAdm = req.session.isAdmin || req.session.isAdminPreview;
   const buyer = c.buyers?.find(b => b.id === uid);
   if (!isAdm && !buyer && !c.freeAccess) { res.status(403).end(); return; }
-  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt, buyer.accessDays)) { res.status(403).end(); return; }
+  if (!isAdm && buyer && isAccessExpired(buyer.grantedAt)) { res.status(403).end(); return; }
   const audio = (c.videos?.[parseInt(req.params.idx)]?.audioTracks || []).find(a => a.id === req.params.aid);
   if (!audio) { res.status(404).end(); return; }
 
@@ -1526,7 +1519,7 @@ app.post('/api/progress/:cid/:idx', (req, res) => {
   const cid = req.params.cid;
   const c = db.get().courses.find(c => c.id === cid);
   const buyer = c?.buyers?.find(b => b.id === uid);
-  if (!buyer || isAccessExpired(buyer.grantedAt, buyer.accessDays)) { res.status(403).json({ ok: false }); return; }
+  if (!buyer || isAccessExpired(buyer.grantedAt)) { res.status(403).json({ ok: false }); return; }
   res.json({ ok: true, ...db.markWatched(uid, cid, parseInt(req.params.idx)) });
 });
 
@@ -1552,33 +1545,7 @@ app.post('/api/notify/remind/:cid', adm, async (req, res) => {
 // Buyers management
 app.post('/api/courses/:cid/grant/:uid', adm, (req, res) => {
   const uid = parseInt(req.params.uid), cid = req.params.cid;
-  const d = db.get();
-  const course = d.courses?.find(x => x.id === cid);
-  const days = req.body?.days || course?.accessDays || d.settings?.accessDays || DEFAULT_ACCESS_DAYS;
-  
-  console.log('🔧 Grant access debug:');
-  console.log('  - Course ID:', cid);
-  console.log('  - User ID:', uid);
-  console.log('  - req.body.days:', req.body?.days);
-  console.log('  - course.accessDays:', course?.accessDays);
-  console.log('  - settings.accessDays:', d.settings?.accessDays);
-  console.log('  - DEFAULT_ACCESS_DAYS:', 90);
-  console.log('  - Final days:', days);
-  
-  db.set(d => { 
-    const c = d.courses.find(x => x.id === cid); 
-    if (!c) return; 
-    if (!c.buyers) c.buyers = []; 
-    const existing = c.buyers.find(b => b.id === uid);
-    if (existing) {
-      existing.accessDays = days;
-      existing.grantedAt = Date.now();
-    } else {
-      const p = c.pending?.find(b => b.id === uid); 
-      c.buyers.push({ id: uid, name: p?.name || '—', username: p?.username || '', grantedAt: Date.now(), accessDays: days }); 
-    }
-    c.pending = (c.pending || []).filter(b => b.id !== uid); 
-  });
+  db.set(d => { const c = d.courses.find(x => x.id === cid); if (!c) return; if (!c.buyers) c.buyers = []; if (!c.buyers.some(b => b.id === uid)) { const p = c.pending?.find(b => b.id === uid); c.buyers.push({ id: uid, name: p?.name || '—', username: p?.username || '', grantedAt: Date.now() }); } c.pending = (c.pending || []).filter(b => b.id !== uid); });
   try { /* bot removed */ } catch { }
   invalidateCache();
   res.json({ ok: true });
@@ -1813,7 +1780,7 @@ function syncAutoGrant() {
       let added = 0;
       for (const acc of accounts) {
         if (!c.buyers.some(b => b.id === acc.id)) {
-          c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+          c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now() });
           added++;
         }
       }
