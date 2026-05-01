@@ -53,7 +53,7 @@ function autoGrantAccess(uid) {
       const c = d.courses.find(x => x.id === cid);
       if (c && !c.buyers?.some(b => b.id === uid)) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
+        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
         console.log('[autoGrant] Access granted to user', uid, 'for course:', c.title);
       }
     }
@@ -487,7 +487,7 @@ app.post('/api/debug/grant-access', adm, (req, res) => {
     const c = d.courses.find(x => x.id === courseId);
     if (c && !c.buyers?.some(b => b.id === buyerId)) {
       if (!c.buyers) c.buyers = [];
-      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
+      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
       console.log('[debug] Access granted to buyer:', buyerId, 'course:', courseId);
       res.json({ ok: true, message: 'Access granted' });
     } else {
@@ -512,7 +512,7 @@ app.post('/api/debug/grant-all', adm, (req, res) => {
     let added = 0;
     for (const acc of accounts) {
       if (!c.buyers.some(b => b.id === acc.id)) {
-        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
+        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
         added++;
       }
     }
@@ -899,7 +899,7 @@ app.post('/api/buyer/password-reset-admin', adm, (req, res) => {
 });
 
 app.post('/api/buyer/create-admin', adm, (req, res) => {
-  const { username, password, grantCourseId } = req.body;
+  const { username, password, grantCourseId, grantDays } = req.body;
   const nameClean = (username || '').trim().slice(0, 100).toLowerCase();
   if (!nameClean || !password || password.length < 4) {
     res.status(400).json({ ok: false, error: 'Username та пароль (мін. 4 символи)' });
@@ -926,7 +926,8 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
       const c = d.courses.find(x => x.id === grantCourseId);
       if (c) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: c.accessDays || 30 });
+        const finalDays = grantDays || c.accessDays || 30;
+        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: finalDays });
       }
     }
     console.log('[admin-create] Created account:', newUid, nameClean);
@@ -1561,10 +1562,23 @@ app.post('/api/courses/:cid/grant/:uid', adm, (req, res) => {
   console.log('  - req.body.days:', req.body?.days);
   console.log('  - course.accessDays:', course?.accessDays);
   console.log('  - settings.accessDays:', d.settings?.accessDays);
-  console.log('  - DEFAULT_ACCESS_DAYS:', DEFAULT_ACCESS_DAYS);
+  console.log('  - DEFAULT_ACCESS_DAYS:', 90);
   console.log('  - Final days:', days);
   
-  db.set(d => { const c = d.courses.find(x => x.id === cid); if (!c) return; if (!c.buyers) c.buyers = []; if (!c.buyers.some(b => b.id === uid)) { const p = c.pending?.find(b => b.id === uid); c.buyers.push({ id: uid, name: p?.name || '—', username: p?.username || '', grantedAt: Date.now(), accessDays: days }); } c.pending = (c.pending || []).filter(b => b.id !== uid); });
+  db.set(d => { 
+    const c = d.courses.find(x => x.id === cid); 
+    if (!c) return; 
+    if (!c.buyers) c.buyers = []; 
+    const existing = c.buyers.find(b => b.id === uid);
+    if (existing) {
+      existing.accessDays = days;
+      existing.grantedAt = Date.now();
+    } else {
+      const p = c.pending?.find(b => b.id === uid); 
+      c.buyers.push({ id: uid, name: p?.name || '—', username: p?.username || '', grantedAt: Date.now(), accessDays: days }); 
+    }
+    c.pending = (c.pending || []).filter(b => b.id !== uid); 
+  });
   try { /* bot removed */ } catch { }
   invalidateCache();
   res.json({ ok: true });
