@@ -144,7 +144,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
         <span class="ch-pill">CLO 3D</span>
         <span class="ch-pill">🎬 <span id="ch-vc">0</span> <span data-i18n="course_lessons_count">уроків</span></span>
         <span class="ch-pill">🔒 <span data-i18n="course_program">Навчальна програма</span></span>
-        <span class="ch-pill" data-i18n="course_access">Доступ 30 днів</span>
+        <span class="ch-pill" data-i18n="course_access">Доступ 90 днів</span>
       </div>
     </div>
     <div class="ch-box">
@@ -542,11 +542,11 @@ async function load(){
     document.getElementById('buy-price').textContent=c.price||'';
     document.getElementById('ch-vc').textContent=c.videoCount||0;
 
-    const DEFAULT_INCLUDES=['Відеоуроки у захищеному плеєрі','Підтримка та чат','Доступ 30 днів'];
+    const DEFAULT_INCLUDES=['Відеоуроки у захищеному плеєрі','Підтримка та чат','Доступ 90 днів'];
     const DEFAULT_FEATURES=[
       {title:'Захищені відеоуроки',desc:'Перегляд у захищеному плеєрі без можливості завантаження.'},
       {title:'Підтримка та чат',desc:'Прямий зв\'язок з Віталією, відповіді та розбір ДЗ.'},
-      {title:'Доступ 30 днів',desc:'Оплати один раз і повертайся до матеріалів протягом 30 днів.'},
+      {title:'Доступ 90 днів',desc:'Оплати один раз і повертайся до матеріалів протягом 90 днів.'},
     ];
     const includes=(c.includes&&c.includes.length)?c.includes:DEFAULT_INCLUDES;
     const features=(c.features&&c.features.length)?c.features:DEFAULT_FEATURES;
