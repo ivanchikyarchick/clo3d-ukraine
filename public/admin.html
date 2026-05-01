@@ -1139,62 +1139,64 @@ function openModal(id){ document.getElementById(id).classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
 function editCourse(cid){
-  console.log('🔧 editCourse called with cid:', cid);
-  console.log('🔧 D object:', D);
-  console.log('🔧 D.courses:', D?.courses);
-  
   if(!D || !D.courses){
     alert('❌ Дані не завантажені! Оновіть сторінку.');
     return;
   }
   
   const c=D.courses.find(x=>x.id===cid);
-  console.log('🔧 Found course:', c);
-  
   if(!c){ 
     alert('❌ Курс не знайдено: ' + cid);
-    console.error('Course not found:', cid); 
     return; 
   }
   
-  // СПОЧАТКУ відкриваємо модальне вікно
-  openModal('modal-new-course');
+  // Функція для безпечного встановлення значення
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if(el) el.value = val;
+    else console.warn('Element not found:', id);
+  };
+  const setCheck = (id, val) => {
+    const el = document.getElementById(id);
+    if(el) el.checked = val;
+    else console.warn('Element not found:', id);
+  };
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = val;
+    else console.warn('Element not found:', id);
+  };
   
-  // Чекаємо трохи щоб DOM оновився
-  setTimeout(() => {
-    const priceEl = document.getElementById('mnc-price');
-    console.log('🔧 mnc-price element:', priceEl);
-    if(!priceEl){ 
-      alert('❌ Модальне вікно не знайдено! Оновіть сторінку.'); 
-      return; 
-    }
-    
-    document.getElementById('mnc-title').textContent='✏️ Редагувати курс';
-    document.getElementById('mnc-id').value=cid;
-    document.getElementById('mnc-name').value=c.title||'';
-    document.getElementById('mnc-desc').value=c.description||'';
-    document.getElementById('mnc-price').value=c.price||'';
-    document.getElementById('mnc-price-amount').value=c.priceAmount||c.price||'';
-    document.getElementById('mnc-badge').value=c.badge||'';
-    document.getElementById('mnc-color').value=c.color||'#C8302A';
-    document.getElementById('mnc-pub').checked=!!c.published;
-    document.getElementById('mnc-free').checked=!!c.freeAccess;
-    document.getElementById('mnc-access-days').value=c.accessDays||30;
-    // includes & features
-    document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
-    document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
-    // Завантажити i18n дані
-    const en=c.i18n?.en||{};
-    document.getElementById('i18n-en-title').value=en.title||'';
-    document.getElementById('i18n-en-description').value=en.description||'';
-    document.getElementById('i18n-en-price').value=en.price||'';
-    document.getElementById('i18n-en-priceAmount').value=en.priceAmount||'';
-    document.getElementById('i18n-en-badge').value=en.badge||'';
-    document.getElementById('i18n-en-includes').value=(en.includes||[]).join(', ');
-    document.getElementById('i18n-en-features').value=(en.features||[]).map(f=>f.title||f).join(', ');
-    switchI18nTab('uk');
-    document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.c===c.color));
-  }, 50);
+  setText('mnc-title', '✏️ Редагувати курс');
+  setVal('mnc-id', cid);
+  setVal('mnc-name', c.title||'');
+  setVal('mnc-desc', c.description||'');
+  setVal('mnc-price', c.price||'');
+  setVal('mnc-price-amount', c.priceAmount||c.price||'');
+  setVal('mnc-badge', c.badge||'');
+  setVal('mnc-color', c.color||'#C8302A');
+  setCheck('mnc-pub', !!c.published);
+  setCheck('mnc-free', !!c.freeAccess);
+  setVal('mnc-access-days', c.accessDays||30);
+  
+  // includes & features
+  setVal('mnc-includes', (c.includes||[]).join('\n'));
+  setVal('mnc-features', (c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n'));
+  
+  // Завантажити i18n дані
+  const en=c.i18n?.en||{};
+  setVal('i18n-en-title', en.title||'');
+  setVal('i18n-en-description', en.description||'');
+  setVal('i18n-en-price', en.price||'');
+  setVal('i18n-en-priceAmount', en.priceAmount||'');
+  setVal('i18n-en-badge', en.badge||'');
+  setVal('i18n-en-includes', (en.includes||[]).join(', '));
+  setVal('i18n-en-features', (en.features||[]).map(f=>f.title||f).join(', '));
+  
+  if(typeof switchI18nTab === 'function') switchI18nTab('uk');
+  document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.c===c.color));
+  
+  openModal('modal-new-course');
 }
 
 async function saveCourse(){
