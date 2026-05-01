@@ -38,7 +38,7 @@ const ONLINE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 let _maintenanceMode = false;
 
 function getAccessExpiryMs(accessDays) {
-  const days = accessDays || 30; // fallback to 30 if not set
+  const days = accessDays || 90; // fallback to 90 if not set
   return days * 24 * 60 * 60 * 1000;
 }
 
@@ -926,7 +926,7 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
       const c = d.courses.find(x => x.id === grantCourseId);
       if (c) {
         if (!c.buyers) c.buyers = [];
-        const finalDays = grantDays || c.accessDays || 30;
+        const finalDays = grantDays || c.accessDays || 90;
         c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: finalDays });
       }
     }
@@ -1137,7 +1137,7 @@ app.post('/api/courses', adm, (req, res) => {
       color: color || '#C8302A', 
       published: !!published, 
       freeAccess: !!freeAccess, 
-      accessDays: Math.max(1, parseInt(accessDays) || 30),
+      accessDays: Math.max(1, parseInt(accessDays) || 90),
       createdAt: Date.now(), 
       videos: [], 
       buyers: [], 
@@ -1165,7 +1165,7 @@ app.patch('/api/courses/:id', adm, (req, res) => {
     if (includes !== undefined) c.includes = includes;
     if (features !== undefined) c.features = features; 
     if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
-    if (accessDays !== undefined) c.accessDays = Math.max(1, parseInt(accessDays) || 30);
+    if (accessDays !== undefined) c.accessDays = Math.max(1, parseInt(accessDays) || 90);
     if (i18n !== undefined) c.i18n = i18n;
   });
   db.flushSync();
