@@ -493,7 +493,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
       <div class="fg">
         <label>Картки «Програма включає» <span style="color:var(--muted);font-weight:400">— формат: Назва | Опис (по одній на рядок)</span></label>
-        <textarea id="mnc-features" style="min-height:120px;font-size:.82rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією&#10;1 місяць доступу | Доступ діє 30 днів з дня покупки"></textarea>
+        <textarea id="mnc-features" style="min-height:120px;font-size:.82rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією"></textarea>
       </div>
     </div>
 
@@ -805,7 +805,7 @@ function renderPending(cs){
       <td>${b.receiptFileId?`<a href="/api/courses/${c.id}/pending/${b.id}/receipt" class="btn btn-go" style="text-decoration:none;font-size:.7rem" target="_blank">📎 Завантажити</a>`:'<span style="color:var(--muted);font-size:.75rem">Немає</span>'}</td>
       <td>${b.requestedAt?new Date(b.requestedAt).toLocaleString('uk'):'—'}</td>
       <td style="display:flex;gap:.4rem;align-items:center">
-        <input type="number" id="days-${c.id}-${b.id}" min="1" max="3650" value="30" style="width:50px;padding:.3rem;background:var(--s2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);font-size:.75rem">
+        <input type="number" id="days-${c.id}-${b.id}" min="1" max="3650" value="${c.accessDays||30}" style="width:50px;padding:.3rem;background:var(--s2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);font-size:.75rem">
         <button class="btn btn-g" onclick="grant('${c.id}',${b.id},document.getElementById('days-${c.id}-${b.id}').value)">✅</button>
         <button class="btn btn-r" onclick="reject('${c.id}',${b.id})">❌</button>
       </td>
@@ -937,6 +937,8 @@ function openCourse(cid){
   curCourseId=cid;
   const c=D.courses.find(x=>x.id===cid);
   document.getElementById('mc-title').textContent=c.title;
+  // Set default accessDays for manual grant based on course settings
+  document.getElementById('mc-add-days').value = c.accessDays || 30;
   document.getElementById('modal-course').classList.add('show');
   mcTab('vid');
 }
@@ -1034,8 +1036,27 @@ function renderMcBuyers(){
     bs.map((b,i)=>`<tr><td>${i+1}</td><td>${b.name||'—'}</td><td>${b.username?'@'+b.username:'—'}</td><td><code>${b.id}</code></td><td>${b.grantedAt?new Date(b.grantedAt).toLocaleDateString('uk'):'—'}</td><td><button class="btn btn-r" onclick="revoke('${curCourseId}',${b.id})">Відкликати</button></td></tr>`).join('')+'</tbody></table>':
     '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Покупців немає</div>';
 }
-async function mcGrantManual(){ const uid=parseInt(document.getElementById('mc-add-uid').value); const days=parseInt(document.getElementById('mc-add-days').value)||30; if(!uid)return; await grant(curCourseId,uid,days); document.getElementById('mc-add-uid').value=''; document.getElementById('mc-add-days').value='30'; }
-async function grant(cid,uid,days=30){ await fetch(`/api/courses/${cid}/grant/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:parseInt(days)||30})}); toast('✅ Доступ видано'); await load(); renderMcBuyers(); }
+async function mcGrantManual(){ 
+  const uid=parseInt(document.getElementById('mc-add-uid').value); 
+  const days=parseInt(document.getElementById('mc-add-days').value); 
+  if(!uid || !days)return; 
+  await grant(curCourseId,uid,days); 
+  document.getElementById('mc-add-uid').value=''; 
+  // Reset to current course's accessDays
+  const course = D.courses.find(c => c.id === curCourseId);
+  document.getElementById('mc-add-days').value = course?.accessDays || 30;
+}
+async function grant(cid,uid,days){ 
+  // If days not provided, use course's accessDays
+  if(!days) {
+    const course = D.courses.find(c => c.id === cid);
+    days = course?.accessDays || 30;
+  }
+  await fetch(`/api/courses/${cid}/grant/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:parseInt(days)})}); 
+  toast('✅ Доступ видано'); 
+  await load(); 
+  renderMcBuyers(); 
+}
 async function revoke(cid,uid){ if(!confirm('Відкликати?'))return; await fetch(`/api/courses/${cid}/revoke/${uid}`,{method:'POST'}); toast('Відкликано'); await load(); renderMcBuyers(); }
 async function reject(cid,uid){ await fetch(`/api/courses/${cid}/pending/${uid}`,{method:'DELETE'}); toast('❌ Відхилено'); await load(); renderPending(D.courses); }
 
@@ -1045,14 +1066,12 @@ async function loadSettings(){
     const d=await fetch('/api/settings').then(r=>r.json());
     document.getElementById('s-fop').value=d.fop||'';
     document.getElementById('s-mono-token').value=d.monoToken||'';
-    document.getElementById('s-access-days').value=d.accessDays||30;
   }catch{}
 }
 async function saveSettings(){
   const fop=document.getElementById('s-fop').value.trim();
   const monoToken=document.getElementById('s-mono-token').value.trim();
-  const accessDays=parseInt(document.getElementById('s-access-days').value)||30;
-  const d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fop,monoToken,accessDays})}).then(r=>r.json());
+  const d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fop,monoToken})}).then(r=>r.json());
   const el=document.getElementById('s-res');
   if(d.ok){el.style.color='var(--grn)';el.textContent='✅ Збережено';setTimeout(()=>el.textContent='',2500);}
   else{el.style.color='var(--red)';el.textContent='❌ Помилка';}
