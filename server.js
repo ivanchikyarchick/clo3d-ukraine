@@ -28,7 +28,6 @@ const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
-const DEFAULT_ACCESS_DAYS = parseInt(process.env.ACCESS_DAYS || '30');
 const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || '').split(',').map(s => s.trim()).filter(Boolean);
 
 // ═══ Online users tracker ═══
@@ -39,7 +38,7 @@ const ONLINE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 let _maintenanceMode = false;
 
 function getAccessExpiryMs(accessDays) {
-  const days = accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS;
+  const days = accessDays || 30; // fallback to 30 if not set
   return days * 24 * 60 * 60 * 1000;
 }
 
@@ -54,7 +53,7 @@ function autoGrantAccess(uid) {
       const c = d.courses.find(x => x.id === cid);
       if (c && !c.buyers?.some(b => b.id === uid)) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
         console.log('[autoGrant] Access granted to user', uid, 'for course:', c.title);
       }
     }
@@ -265,14 +264,13 @@ function invalidateCache() {
 }
 
 // Settings
-app.get('/api/settings', adm, (_, res) => res.json({ fop: db.get().settings?.fop || '', monoToken: db.get().settings?.monoToken ? '***set***' : '', accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS }));
+app.get('/api/settings', adm, (_, res) => res.json({ fop: db.get().settings?.fop || '', monoToken: db.get().settings?.monoToken ? '***set***' : '' }));
 app.post('/api/settings', adm, (req, res) => {
-  const { fop, monoToken, accessDays } = req.body;
+  const { fop, monoToken } = req.body;
   db.set(d => { 
     if (!d.settings) d.settings = {}; 
     if (fop !== undefined) d.settings.fop = fop; 
     if (monoToken !== undefined) d.settings.monoToken = monoToken;
-    if (accessDays !== undefined) d.settings.accessDays = Math.max(1, parseInt(accessDays) || DEFAULT_ACCESS_DAYS);
   });
   invalidateCache();
   res.json({ ok: true });
@@ -489,7 +487,7 @@ app.post('/api/debug/grant-access', adm, (req, res) => {
     const c = d.courses.find(x => x.id === courseId);
     if (c && !c.buyers?.some(b => b.id === buyerId)) {
       if (!c.buyers) c.buyers = [];
-      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
       console.log('[debug] Access granted to buyer:', buyerId, 'course:', courseId);
       res.json({ ok: true, message: 'Access granted' });
     } else {
@@ -514,7 +512,7 @@ app.post('/api/debug/grant-all', adm, (req, res) => {
     let added = 0;
     for (const acc of accounts) {
       if (!c.buyers.some(b => b.id === acc.id)) {
-        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
         added++;
       }
     }
@@ -928,7 +926,7 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
       const c = d.courses.find(x => x.id === grantCourseId);
       if (c) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: c.accessDays || 30 });
       }
     }
     console.log('[admin-create] Created account:', newUid, nameClean);
