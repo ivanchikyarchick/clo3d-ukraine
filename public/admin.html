@@ -450,34 +450,6 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   </div>
 </div>
 
-<!-- MODAL: Access Days -->
-<div class="mbg" id="modal-access-days">
-  <div class="mbox" style="max-width:500px">
-    <button class="mc" onclick="closeModal('modal-access-days')">✕</button>
-    <h3>⏰ Налаштувати дні доступу</h3>
-    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.6">Встановіть скільки днів покупець матиме доступ до цього курсу після покупки</p>
-    
-    <div class="fg">
-      <label style="font-size:.9rem;font-weight:600">Кількість днів</label>
-      <input type="number" id="mad-days" min="1" max="3650" placeholder="30" style="font-size:1.5rem;font-weight:700;padding:1rem;width:100%">
-    </div>
-
-    <div style="background:rgba(52,211,153,.1);border-left:4px solid var(--grn);padding:1rem;border-radius:6px;margin:1.5rem 0;font-size:.82rem;color:var(--muted);line-height:1.6">
-      <strong style="color:var(--grn)">💡 Приклади:</strong><br>
-      • 30 днів — місячний доступ<br>
-      • 90 днів — квартальний доступ<br>
-      • 365 днів — річний доступ<br>
-      • 3650 днів — 10 років (практично вічний)
-    </div>
-
-    <div style="display:flex;gap:.75rem;margin-top:1.5rem">
-      <button class="btn btn-p" onclick="saveAccessDays()" style="flex:1;padding:.75rem">✅ Зберегти</button>
-      <button class="btn btn-gh" onclick="closeModal('modal-access-days')" style="padding:.75rem 1.25rem">Скасувати</button>
-    </div>
-    <div id="mad-res" style="margin-top:.75rem;font-size:.82rem"></div>
-  </div>
-</div>
-
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -505,6 +477,10 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div class="fg" style="display:flex;align-items:center;gap:.75rem;margin-top:-.5rem">
       <input type="checkbox" id="mnc-free" style="width:auto">
       <label for="mnc-free" style="font-size:.82rem;color:var(--txt);cursor:pointer">🆓 Вільний доступ — дивитись без входу (для безкоштовних/YouTube курсів)</label>
+    </div>
+    
+    <div class="row">
+      <div class="fg"><label>⏰ Днів доступу</label><input type="number" id="mnc-access-days" min="1" max="3650" placeholder="30"></div>
     </div>
 
     <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
@@ -1180,7 +1156,6 @@ function editCourse(cid){
   document.getElementById('mnc-pub').checked=!!c.published;
   document.getElementById('mnc-free').checked=!!c.freeAccess;
   document.getElementById('mnc-access-days').value=c.accessDays||30;
-  if(document.getElementById('mad-days')) document.getElementById('mad-days').value=c.accessDays||30;
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
@@ -1229,13 +1204,6 @@ async function saveCourse(){
 }
 
 async function delCourse(id,name){ if(!confirm(`Видалити курс "${name}" і всі його відео?`))return; await fetch(`/api/courses/${id}`,{method:'DELETE'}); toast('🗑 Курс видалено'); await load(); }
-
-function saveAccessDays(){
-  const days = parseInt(document.getElementById('mad-days').value) || 30;
-  document.getElementById('mnc-access-days').value = days;
-  document.getElementById('mad-res').innerHTML = '<span style="color:var(--grn)">✅ Встановлено ' + days + ' днів</span>';
-  setTimeout(() => closeModal('modal-access-days'), 800);
-}
 
 async function checkDbState(){
   try {
