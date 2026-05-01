@@ -54,7 +54,7 @@ function autoGrantAccess(uid) {
       const c = d.courses.find(x => x.id === cid);
       if (c && !c.buyers?.some(b => b.id === uid)) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: uid, name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
         console.log('[autoGrant] Access granted to user', uid, 'for course:', c.title);
       }
     }
@@ -489,7 +489,7 @@ app.post('/api/debug/grant-access', adm, (req, res) => {
     const c = d.courses.find(x => x.id === courseId);
     if (c && !c.buyers?.some(b => b.id === buyerId)) {
       if (!c.buyers) c.buyers = [];
-      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+      c.buyers.push({ id: parseInt(buyerId), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
       console.log('[debug] Access granted to buyer:', buyerId, 'course:', courseId);
       res.json({ ok: true, message: 'Access granted' });
     } else {
@@ -514,7 +514,7 @@ app.post('/api/debug/grant-all', adm, (req, res) => {
     let added = 0;
     for (const acc of accounts) {
       if (!c.buyers.some(b => b.id === acc.id)) {
-        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
         added++;
       }
     }
@@ -928,7 +928,7 @@ app.post('/api/buyer/create-admin', adm, (req, res) => {
       const c = d.courses.find(x => x.id === grantCourseId);
       if (c) {
         if (!c.buyers) c.buyers = [];
-        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+        c.buyers.push({ id: newUid, name: username, grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
       }
     }
     console.log('[admin-create] Created account:', newUid, nameClean);
@@ -1125,7 +1125,7 @@ function proxyStream(url, res, h = {}) {
 app.get('/api/courses', adm, (req, res) => res.json(db.get().courses || []));
 
 app.post('/api/courses', adm, (req, res) => {
-  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, i18n } = req.body;
+  const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, accessDays, i18n } = req.body;
   if (!title) { res.status(400).json({ ok: false, error: 'Потрібна назва' }); return; }
   const id = db.newId(), slug = db.slugify(title);
   db.set(d => { 
@@ -1138,6 +1138,7 @@ app.post('/api/courses', adm, (req, res) => {
       color: color || '#C8302A', 
       published: !!published, 
       freeAccess: !!freeAccess, 
+      accessDays: Math.max(1, parseInt(accessDays) || 30),
       createdAt: Date.now(), 
       videos: [], 
       buyers: [], 
@@ -1154,7 +1155,7 @@ app.post('/api/courses', adm, (req, res) => {
 app.patch('/api/courses/:id', adm, (req, res) => {
   db.set(d => {
     const c = d.courses.find(x => x.id === req.params.id); if (!c) return;
-    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, i18n } = req.body;
+    const { title, description, price, priceAmount, badge, color, published, includes, features, freeAccess, accessDays, i18n } = req.body;
     if (title !== undefined) { c.title = title; c.slug = db.slugify(title); }
     if (description !== undefined) c.description = description; 
     if (price !== undefined) c.price = price; 
@@ -1165,6 +1166,7 @@ app.patch('/api/courses/:id', adm, (req, res) => {
     if (includes !== undefined) c.includes = includes;
     if (features !== undefined) c.features = features; 
     if (freeAccess !== undefined) c.freeAccess = !!freeAccess;
+    if (accessDays !== undefined) c.accessDays = Math.max(1, parseInt(accessDays) || 30);
     if (i18n !== undefined) c.i18n = i18n;
   });
   db.flushSync();
@@ -1787,7 +1789,7 @@ function syncAutoGrant() {
       let added = 0;
       for (const acc of accounts) {
         if (!c.buyers.some(b => b.id === acc.id)) {
-          c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
+          c.buyers.push({ id: acc.id, name: acc.username || '—', grantedAt: Date.now(), accessDays: c.accessDays || db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS });
           added++;
         }
       }
