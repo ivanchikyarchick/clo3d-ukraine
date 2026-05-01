@@ -28,7 +28,7 @@ const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l
 const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
-const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+const DEFAULT_ACCESS_DAYS = parseInt(process.env.ACCESS_DAYS || '30');
 const AUTO_GRANT_COURSES = (process.env.AUTO_GRANT_COURSES || '').split(',').map(s => s.trim()).filter(Boolean);
 
 // ═══ Online users tracker ═══
@@ -38,8 +38,14 @@ const ONLINE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 // ═══ Maintenance mode ═══
 let _maintenanceMode = false;
 
+function getAccessExpiryMs() {
+  const settings = db.get().settings || {};
+  const days = settings.accessDays || DEFAULT_ACCESS_DAYS;
+  return days * 24 * 60 * 60 * 1000;
+}
+
 function isAccessExpired(grantedAt) {
-  return grantedAt && (Date.now() - grantedAt > ACCESS_EXPIRY_MS);
+  return grantedAt && (Date.now() - grantedAt > getAccessExpiryMs());
 }
 
 function autoGrantAccess(uid) {
@@ -260,13 +266,14 @@ function invalidateCache() {
 }
 
 // Settings
-app.get('/api/settings', adm, (_, res) => res.json({ fop: db.get().settings?.fop || '', monoToken: db.get().settings?.monoToken ? '***set***' : '' }));
+app.get('/api/settings', adm, (_, res) => res.json({ fop: db.get().settings?.fop || '', monoToken: db.get().settings?.monoToken ? '***set***' : '', accessDays: db.get().settings?.accessDays || DEFAULT_ACCESS_DAYS }));
 app.post('/api/settings', adm, (req, res) => {
-  const { fop, monoToken } = req.body;
+  const { fop, monoToken, accessDays } = req.body;
   db.set(d => { 
     if (!d.settings) d.settings = {}; 
     if (fop !== undefined) d.settings.fop = fop; 
     if (monoToken !== undefined) d.settings.monoToken = monoToken;
+    if (accessDays !== undefined) d.settings.accessDays = Math.max(1, parseInt(accessDays) || DEFAULT_ACCESS_DAYS);
   });
   invalidateCache();
   res.json({ ok: true });
