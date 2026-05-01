@@ -1182,6 +1182,7 @@ function editCourse(cid){
   document.getElementById('mnc-pub').checked=!!c.published;
   document.getElementById('mnc-free').checked=!!c.freeAccess;
   document.getElementById('mnc-access-days').value=c.accessDays||30;
+  document.getElementById('mad-days').value=c.accessDays||30;
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
