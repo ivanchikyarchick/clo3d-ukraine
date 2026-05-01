@@ -143,7 +143,6 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   </div>
   <div class="ni on" onclick="go('dash')"><span class="ic">📊</span> Дашборд</div>
   <div class="ni" onclick="go('courses')"><span class="ic">📚</span> Курси</div>
-  <div class="ni" onclick="go('pending')"><span class="ic">⏳</span> Заявки курсів <span class="nb" id="nb"></span></div>
   <div class="ni" onclick="go('users')"><span class="ic">👥</span> Користувачі</div>
   <div class="ni" onclick="go('individual')"><span class="ic">🎯</span> Індивідуальні <span class="nb" id="nb-ind"></span></div>
   <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
@@ -166,10 +165,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">унікальних</div></div>
         <div class="sc"><div class="sl">Веб акаунтів</div><div class="sv a" id="s-wa">—</div><div class="ss">зареєстровані</div></div>
         <div class="sc" style="border-color:rgba(52,211,153,.25)"><div class="sl">🟢 Зараз онлайн</div><div class="sv g" id="s-online">—</div><div class="ss">на сайті</div></div>
-        <div class="sc"><div class="sl">Заявок</div><div class="sv go" id="s-p">—</div><div class="ss">очікують</div></div>
         <div class="sc"><div class="sl">Відео</div><div class="sv b" id="s-v">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Перегл. відео</div><div class="sv a" id="s-vv">—</div><div class="ss">переглянутих уроків</div></div>
-        <div class="sc"><div class="sl">Візитів сайту</div><div class="sv b" id="s-wv">—</div><div class="ss">7 днів</div></div>
         <div class="sc"><div class="sl">Видано доступів</div><div class="sv g" id="s-gr">—</div><div class="ss">всього</div></div>
       </div>
       <div class="cr">
@@ -230,15 +227,8 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <div class="cc-grid" id="cc-grid"></div>
     </div>
 
-    <!-- PENDING -->
-    <div class="tab" id="tab-pending">
-      <div class="sh"><div><h2>Заявки на курси</h2><p>Очікують підтвердження оплати</p></div></div>
-      <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Квитанція</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
-    </div>
-
-    <!-- USERS -->
     <div class="tab" id="tab-users">
-      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div><button class="btn btn-p" onclick="openModal('modal-create-user')">+ Створити акаунт</button></div>
+      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div><button class="btn btn-p" onclick="openModal('modal-create-user')">➕ Створити акаунт</button></div>
       <div class="tb-box"><table><thead><tr><th>Username</th><th>ID</th><th>Створено</th><th>Дії</th></tr></thead><tbody id="users-tb"></tbody></table></div>
     </div>
 
@@ -531,7 +521,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 </div>
 
 <!-- MODAL: Create User -->
-<div class="mbg" id="modal-create-user">
+<div class="mbg" id="modal-create-user" style="display:none">
   <div class="mbox" style="max-width:420px">
     <button class="mc" onclick="closeModal('modal-create-user')">✕</button>
     <h3>➕ Створити акаунт</h3>
@@ -542,6 +532,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <option value="">— Не надавати —</option>
       </select>
     </div>
+    <div class="fg"><label>Днів доступу (якщо обрано курс)</label><input type="number" id="cu-days" value="30" style="background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.7rem .95rem;color:var(--txt);font-size:.87rem;outline:none;width:100%"></div>
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button class="btn btn-p" onclick="createUser()" style="flex:1;padding:.75rem">Створити</button>
       <button class="btn btn-gh" onclick="closeModal('modal-create-user')" style="padding:.75rem 1.25rem">Скасувати</button>
@@ -569,7 +560,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
     <div id="mc-byr" class="mc-section" style="display:none">
       <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:flex-end">
         <div style="flex:1;min-width:130px">
-          <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Telegram ID</label>
+          <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Telegram ID (або ID користувача)</label>
           <input id="mc-add-uid" type="number" placeholder="ID" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .75rem;color:var(--txt);font-size:.82rem;outline:none;width:100%">
         </div>
         <div style="min-width:100px">
@@ -578,7 +569,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         </div>
         <button class="btn btn-g" onclick="mcGrantManual()" style="padding:.5rem .75rem">+ Додати</button>
       </div>
-      <div id="mc-byr-list" style="max-height:320px;overflow-y:auto"></div>
+      <div id="mc-byr-list" style="max-height:320px;overflow-y:auto;margin-top:1rem;"></div>
     </div>
     <div id="mc-upl" class="mc-section" style="display:none">
       <div class="fg"><label>Назва уроку *</label><input id="upl-title" placeholder="Урок 1 — Вступ до CLO3D"></div>
@@ -871,6 +862,7 @@ async function createUser(){
   const username = document.getElementById('cu-username').value.trim();
   const password = document.getElementById('cu-password').value;
   const courseId = document.getElementById('cu-course').value;
+  const grantDays = parseInt(document.getElementById('cu-days').value) || 30;
   if(!username || !password || password.length < 4){
     document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">Введіть username та пароль (мін. 4 символи)</span>';
     return;
@@ -879,7 +871,7 @@ async function createUser(){
     const r = await fetch('/api/buyer/create-admin',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username, password, grantCourseId:courseId || null})
+      body:JSON.stringify({username, password, grantCourseId:courseId || null, grantDays})
     }).then(x=>x.json());
     if(r.ok){
       toast('✅ ' + r.message);
@@ -887,6 +879,7 @@ async function createUser(){
       document.getElementById('cu-username').value = '';
       document.getElementById('cu-password').value = '';
       document.getElementById('cu-course').value = '';
+      document.getElementById('cu-days').value = '30';
       loadUsers();
     }else{
       document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">❌ ' + (r.error || 'Помилка') + '</span>';
