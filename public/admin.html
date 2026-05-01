@@ -507,8 +507,6 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <label for="mnc-free" style="font-size:.82rem;color:var(--txt);cursor:pointer">🆓 Вільний доступ — дивитись без входу (для безкоштовних/YouTube курсів)</label>
     </div>
 
-    <button class="btn btn-go" onclick="openModal('modal-access-days')" style="width:100%;padding:1rem;font-size:.9rem;margin:1rem 0">⏰ Налаштувати дні доступу</button>
-
     <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
       <div style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--acc);margin-bottom:1rem;font-weight:600">📋 Контент сторінки курсу</div>
 
@@ -1182,7 +1180,7 @@ function editCourse(cid){
   document.getElementById('mnc-pub').checked=!!c.published;
   document.getElementById('mnc-free').checked=!!c.freeAccess;
   document.getElementById('mnc-access-days').value=c.accessDays||30;
-  document.getElementById('mad-days').value=c.accessDays||30;
+  if(document.getElementById('mad-days')) document.getElementById('mad-days').value=c.accessDays||30;
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
