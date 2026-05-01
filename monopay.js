@@ -245,7 +245,7 @@ function mountMonopayWebhook(webhookRouter) {
           const c = d.courses.find(x => x.id === p.courseId);
           if (c && !c.buyers?.some(b => parseInt(b.id, 10) === parseInt(p.buyerId, 10))) {
             if (!c.buyers) c.buyers = [];
-            c.buyers.push({ id: parseInt(p.buyerId, 10), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || d.settings?.accessDays || 90 });
+            c.buyers.push({ id: parseInt(p.buyerId, 10), name: '—', grantedAt: Date.now() });
             console.log('[monobank] Access granted buyer', p.buyerId, 'course', p.courseId);
           }
           const buyer = d.buyerAccounts?.find(a => a.id === parseInt(p.buyerId, 10));
@@ -393,7 +393,7 @@ function grantCourseAccess(buyerId, courseId) {
     const c = d.courses.find(x => x.id === courseId);
     if (c && !c.buyers?.some(b => b.id === parseInt(buyerId, 10))) {
       if (!c.buyers) c.buyers = [];
-      c.buyers.push({ id: parseInt(buyerId, 10), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || 90 });
+      c.buyers.push({ id: parseInt(buyerId, 10), name: '—', grantedAt: Date.now() });
       console.log('[grantCourseAccess] Access granted to buyer:', buyerId, 'course:', c.title);
     }
   });
