@@ -286,7 +286,7 @@ function grantAccess(uid, name, username, cid) {
     if (!c) return; 
     if (!c.buyers) c.buyers = []; 
     if (!c.buyers.some(b => b.id === uid)) {
-      const accessDays = c.accessDays || d.settings?.accessDays || 30;
+      const accessDays = c.accessDays || 30;
       c.buyers.push({ id: uid, name, username, grantedAt: Date.now(), accessDays }); 
     }
     c.pending = (c.pending || []).filter(b => b.id !== uid); 
