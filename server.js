@@ -1556,6 +1556,16 @@ app.post('/api/courses/:cid/grant/:uid', adm, (req, res) => {
   const d = db.get();
   const course = d.courses?.find(x => x.id === cid);
   const days = req.body?.days || course?.accessDays || d.settings?.accessDays || DEFAULT_ACCESS_DAYS;
+  
+  console.log('🔧 Grant access debug:');
+  console.log('  - Course ID:', cid);
+  console.log('  - User ID:', uid);
+  console.log('  - req.body.days:', req.body?.days);
+  console.log('  - course.accessDays:', course?.accessDays);
+  console.log('  - settings.accessDays:', d.settings?.accessDays);
+  console.log('  - DEFAULT_ACCESS_DAYS:', DEFAULT_ACCESS_DAYS);
+  console.log('  - Final days:', days);
+  
   db.set(d => { const c = d.courses.find(x => x.id === cid); if (!c) return; if (!c.buyers) c.buyers = []; if (!c.buyers.some(b => b.id === uid)) { const p = c.pending?.find(b => b.id === uid); c.buyers.push({ id: uid, name: p?.name || '—', username: p?.username || '', grantedAt: Date.now(), accessDays: days }); } c.pending = (c.pending || []).filter(b => b.id !== uid); });
   try { /* bot removed */ } catch { }
   invalidateCache();
