@@ -9,6 +9,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="/i18n.js"></script>
+<style>
+:root {
+  /* Додані змінні фону, яких не вистачало */
+  --bg: #04040A; 
+  --s1: #0A0A12;
+  --s2: #0F0F1A;
+  
   --acc:#C8302A;--acc2:#E8D8D5;--gold:#fbbf24;--grn:#34d399;--rose:#E8A0A0;
   --txt:#F5F2F0;--muted:#9A8A8A;--brd:rgba(200,48,42,.18);
 }
@@ -42,14 +49,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,4,10,.85);
 .btn-g svg, .btn-o svg { width: 16px; height: 16px; fill: currentColor; }
 
 /* SECTION COMMON */
-section{padding:8rem 2rem 4rem} /* Збільшив верхній відступ для сторінки без Hero */
+section{padding:8rem 2rem 4rem}
 .sec-inner{max-width:1100px;margin:0 auto}
 .sec-eyebrow{font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--acc);font-weight:600;margin-bottom:.75rem;text-align:center;}
 .sec-title{font-family:'Syne',sans-serif;font-size:clamp(1.9rem,3.5vw,3rem);font-weight:800;line-height:1.05;margin-bottom:.75rem;text-align:center;}
 .sec-title em{font-style:italic;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .sec-sub{color:var(--muted);font-size:.92rem;font-weight:300;line-height:1.75;max-width:480px;margin:0 auto 3rem;text-align:center;}
 
-/* CARDS (from WHY section) */
+/* CARDS */
 .why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5px;background:var(--brd)}
 .why-card{background:var(--bg);padding:2rem 1.75rem;transition:.25s;text-decoration:none;display:flex;flex-direction:column;align-items:center;text-align:center;}
 .why-card:hover{background:var(--s1)}
@@ -193,10 +200,8 @@ footer{background:var(--s1);border-top:1px solid var(--brd);padding:2.5rem 2rem}
 
 <script>
 window.addEventListener('load', () => {
-  // Ховаємо лоадер
   document.getElementById('pl').classList.add('out');
   
-  // Ініціалізуємо IntersectionObserver для анімацій
   const obs = new IntersectionObserver(e => e.forEach(x => {
     if(x.isIntersecting) x.target.classList.add('on')
   }), { threshold: .1 });
@@ -205,7 +210,13 @@ window.addEventListener('load', () => {
 });
 </script>
 <script>
-function switchLanguage(lang) { setLanguage(lang); }
+function switchLanguage(lang) { 
+  if (typeof setLanguage === 'function') {
+    setLanguage(lang); 
+  } else {
+    console.warn("setLanguage function is not defined. Ensure i18n.js is loaded correctly.");
+  }
+}
 </script>
 </body>
 </html>
