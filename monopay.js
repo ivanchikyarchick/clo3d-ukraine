@@ -245,7 +245,7 @@ function mountMonopayWebhook(webhookRouter) {
           const c = d.courses.find(x => x.id === p.courseId);
           if (c && !c.buyers?.some(b => parseInt(b.id, 10) === parseInt(p.buyerId, 10))) {
             if (!c.buyers) c.buyers = [];
-            c.buyers.push({ id: parseInt(p.buyerId, 10), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || 30 });
+            c.buyers.push({ id: parseInt(p.buyerId, 10), name: '—', grantedAt: Date.now(), accessDays: c.accessDays || d.settings?.accessDays || 90 });
             console.log('[monobank] Access granted buyer', p.buyerId, 'course', p.courseId);
           }
           const buyer = d.buyerAccounts?.find(a => a.id === parseInt(p.buyerId, 10));
