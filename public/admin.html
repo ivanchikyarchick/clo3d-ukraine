@@ -787,7 +787,7 @@ function renderCourses(cs){
         <div class="cc-actions">
           <button class="btn btn-p" onclick="openCourse('${c.id}')">Керувати</button>
           <button class="btn btn-gh" onclick="editCourse('${c.id}')">✏️ Редагувати</button>
-          <button class="btn btn-r" onclick="delCourse('${c.id}','${c.title.replace(/'/g,"\\'")}}')">🗑</button>
+          <button class="btn btn-r" onclick="delCourse('${c.id}','${c.title.replace(/'/g,"\\'")}')">🗑</button>
         </div>
       </div>
     </div>`).join('') || '<div style="color:var(--muted);font-size:.9rem;padding:1rem">Курсів немає. Натисніть «+ Новий курс»</div>';
