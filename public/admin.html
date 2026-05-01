@@ -382,6 +382,18 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       </div>
 
       <div class="card-form" style="max-width:500px">
+        <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">⏰ Термін доступу до курсу</h3>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Кількість днів, протягом яких покупець матиме доступ до курсу після покупки.</p>
+        <div class="fg"><label>Днів доступу</label>
+          <input type="number" id="s-access-days" min="1" max="3650" placeholder="30" style="font-size:1rem;font-weight:600">
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:center">
+          <button class="btn btn-p" onclick="saveSettings()" style="padding:.65rem 1.25rem">💾 Зберегти</button>
+          <div id="s-res" style="font-size:.78rem"></div>
+        </div>
+      </div>
+
+      <div class="card-form" style="max-width:500px">
         <h3 style="font-family:'Syne',sans-serif;font-size:.9rem;margin-bottom:.4rem">💰 ФОП для оплати</h3>
         <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Реквізити ФОП будуть автоматично надсилатись покупцям у боті при оформленні заявки.</p>
         <div class="fg"><label>Реквізити ФОП (картка / рахунок)</label>
@@ -1033,12 +1045,14 @@ async function loadSettings(){
     const d=await fetch('/api/settings').then(r=>r.json());
     document.getElementById('s-fop').value=d.fop||'';
     document.getElementById('s-mono-token').value=d.monoToken||'';
+    document.getElementById('s-access-days').value=d.accessDays||30;
   }catch{}
 }
 async function saveSettings(){
   const fop=document.getElementById('s-fop').value.trim();
   const monoToken=document.getElementById('s-mono-token').value.trim();
-  const d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fop,monoToken})}).then(r=>r.json());
+  const accessDays=parseInt(document.getElementById('s-access-days').value)||30;
+  const d=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fop,monoToken,accessDays})}).then(r=>r.json());
   const el=document.getElementById('s-res');
   if(d.ok){el.style.color='var(--grn)';el.textContent='✅ Збережено';setTimeout(()=>el.textContent='',2500);}
   else{el.style.color='var(--red)';el.textContent='❌ Помилка';}
