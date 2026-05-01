@@ -20,7 +20,7 @@ function getR2() {
 const DEF = () => ({
   courses:  [],
   progress: {},
-  settings: { fop: '' },
+  settings: { fop: '', accessDays: 30 },
   stats: { botEvents: [], webEvents: [], totals: { messages: 0, buyRequests: 0, granted: 0, videoViews: 0 } }
 });
 
