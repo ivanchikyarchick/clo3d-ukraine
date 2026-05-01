@@ -80,7 +80,7 @@ const dict = {
   'Програма включає': 'Program includes',
   'Розпочинайте навчання': 'Start learning',
   'уроків': 'lessons',
-  'Доступ 90 днів': '90 days access',
+  'Доступ 30 днів': '30 days access',
   '🆓 Безкоштовно': '🆓 Free',
   'Завантаження...': 'Loading...',
   'Одноразова оплата · Навчальна програма': 'One-time payment · Course program',
