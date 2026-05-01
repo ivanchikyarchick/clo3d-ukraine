@@ -143,6 +143,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
   </div>
   <div class="ni on" onclick="go('dash')"><span class="ic">📊</span> Дашборд</div>
   <div class="ni" onclick="go('courses')"><span class="ic">📚</span> Курси</div>
+  <div class="ni" onclick="go('pending')"><span class="ic">⏳</span> Заявки курсів <span class="nb" id="nb"></span></div>
   <div class="ni" onclick="go('users')"><span class="ic">👥</span> Користувачі</div>
   <div class="ni" onclick="go('individual')"><span class="ic">🎯</span> Індивідуальні <span class="nb" id="nb-ind"></span></div>
   <div class="ni" onclick="go('notify')"><span class="ic">🔔</span> Сповіщення</div>
@@ -165,8 +166,10 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <div class="sc"><div class="sl">Покупців</div><div class="sv g" id="s-b">—</div><div class="ss">унікальних</div></div>
         <div class="sc"><div class="sl">Веб акаунтів</div><div class="sv a" id="s-wa">—</div><div class="ss">зареєстровані</div></div>
         <div class="sc" style="border-color:rgba(52,211,153,.25)"><div class="sl">🟢 Зараз онлайн</div><div class="sv g" id="s-online">—</div><div class="ss">на сайті</div></div>
+        <div class="sc"><div class="sl">Заявок</div><div class="sv go" id="s-p">—</div><div class="ss">очікують</div></div>
         <div class="sc"><div class="sl">Відео</div><div class="sv b" id="s-v">—</div><div class="ss">всього</div></div>
         <div class="sc"><div class="sl">Перегл. відео</div><div class="sv a" id="s-vv">—</div><div class="ss">переглянутих уроків</div></div>
+        <div class="sc"><div class="sl">Візитів сайту</div><div class="sv b" id="s-wv">—</div><div class="ss">7 днів</div></div>
         <div class="sc"><div class="sl">Видано доступів</div><div class="sv g" id="s-gr">—</div><div class="ss">всього</div></div>
       </div>
       <div class="cr">
@@ -227,8 +230,15 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <div class="cc-grid" id="cc-grid"></div>
     </div>
 
+    <!-- PENDING -->
+    <div class="tab" id="tab-pending">
+      <div class="sh"><div><h2>Заявки на курси</h2><p>Очікують підтвердження оплати</p></div></div>
+      <div class="tb-box"><table><thead><tr><th>Курс</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Квитанція</th><th>Час</th><th>Дії</th></tr></thead><tbody id="pending-tb"></tbody></table></div>
+    </div>
+
+    <!-- USERS -->
     <div class="tab" id="tab-users">
-      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div><button class="btn btn-p" onclick="openModal('modal-create-user')">➕ Створити акаунт</button></div>
+      <div class="sh"><div><h2>Користувачі</h2><p>Веб-акаунти покупців</p></div><button class="btn btn-p" onclick="openModal('modal-create-user')">+ Створити акаунт</button></div>
       <div class="tb-box"><table><thead><tr><th>Username</th><th>ID</th><th>Створено</th><th>Дії</th></tr></thead><tbody id="users-tb"></tbody></table></div>
     </div>
 
@@ -468,10 +478,6 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <input type="checkbox" id="mnc-free" style="width:auto">
       <label for="mnc-free" style="font-size:.82rem;color:var(--txt);cursor:pointer">🆓 Вільний доступ — дивитись без входу (для безкоштовних/YouTube курсів)</label>
     </div>
-    
-    <div class="row">
-      <div class="fg"><label>⏰ Днів доступу</label><input type="number" id="mnc-access-days" min="1" max="3650" placeholder="30"></div>
-    </div>
 
     <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
       <div style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--acc);margin-bottom:1rem;font-weight:600">📋 Контент сторінки курсу</div>
@@ -483,7 +489,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 
       <div class="fg">
         <label>Картки «Програма включає» <span style="color:var(--muted);font-weight:400">— формат: Назва | Опис (по одній на рядок)</span></label>
-        <textarea id="mnc-features" style="min-height:120px;font-size:.82rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією"></textarea>
+        <textarea id="mnc-features" style="min-height:120px;font-size:.82rem" placeholder="Захищені відеоуроки | Перегляд у плеєрі без завантаження&#10;Закритий Telegram-канал | Матеріали та зв'язок з викладачем&#10;Підтримка та чат | Прямий зв'язок з Віталією&#10;1 місяць доступу | Доступ діє 30 днів з дня покупки"></textarea>
       </div>
     </div>
 
@@ -521,7 +527,7 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
 </div>
 
 <!-- MODAL: Create User -->
-<div class="mbg" id="modal-create-user" style="display:none">
+<div class="mbg" id="modal-create-user">
   <div class="mbox" style="max-width:420px">
     <button class="mc" onclick="closeModal('modal-create-user')">✕</button>
     <h3>➕ Створити акаунт</h3>
@@ -532,7 +538,6 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
         <option value="">— Не надавати —</option>
       </select>
     </div>
-    <div class="fg"><label>Днів доступу (якщо обрано курс)</label><input type="number" id="cu-days" value="30" style="background:var(--s2);border:1px solid var(--brd);border-radius:10px;padding:.7rem .95rem;color:var(--txt);font-size:.87rem;outline:none;width:100%"></div>
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button class="btn btn-p" onclick="createUser()" style="flex:1;padding:.75rem">Створити</button>
       <button class="btn btn-gh" onclick="closeModal('modal-create-user')" style="padding:.75rem 1.25rem">Скасувати</button>
@@ -558,18 +563,11 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <div id="mc-vid-list" style="max-height:380px;overflow-y:auto"></div>
     </div>
     <div id="mc-byr" class="mc-section" style="display:none">
-      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:130px">
-          <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Telegram ID (або ID користувача)</label>
-          <input id="mc-add-uid" type="number" placeholder="ID" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .75rem;color:var(--txt);font-size:.82rem;outline:none;width:100%">
-        </div>
-        <div style="min-width:100px">
-          <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Днів доступу</label>
-          <input id="mc-add-days" type="number" min="1" max="3650" value="30" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .75rem;color:var(--txt);font-size:.82rem;outline:none;width:100%">
-        </div>
-        <button class="btn btn-g" onclick="mcGrantManual()" style="padding:.5rem .75rem">+ Додати</button>
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+        <input id="mc-add-uid" type="number" placeholder="Telegram ID" style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .75rem;color:var(--txt);font-size:.82rem;outline:none;flex:1;min-width:130px">
+        <button class="btn btn-g" onclick="mcGrantManual()">+ Додати</button>
       </div>
-      <div id="mc-byr-list" style="max-height:320px;overflow-y:auto;margin-top:1rem;"></div>
+      <div id="mc-byr-list" style="max-height:320px;overflow-y:auto"></div>
     </div>
     <div id="mc-upl" class="mc-section" style="display:none">
       <div class="fg"><label>Назва уроку *</label><input id="upl-title" placeholder="Урок 1 — Вступ до CLO3D"></div>
@@ -778,7 +776,7 @@ function renderCourses(cs){
         <div class="cc-actions">
           <button class="btn btn-p" onclick="openCourse('${c.id}')">Керувати</button>
           <button class="btn btn-gh" onclick="editCourse('${c.id}')">✏️ Редагувати</button>
-          <button class="btn btn-r" onclick="delCourse('${c.id}','${c.title.replace(/'/g,"\\'")}')">🗑</button>
+          <button class="btn btn-r" onclick="delCourse('${c.id}','${c.title.replace(/'/g,"\\'")}}')">🗑</button>
         </div>
       </div>
     </div>`).join('') || '<div style="color:var(--muted);font-size:.9rem;padding:1rem">Курсів немає. Натисніть «+ Новий курс»</div>';
@@ -795,9 +793,8 @@ function renderPending(cs){
       <td><code>${b.id}</code></td>
       <td>${b.receiptFileId?`<a href="/api/courses/${c.id}/pending/${b.id}/receipt" class="btn btn-go" style="text-decoration:none;font-size:.7rem" target="_blank">📎 Завантажити</a>`:'<span style="color:var(--muted);font-size:.75rem">Немає</span>'}</td>
       <td>${b.requestedAt?new Date(b.requestedAt).toLocaleString('uk'):'—'}</td>
-      <td style="display:flex;gap:.4rem;align-items:center">
-        <input type="number" id="days-${c.id}-${b.id}" min="1" max="3650" value="${c.accessDays||30}" style="width:50px;padding:.3rem;background:var(--s2);border:1px solid var(--brd);border-radius:6px;color:var(--txt);font-size:.75rem">
-        <button class="btn btn-g" onclick="grant('${c.id}',${b.id},document.getElementById('days-${c.id}-${b.id}').value)">✅</button>
+      <td style="display:flex;gap:.4rem">
+        <button class="btn btn-g" onclick="grant('${c.id}',${b.id})">✅</button>
         <button class="btn btn-r" onclick="reject('${c.id}',${b.id})">❌</button>
       </td>
     </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Заявок немає</td></tr>';
@@ -862,7 +859,6 @@ async function createUser(){
   const username = document.getElementById('cu-username').value.trim();
   const password = document.getElementById('cu-password').value;
   const courseId = document.getElementById('cu-course').value;
-  const grantDays = parseInt(document.getElementById('cu-days').value) || 30;
   if(!username || !password || password.length < 4){
     document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">Введіть username та пароль (мін. 4 символи)</span>';
     return;
@@ -871,7 +867,7 @@ async function createUser(){
     const r = await fetch('/api/buyer/create-admin',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username, password, grantCourseId:courseId || null, grantDays})
+      body:JSON.stringify({username, password, grantCourseId:courseId || null})
     }).then(x=>x.json());
     if(r.ok){
       toast('✅ ' + r.message);
@@ -879,7 +875,6 @@ async function createUser(){
       document.getElementById('cu-username').value = '';
       document.getElementById('cu-password').value = '';
       document.getElementById('cu-course').value = '';
-      document.getElementById('cu-days').value = '30';
       loadUsers();
     }else{
       document.getElementById('cu-res').innerHTML = '<span style="color:var(--red)">❌ ' + (r.error || 'Помилка') + '</span>';
@@ -930,8 +925,6 @@ function openCourse(cid){
   curCourseId=cid;
   const c=D.courses.find(x=>x.id===cid);
   document.getElementById('mc-title').textContent=c.title;
-  // Set default accessDays for manual grant based on course settings
-  document.getElementById('mc-add-days').value = c.accessDays || 30;
   document.getElementById('modal-course').classList.add('show');
   mcTab('vid');
 }
@@ -1029,27 +1022,8 @@ function renderMcBuyers(){
     bs.map((b,i)=>`<tr><td>${i+1}</td><td>${b.name||'—'}</td><td>${b.username?'@'+b.username:'—'}</td><td><code>${b.id}</code></td><td>${b.grantedAt?new Date(b.grantedAt).toLocaleDateString('uk'):'—'}</td><td><button class="btn btn-r" onclick="revoke('${curCourseId}',${b.id})">Відкликати</button></td></tr>`).join('')+'</tbody></table>':
     '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Покупців немає</div>';
 }
-async function mcGrantManual(){ 
-  const uid=parseInt(document.getElementById('mc-add-uid').value); 
-  const days=parseInt(document.getElementById('mc-add-days').value); 
-  if(!uid || !days)return; 
-  await grant(curCourseId,uid,days); 
-  document.getElementById('mc-add-uid').value=''; 
-  // Reset to current course's accessDays
-  const course = D.courses.find(c => c.id === curCourseId);
-  document.getElementById('mc-add-days').value = course?.accessDays || 30;
-}
-async function grant(cid,uid,days){ 
-  // If days not provided, use course's accessDays
-  if(!days) {
-    const course = D.courses.find(c => c.id === cid);
-    days = course?.accessDays || 30;
-  }
-  await fetch(`/api/courses/${cid}/grant/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:parseInt(days)})}); 
-  toast('✅ Доступ видано'); 
-  await load(); 
-  renderMcBuyers(); 
-}
+async function mcGrantManual(){ const uid=parseInt(document.getElementById('mc-add-uid').value); if(!uid)return; await grant(curCourseId,uid); document.getElementById('mc-add-uid').value=''; }
+async function grant(cid,uid){ await fetch(`/api/courses/${cid}/grant/${uid}`,{method:'POST'}); toast('✅ Доступ видано'); await load(); renderMcBuyers(); }
 async function revoke(cid,uid){ if(!confirm('Відкликати?'))return; await fetch(`/api/courses/${cid}/revoke/${uid}`,{method:'POST'}); toast('Відкликано'); await load(); renderMcBuyers(); }
 async function reject(cid,uid){ await fetch(`/api/courses/${cid}/pending/${uid}`,{method:'DELETE'}); toast('❌ Відхилено'); await load(); renderPending(D.courses); }
 
@@ -1151,63 +1125,36 @@ function openModal(id){ document.getElementById(id).classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
 function editCourse(cid){
-  if(!D || !D.courses){
-    alert('❌ Дані не завантажені! Оновіть сторінку.');
-    return;
-  }
-  
+  console.log('editCourse called with cid:', cid, 'D.courses?', !!D?.courses);
+  const priceEl = document.getElementById('mnc-price');
+  console.log('mnc-price element:', priceEl);
+  if(!priceEl){ alert('Modal not found! Refresh page.'); return; }
   const c=D.courses.find(x=>x.id===cid);
-  if(!c){ 
-    alert('❌ Курс не знайдено: ' + cid);
-    return; 
-  }
-  
-  // Функція для безпечного встановлення значення
-  const setVal = (id, val) => {
-    const el = document.getElementById(id);
-    if(el) el.value = val;
-    else console.warn('Element not found:', id);
-  };
-  const setCheck = (id, val) => {
-    const el = document.getElementById(id);
-    if(el) el.checked = val;
-    else console.warn('Element not found:', id);
-  };
-  const setText = (id, val) => {
-    const el = document.getElementById(id);
-    if(el) el.textContent = val;
-    else console.warn('Element not found:', id);
-  };
-  
-  setText('mnc-title', '✏️ Редагувати курс');
-  setVal('mnc-id', cid);
-  setVal('mnc-name', c.title||'');
-  setVal('mnc-desc', c.description||'');
-  setVal('mnc-price', c.price||'');
-  setVal('mnc-price-amount', c.priceAmount||c.price||'');
-  setVal('mnc-badge', c.badge||'');
-  setVal('mnc-color', c.color||'#C8302A');
-  setCheck('mnc-pub', !!c.published);
-  setCheck('mnc-free', !!c.freeAccess);
-  setVal('mnc-access-days', c.accessDays||30);
-  
+  if(!c){ console.error('Course not found:', cid); return; }
+  document.getElementById('mnc-title').textContent='✏️ Редагувати курс';
+  document.getElementById('mnc-id').value=cid;
+  document.getElementById('mnc-name').value=c.title||'';
+  document.getElementById('mnc-desc').value=c.description||'';
+  document.getElementById('mnc-price').value=c.price||'';
+  document.getElementById('mnc-price-amount').value=c.priceAmount||c.price||'';
+  document.getElementById('mnc-badge').value=c.badge||'';
+  document.getElementById('mnc-color').value=c.color||'#C8302A';
+  document.getElementById('mnc-pub').checked=!!c.published;
+  document.getElementById('mnc-free').checked=!!c.freeAccess;
   // includes & features
-  setVal('mnc-includes', (c.includes||[]).join('\n'));
-  setVal('mnc-features', (c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n'));
-  
+  document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
+  document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
   // Завантажити i18n дані
   const en=c.i18n?.en||{};
-  setVal('i18n-en-title', en.title||'');
-  setVal('i18n-en-description', en.description||'');
-  setVal('i18n-en-price', en.price||'');
-  setVal('i18n-en-priceAmount', en.priceAmount||'');
-  setVal('i18n-en-badge', en.badge||'');
-  setVal('i18n-en-includes', (en.includes||[]).join(', '));
-  setVal('i18n-en-features', (en.features||[]).map(f=>f.title||f).join(', '));
-  
-  if(typeof switchI18nTab === 'function') switchI18nTab('uk');
+  document.getElementById('i18n-en-title').value=en.title||'';
+  document.getElementById('i18n-en-description').value=en.description||'';
+  document.getElementById('i18n-en-price').value=en.price||'';
+  document.getElementById('i18n-en-priceAmount').value=en.priceAmount||'';
+  document.getElementById('i18n-en-badge').value=en.badge||'';
+  document.getElementById('i18n-en-includes').value=(en.includes||[]).join(', ');
+  document.getElementById('i18n-en-features').value=(en.features||[]).map(f=>f.title||f).join(', ');
+  switchI18nTab('uk');
   document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.c===c.color));
-  
   openModal('modal-new-course');
 }
 
@@ -1234,7 +1181,7 @@ async function saveCourse(){
       features: document.getElementById('i18n-en-features').value.split(',').map(s=>s.trim()).filter(Boolean).map(t=>({title:t,desc:''}))
     }
   } : {};
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,accessDays:Math.max(1,parseInt(document.getElementById('mnc-access-days').value)||30),includes,features,i18n};
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features,i18n};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
