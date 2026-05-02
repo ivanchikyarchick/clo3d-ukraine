@@ -478,6 +478,10 @@ code{color:var(--acc2);font-size:.75rem;background:rgba(200,48,42,.1);padding:.1
       <input type="checkbox" id="mnc-free" style="width:auto">
       <label for="mnc-free" style="font-size:.82rem;color:var(--txt);cursor:pointer">🆓 Вільний доступ — дивитись без входу (для безкоштовних/YouTube курсів)</label>
     </div>
+    <div class="fg" style="margin-top:.75rem">
+      <label>⏳ Тривалість доступу (днів) <span style="color:var(--muted);font-weight:400">— 0 = безстроково</span></label>
+      <input type="number" id="mnc-access-days" min="0" max="3650" placeholder="30" style="max-width:160px">
+    </div>
 
     <div style="margin:1.25rem 0 1rem;border-top:1px solid var(--brd);padding-top:1.25rem">
       <div style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--acc);margin-bottom:1rem;font-weight:600">📋 Контент сторінки курсу</div>
@@ -1018,9 +1022,56 @@ async function delVid(i){ const c=D.courses.find(x=>x.id===curCourseId); if(!con
 function renderMcBuyers(){
   const c=D.courses.find(x=>x.id===curCourseId);
   const bs=c?.buyers||[];
-  document.getElementById('mc-byr-list').innerHTML=bs.length?`<table style="width:100%"><thead><tr><th>#</th><th>Ім'я</th><th>Username</th><th>ID</th><th>Дата</th><th></th></tr></thead><tbody>`+
-    bs.map((b,i)=>`<tr><td>${i+1}</td><td>${b.name||'—'}</td><td>${b.username?'@'+b.username:'—'}</td><td><code>${b.id}</code></td><td>${b.grantedAt?new Date(b.grantedAt).toLocaleDateString('uk'):'—'}</td><td><button class="btn btn-r" onclick="revoke('${curCourseId}',${b.id})">Відкликати</button></td></tr>`).join('')+'</tbody></table>':
+  const fmtDate=ts=>ts?new Date(ts).toLocaleDateString('uk'):'—';
+  const fmtExpiry=(b)=>{
+    if(b.expiresAt!=null){
+      if(b.expiresAt===0) return '<span style="color:var(--grn)">∞ безстроково</span>';
+      const expired=Date.now()>b.expiresAt;
+      const d=Math.ceil((b.expiresAt-Date.now())/(86400000));
+      return expired?'<span style="color:var(--red)">❌ прострочено</span>':`<span style="color:${d<=7?'var(--gold)':'var(--grn)'}">${d} дн.</span>`;
+    }
+    return '<span style="color:var(--muted)">—</span>';
+  };
+  document.getElementById('mc-byr-list').innerHTML=bs.length?
+    `<table style="width:100%"><thead><tr><th>#</th><th>Ім'я</th><th>ID</th><th>Видано</th><th>Закінчується</th><th>Дії</th></tr></thead><tbody>`+
+    bs.map((b,i)=>`<tr>
+      <td>${i+1}</td>
+      <td>${b.name||'—'}${b.username?` <span style="color:var(--muted);font-size:.75rem">@${b.username}</span>`:''}</td>
+      <td><code>${b.id}</code></td>
+      <td style="font-size:.78rem">${fmtDate(b.grantedAt)}</td>
+      <td style="font-size:.78rem">${fmtExpiry(b)}</td>
+      <td style="display:flex;gap:.35rem;flex-wrap:wrap">
+        <button class="btn btn-go" style="font-size:.7rem;padding:.25rem .6rem" onclick="editBuyerExpiry('${curCourseId}',${b.id},${b.expiresAt??'null'})">✏️ Термін</button>
+        <button class="btn btn-r" style="font-size:.7rem;padding:.25rem .6rem" onclick="revoke('${curCourseId}',${b.id})">Відкликати</button>
+      </td>
+    </tr>`).join('')+'</tbody></table>':
     '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem">Покупців немає</div>';
+}
+
+async function editBuyerExpiry(cid, uid, currentExpiry){
+  const c=D.courses.find(x=>x.id===cid);
+  const accessDays=c?.accessDays??30;
+  // Формуємо дефолтну дату: поточний expiresAt або зараз + accessDays
+  let defDate;
+  if(currentExpiry!=null&&currentExpiry!==0){
+    defDate=new Date(currentExpiry).toISOString().slice(0,10);
+  } else {
+    const d=new Date(Date.now()+accessDays*86400000);
+    defDate=d.toISOString().slice(0,10);
+  }
+  const val=prompt(`Нова дата закінчення доступу для ID ${uid}\n(залиш порожнім = безстроково)\nФормат: РРРР-ММ-ДД`, currentExpiry===0?'':defDate);
+  if(val===null) return; // скасовано
+  let expiresAt=0;
+  if(val.trim()){
+    const d=new Date(val.trim());
+    if(isNaN(d)){alert('Невірний формат дати');return;}
+    d.setHours(23,59,59,999);
+    expiresAt=d.getTime();
+  }
+  await fetch(`/api/courses/${cid}/buyers/${uid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresAt})});
+  toast('✅ Термін оновлено');
+  await load();
+  renderMcBuyers();
 }
 async function mcGrantManual(){ const uid=parseInt(document.getElementById('mc-add-uid').value); if(!uid)return; await grant(curCourseId,uid); document.getElementById('mc-add-uid').value=''; }
 async function grant(cid,uid){ await fetch(`/api/courses/${cid}/grant/${uid}`,{method:'POST'}); toast('✅ Доступ видано'); await load(); renderMcBuyers(); }
@@ -1141,6 +1192,7 @@ function editCourse(cid){
   document.getElementById('mnc-color').value=c.color||'#C8302A';
   document.getElementById('mnc-pub').checked=!!c.published;
   document.getElementById('mnc-free').checked=!!c.freeAccess;
+  document.getElementById('mnc-access-days').value=c.accessDays!=null?c.accessDays:30;
   // includes & features
   document.getElementById('mnc-includes').value=(c.includes||[]).join('\n');
   document.getElementById('mnc-features').value=(c.features||[]).map(f=>`${f.title}|${f.desc||''}`).join('\n');
@@ -1181,7 +1233,7 @@ async function saveCourse(){
       features: document.getElementById('i18n-en-features').value.split(',').map(s=>s.trim()).filter(Boolean).map(t=>({title:t,desc:''}))
     }
   } : {};
-  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,includes,features,i18n};
+  const body={title:document.getElementById('mnc-name').value.trim(),description:document.getElementById('mnc-desc').value,price:document.getElementById('mnc-price').value,priceAmount:pAmt,badge:document.getElementById('mnc-badge').value,color:document.getElementById('mnc-color').value||'#C8302A',published:document.getElementById('mnc-pub').checked,freeAccess:document.getElementById('mnc-free').checked,accessDays:parseInt(document.getElementById('mnc-access-days').value)||0,includes,features,i18n};
   if(!body.title){document.getElementById('mnc-res').innerHTML='<span style="color:var(--red)">Введіть назву</span>';return;}
   if(id){await fetch(`/api/courses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Курс оновлено');}
   else{const r=await fetch('/api/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json());if(!r.ok){document.getElementById('mnc-res').innerHTML=`<span style="color:var(--red)">${r.error}</span>`;return;}toast('✅ Курс створено');}
@@ -1232,8 +1284,8 @@ async function grantAccess(){
     const data = await r.json();
     console.log('[debug] Grant response:', data);
     if (data.ok) {
-      document.getElementById('grant-result').innerHTML = '<span style="color:var(--grn)">✅ Доступ надано</span>';
-      toast('✅ Доступ надано');
+      document.getElementById('grant-result').innerHTML = '<span style="color:var(--grn)">✅ ' + (data.message || 'Доступ надано') + '</span>';
+      toast('✅ ' + (data.message || 'Доступ надано'));
       await load();
     } else {
       document.getElementById('grant-result').innerHTML = '<span style="color:var(--red)">❌ ' + data.error + '</span>';
@@ -1417,6 +1469,7 @@ document.querySelector('[onclick="openModal(\'modal-new-course\')"]')?.addEventL
   document.getElementById('mnc-id').value=''; document.getElementById('mnc-title').textContent='➕ Новий курс';
   ['mnc-name','mnc-desc','mnc-price','mnc-badge'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mnc-color').value='#C8302A'; document.getElementById('mnc-pub').checked=false;
+  document.getElementById('mnc-access-days').value='30';
   document.querySelectorAll('.sw').forEach(s=>s.classList.remove('on'));
 });
 
