@@ -281,7 +281,20 @@ bot.on('message', msg => {
 });
 
 function grantAccess(uid, name, username, cid) {
-  db.set(d => { const c = (d.courses || []).find(x => x.id === cid); if (!c) return; if (!c.buyers) c.buyers = []; if (!c.buyers.some(b => b.id === uid)) c.buyers.push({ id: uid, name, username, grantedAt: Date.now() }); c.pending = (c.pending || []).filter(b => b.id !== uid); });
+  db.set(d => {
+    const c = (d.courses || []).find(x => x.id === cid); if (!c) return;
+    if (!c.buyers) c.buyers = [];
+    const existing = c.buyers.find(b => b.id === uid);
+    const days = c.accessDays != null ? parseInt(c.accessDays) : 30;
+    const expiresAt = days === 0 ? 0 : Date.now() + days * 24 * 60 * 60 * 1000;
+    if (existing) {
+      existing.grantedAt = Date.now();
+      existing.expiresAt = expiresAt;
+    } else {
+      c.buyers.push({ id: uid, name, username, grantedAt: Date.now(), expiresAt });
+    }
+    c.pending = (c.pending || []).filter(b => b.id !== uid);
+  });
   db.trackBot('granted', uid, username, { cid });
   const c = db.getCourse(cid);
   try { bot.sendMessage(uid, accessGrantedMsg(uid, c?.title || 'курсу'), { parse_mode: 'Markdown' }); } catch (e) { console.warn('grantAccess:', e.message); }
