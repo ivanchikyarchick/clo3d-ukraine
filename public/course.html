@@ -142,6 +142,7 @@ footer p{font-size:.65rem;color:var(--muted);opacity:.5}
       <p class="ch-desc" id="ch-desc"></p>
       <div class="ch-pills">
         <span class="ch-pill">CLO 3D</span>
+        <span class="ch-pill">🎬 <span id="ch-vc">0</span> <span data-i18n="course_lessons_count">уроків</span></span>
         <span class="ch-pill">🔒 <span data-i18n="course_program">Навчальна програма</span></span>
         <span class="ch-pill" data-i18n="course_access">Доступ 90 днів</span>
       </div>
@@ -561,8 +562,8 @@ async function load(){
 
     const vids=await Promise.race([
       fetch(`/api/course/${c.id}/videos/public?lang=${lang}`).then(r=>r.json()).catch(()=>[]),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout')),10000))
-    ]).catch(()=>[]);
+      new Promise((_,resolve)=>setTimeout(()=>resolve([]),10000))
+    ]);
 
     const show=Math.min(vids.length,12);
     const listEl=document.getElementById('vl-list');
@@ -583,7 +584,9 @@ async function load(){
     }
   }catch(e){
     console.error(e);
-    document.getElementById('ch-title').textContent='Помилка завантаження';
+    // Перезаписуємо заголовок тільки якщо курс ще не завантажився
+    if(!currentCourseData) document.getElementById('ch-title').textContent='Помилка завантаження';
+    else console.warn('[course] Non-critical error after load:', e.message);
   } finally {
     document.getElementById('pl').classList.add('out');
   }
@@ -594,7 +597,7 @@ async function load(){
 // Чекаємо і initMe і load перед перевіркою auth=google
 Promise.all([
   initMe().then(r=>{currentBuyer=r;updatePaymentButtons();}).catch(()=>{}),
-  load().then(()=>updatePaymentButtons()).catch(e=>{console.error(e);document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');})
+  load().then(()=>updatePaymentButtons()).catch(e=>{console.error(e);if(!currentCourseData){document.getElementById('ch-title').textContent='Помилка завантаження';document.getElementById('pl').classList.add('out');}})
 ]).then(()=>{
   // Якщо повернулись після Google auth — тепер і buyer і courseData точно завантажені
   if(new URLSearchParams(location.search).get('auth')==='google' && currentBuyer && currentCourseData){
