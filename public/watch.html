@@ -513,7 +513,7 @@ async function showApp(name,courses,email){
   const freeCourse=await fetch('/api/course/mn1v7bplqru/public').then(r=>r.json()).catch(()=>null);
   if(freeCourse&&freeCourse.title&&!courses.some(c=>c.id===freeCourse.id)) courses.push(freeCourse);
   myCourses=courses; courseGrantedAt={};
-  courses.forEach(c=>{if(c.grantedAt)courseGrantedAt[c.id]=c.grantedAt;});
+  courses.forEach(c=>{if(c.grantedAt||c.expiresAt!=null)courseGrantedAt[c.id]={grantedAt:c.grantedAt,expiresAt:c.expiresAt,accessDays:c.accessDays??30};});
   if(myCourses.length>1){
     const ct=document.getElementById('ctabs'); ct.style.display='flex';
     ct.innerHTML='<span class="ctabs-label">Курс:</span>'+myCourses.map(c=>`<button class="ctab" data-cid="${c.id}" onclick="selectCourse('${c.id}')">${c.title||'Курс'}</button>`).join('');
@@ -650,7 +650,17 @@ function updateAccessCountdown(){
   if(isFreeMode||!curCourse){el.style.display='none';return;}
   const ga=courseGrantedAt[curCourse.id];
   if(!ga){el.style.display='none';return;}
-  const expiry=ga+30*24*60*60*1000,remaining=expiry-Date.now();
+  // Використовуємо expiresAt якщо є, інакше рахуємо з grantedAt + accessDays
+  let expiry;
+  if(ga.expiresAt!=null){
+    if(ga.expiresAt===0){el.style.display='none';return;} // безстроково
+    expiry=ga.expiresAt;
+  } else {
+    const accessDays=(ga.accessDays??30);
+    if(accessDays===0){el.style.display='none';return;}
+    expiry=(ga.grantedAt??ga)+accessDays*24*60*60*1000;
+  }
+  const remaining=expiry-Date.now();
   el.style.display='flex'; el.className='';
   if(remaining<=0){el.classList.add('urgent');el.querySelector('.cd-text').textContent='Доступ закінчився!';showToast('⛔ Термін доступу до курсу закінчився.');return;}
   const days=Math.ceil(remaining/(24*60*60*1000)),hours=Math.floor((remaining%(24*60*60*1000))/(60*60*1000));
