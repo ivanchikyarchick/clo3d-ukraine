@@ -21,11 +21,11 @@ const db         = require('./db');
 const r2         = require('./r2');
 const { mountMonopayWebhook, mountMonopayApi, sendVerificationCode } = require('./monopay');
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CL34tyre';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 console.log('[server] Starting with ADMIN_PASSWORD:', ADMIN_PASSWORD);
 const PORT           = process.env.PORT || 3000;
-const BOT_TOKEN      = process.env.BOT_TOKEN || '8606783327:AAFlvRiAqhxLuxwtx_6l4glNeqlSS4x96AE';
-const SITE_URL       = process.env.SITE_URL || 'https://fashionlab.com.ua';
+const BOT_TOKEN      = process.env.BOT_TOKEN || '';
+const SITE_URL       = process.env.SITE_URL || '';
 const ADMIN_ID       = parseInt(process.env.ADMIN_ID || '6590778330');
 const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN || '';
 const ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
